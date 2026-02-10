@@ -41,10 +41,13 @@
 	}
 </script>
 
-<article class="project-card hover-lift">
+<article class="project-card hover-lift" class:pinned={repo.isPinned}>
 	<a href={repo.url} target="_blank" rel="noopener noreferrer" class="card-link">
 		<div class="card-header">
 			<h3 class="card-title">{repo.name}</h3>
+			{#if repo.isPinned}
+				<span class="badge pinned-badge">📌 Pinned</span>
+			{/if}
 			{#if repo.isArchived}
 				<span class="badge archived">Archived</span>
 			{/if}
@@ -172,6 +175,19 @@
 	.badge.archived {
 		background-color: var(--color-bg-tertiary);
 		color: var(--color-text-muted);
+	}
+
+	.badge.pinned-badge {
+		background-color: color-mix(in srgb, var(--color-accent) 15%, transparent);
+		color: var(--color-accent);
+	}
+
+	.project-card.pinned {
+		border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+	}
+
+	.project-card.pinned:hover {
+		border-color: var(--color-accent);
 	}
 
 	.card-description {
