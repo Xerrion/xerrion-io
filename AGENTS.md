@@ -70,6 +70,13 @@ All external API calls in `+page.server.ts`, never in components.
 - **NO client-side API calls** - All in `+page.server.ts`
 - **NO hardcoded colors** - Use `--color-*` variables
 
+## GIT WORKFLOW
+
+- **NEVER work on master** - Always create feature branches
+- **NEVER co-author commits** - No co-author lines
+- **Conventional commits** - `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, etc.
+- **Small commits** - Atomic, focused changes
+
 ## EXTERNAL SERVICES
 
 | Service | Purpose | Config Location |
