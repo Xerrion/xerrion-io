@@ -32,10 +32,11 @@ export interface ProjectRepo {
 	topics: string[];
 	isArchived: boolean;
 	updatedAt: Date;
+	isPinned: boolean;
 }
 
 /** Transform GitHub API response to display format */
-export function transformRepo(repo: GitHubRepo): ProjectRepo {
+export function transformRepo(repo: GitHubRepo, isPinned = false): ProjectRepo {
 	return {
 		id: repo.id,
 		name: repo.name,
@@ -47,6 +48,29 @@ export function transformRepo(repo: GitHubRepo): ProjectRepo {
 		forks: repo.forks_count,
 		topics: repo.topics || [],
 		isArchived: repo.archived,
-		updatedAt: new Date(repo.updated_at)
+		updatedAt: new Date(repo.updated_at),
+		isPinned
 	};
+}
+
+/** GraphQL response types for pinned repositories */
+export interface GitHubGraphQLResponse {
+	data: {
+		user: {
+			pinnedItems: {
+				nodes: GitHubPinnedRepo[];
+			};
+		};
+	};
+}
+
+export interface GitHubPinnedRepo {
+	name: string;
+	description: string | null;
+	url: string;
+	stargazerCount: number;
+	forkCount: number;
+	primaryLanguage: {
+		name: string;
+	} | null;
 }

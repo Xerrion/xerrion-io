@@ -1,22 +1,85 @@
+import { env } from '$env/dynamic/private';
 import type { PageServerLoad } from './$types';
-import type { GitHubRepo } from '$lib/types/github';
+import type { GitHubRepo, GitHubGraphQLResponse } from '$lib/types/github';
 import { transformRepo, type ProjectRepo } from '$lib/types/github';
 
-export const load: PageServerLoad = async ({ fetch }) => {
+const PINNED_REPOS_QUERY = `
+	query {
+		user(login: "Xerrion") {
+			pinnedItems(first: 6, types: REPOSITORY) {
+				nodes {
+					... on Repository {
+						name
+						description
+						url
+						stargazerCount
+						forkCount
+						primaryLanguage {
+							name
+						}
+					}
+				}
+			}
+		}
+	}
+`;
+
+async function fetchPinnedRepoNames(fetchFn: typeof fetch): Promise<Set<string>> {
+	const token = env.GITHUB_TOKEN;
+	if (!token) {
+		console.warn('GITHUB_TOKEN not set, pinned repos will not be highlighted');
+		return new Set();
+	}
+
 	try {
-		const response = await fetch('https://api.github.com/users/Xerrion/repos?per_page=100&sort=updated');
+		const response = await fetchFn('https://api.github.com/graphql', {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${token}`,
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({ query: PINNED_REPOS_QUERY })
+		});
 
 		if (!response.ok) {
-			throw new Error(`GitHub API error: ${response.status}`);
+			console.error('GraphQL API error:', response.status);
+			return new Set();
 		}
 
-		const repos: GitHubRepo[] = await response.json();
+		const data: GitHubGraphQLResponse = await response.json();
+		const pinnedNames = data.data.user.pinnedItems.nodes.map((repo) => repo.name);
+		return new Set(pinnedNames);
+	} catch (error) {
+		console.error('Failed to fetch pinned repos:', error);
+		return new Set();
+	}
+}
 
-		// Filter out forks and transform to display format
+export const load: PageServerLoad = async ({ fetch }) => {
+	const token = env.GITHUB_TOKEN;
+	const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+
+	try {
+		const [reposResponse, pinnedNames] = await Promise.all([
+			fetch('https://api.github.com/users/Xerrion/repos?per_page=100&sort=updated', { headers }),
+			fetchPinnedRepoNames(fetch)
+		]);
+
+		if (!reposResponse.ok) {
+			throw new Error(`GitHub API error: ${reposResponse.status}`);
+		}
+
+		const repos: GitHubRepo[] = await reposResponse.json();
+
 		const projects: ProjectRepo[] = repos
 			.filter((repo) => !repo.fork)
-			.map(transformRepo)
-			.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+			.map((repo) => transformRepo(repo, pinnedNames.has(repo.name)))
+			.sort((a, b) => {
+				if (a.isPinned !== b.isPinned) {
+					return a.isPinned ? -1 : 1;
+				}
+				return b.updatedAt.getTime() - a.updatedAt.getTime();
+			});
 
 		return {
 			projects,
