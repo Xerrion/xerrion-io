@@ -119,7 +119,7 @@
 	}
 
 	.nav-link.active {
-		color: var(--color-primary);
+		color: var(--color-primary-hover);
 	}
 
 	.mobile-toggle {

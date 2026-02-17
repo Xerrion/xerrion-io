@@ -1,5 +1,7 @@
 <script lang="ts">
 	import ProjectCard from '$lib/components/ProjectCard.svelte';
+	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { breadcrumbSchema } from '$lib/seo';
 	import type { ProjectRepo } from '$lib/types/github';
 
 	interface Props {
@@ -44,13 +46,14 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Projects - Xerrion</title>
-	<meta
-		name="description"
-		content="Open source projects and side projects by Xerrion. Mostly TypeScript, Rust, and Python."
-	/>
-</svelte:head>
+<SEOHead
+	title="Projects"
+	description="Open source projects and side projects by Lasse Skovgaard Nielsen (Xerrion). Mostly TypeScript, Rust, and Python - pulled live from GitHub."
+	jsonLd={breadcrumbSchema([
+		{ name: 'Home', url: '/' },
+		{ name: 'Projects', url: '/projects' }
+	])}
+/>
 
 <div class="projects-page">
 	<div class="container">
