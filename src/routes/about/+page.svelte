@@ -1,14 +1,21 @@
 <script lang="ts">
 	import SocialLinks from '$lib/components/SocialLinks.svelte';
+	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { personSchema, breadcrumbSchema } from '$lib/seo';
 </script>
 
-<svelte:head>
-	<title>About - Xerrion</title>
-	<meta
-		name="description"
-		content="About Lasse Skovgaard Nielsen (Xerrion) - software developer from Denmark with a golden retriever and too many side projects."
-	/>
-</svelte:head>
+<SEOHead
+	title="About"
+	description="About Lasse Skovgaard Nielsen (Xerrion) - software developer from Odense, Denmark with 10+ years of experience in TypeScript, Rust, Python, and enterprise integrations."
+	type="profile"
+	jsonLd={[
+		personSchema(),
+		breadcrumbSchema([
+			{ name: 'Home', url: '/' },
+			{ name: 'About', url: '/about' }
+		])
+	]}
+/>
 
 <article class="about">
 	<div class="container">

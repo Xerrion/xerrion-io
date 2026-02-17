@@ -1,14 +1,14 @@
 <script lang="ts">
 	import SocialLinks from '$lib/components/SocialLinks.svelte';
+	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { websiteSchema, personSchema } from '$lib/seo';
 </script>
 
-<svelte:head>
-	<title>Xerrion - Lasse's Corner of the Internet</title>
-	<meta
-		name="description"
-		content="Hey, I'm Lasse (Xerrion online). Software dev from Denmark. I write code, take photos of my dog, and occasionally remember to touch grass."
-	/>
-</svelte:head>
+<SEOHead
+	title="Xerrion - Lasse's Corner of the Internet"
+	description="Hey, I'm Lasse (Xerrion online). Software dev from Denmark. I write code, take photos of my dog, and occasionally remember to touch grass."
+	jsonLd={[websiteSchema(), personSchema()]}
+/>
 
 <section class="hero">
 	<div class="container">

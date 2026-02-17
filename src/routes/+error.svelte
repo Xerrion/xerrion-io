@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import SEOHead from '$lib/components/SEOHead.svelte';
 </script>
 
-<svelte:head>
-	<title>Oops - Xerrion</title>
-</svelte:head>
+<SEOHead
+	title="Page Not Found"
+	description="This page doesn't exist. Maybe it never did, maybe it moved."
+	noindex={true}
+/>
 
 <div class="error-page">
 	<div class="error-content container">

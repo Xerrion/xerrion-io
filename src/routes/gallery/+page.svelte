@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { breadcrumbSchema } from '$lib/seo';
 	import type { PhotoCategory, Photo } from '$lib/supabase';
 
 	interface Props {
@@ -45,13 +47,14 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Gallery - Xerrion</title>
-	<meta
-		name="description"
-		content="Photos from everyday life - Charlie the golden retriever, food, places, and random moments."
-	/>
-</svelte:head>
+<SEOHead
+	title="Gallery"
+	description="Photos from everyday life - Charlie the golden retriever, food, places, and random moments captured by Lasse Skovgaard Nielsen."
+	jsonLd={breadcrumbSchema([
+		{ name: 'Home', url: '/' },
+		{ name: 'Gallery', url: '/gallery' }
+	])}
+/>
 
 <svelte:window onkeydown={handleKeydown} />
 
