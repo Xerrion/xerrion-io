@@ -2,22 +2,33 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta name="description" content="Lasse Skovgaard Nielsen (Xerrion) - Software Engineer based in Odense, Denmark. 10+ years of experience in TypeScript, Rust, Python, and enterprise integrations." />
 		<meta name="author" content="Lasse Skovgaard Nielsen" />
-		
-		<!-- Open Graph -->
-		<meta property="og:type" content="website" />
-		<meta property="og:title" content="Xerrion - Software Engineer" />
-		<meta property="og:description" content="Software Engineer based in Odense, Denmark. Building pragmatic solutions with TypeScript, Rust, and Python." />
-		<meta property="og:url" content="https://xerrion.dk" />
-		
-		<!-- Preconnect to Google Fonts -->
+		<meta name="theme-color" content="#0a0a0f" media="(prefers-color-scheme: dark)" />
+		<meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)" />
+		<meta name="color-scheme" content="dark light" />
+
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/favicon.svg" />
+
+		<!-- Google Fonts: preconnect + async loading to avoid render blocking -->
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-		
+		<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'" />
+		<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" /></noscript>
+
+		<!-- FOUC prevention: apply theme before first paint -->
+		<script>
+			(function() {
+				const stored = localStorage.getItem('theme');
+				const theme = stored === 'light' || stored === 'dark'
+					? stored
+					: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+				document.documentElement.setAttribute('data-theme', theme);
+			})();
+		</script>
+
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

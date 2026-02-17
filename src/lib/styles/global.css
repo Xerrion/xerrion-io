@@ -1,6 +1,25 @@
 /* Global Styles */
 @import './theme.css';
 
+/* Font-face fallbacks with size-adjust to reduce CLS during font swap */
+@font-face {
+	font-family: 'Inter Fallback';
+	src: local('system-ui'), local('-apple-system'), local('Segoe UI'), local('sans-serif');
+	size-adjust: 107%;
+	ascent-override: 90%;
+	descent-override: 22%;
+	line-gap-override: 0%;
+}
+
+@font-face {
+	font-family: 'JetBrains Mono Fallback';
+	src: local('ui-monospace'), local('Menlo'), local('Consolas'), local('monospace');
+	size-adjust: 98%;
+	ascent-override: 95%;
+	descent-override: 25%;
+	line-gap-override: 0%;
+}
+
 /* Reset */
 *,
 *::before,
