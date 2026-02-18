@@ -7,6 +7,7 @@ export default defineConfig({
 		exclude: ['@node-rs/argon2']
 	},
 	ssr: {
-		external: ['@node-rs/argon2']
+		external: ['@node-rs/argon2'],
+		noExternal: ['sveltekit-superforms']
 	}
 });
