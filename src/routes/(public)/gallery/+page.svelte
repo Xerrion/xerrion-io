@@ -246,12 +246,12 @@
 							aria-label="View {photo.name} in fullscreen"
 						>
 							<div class="photo-shimmer"></div>
-							<img
-								src={photo.url}
-								alt={photo.name}
-								loading="lazy"
-								onload={onImageLoad}
-							/>
+						<img
+							src={photo.thumbUrl || photo.url}
+							alt={photo.name}
+							loading="lazy"
+							onload={onImageLoad}
+						/>
 							<div class="photo-overlay">
 								<svg class="expand-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 									<polyline points="15 3 21 3 21 9"></polyline>
@@ -338,7 +338,7 @@
 				{#key lightboxPhoto.id}
 					<img
 						class="lightbox-image"
-						src={lightboxPhoto.url}
+						src={lightboxPhoto.fullUrl || lightboxPhoto.url}
 						alt={lightboxPhoto.name}
 					/>
 				{/key}

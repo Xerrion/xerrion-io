@@ -22,11 +22,14 @@ export interface PhotoCategory {
 	order: number;
 }
 
-/** Photo item from Vercel Blob Storage */
+/** Photo item from Vercel Blob Storage or Turso */
 export interface Photo {
 	id: string;
 	name: string;
 	url: string;
+	thumbUrl?: string;
+	mediumUrl?: string;
+	fullUrl?: string;
 	category: string;
 	createdAt: Date;
 }
