@@ -8,6 +8,15 @@ const SIZES = {
 
 type SizeKey = keyof typeof SIZES;
 
+export type ProcessingStep =
+	| 'decoding'
+	| 'normalizing'
+	| 'resizing:thumb'
+	| 'resizing:medium'
+	| 'resizing:full';
+
+export type ProgressCallback = (step: ProcessingStep) => void;
+
 export interface ProcessedImage {
 	size: SizeKey;
 	buffer: Buffer;
@@ -39,16 +48,22 @@ async function decodeHeic(input: Buffer): Promise<{ data: Buffer; width: number;
 	return { data: Buffer.from(data), width, height };
 }
 
-export async function processImage(inputBuffer: Buffer): Promise<ProcessedImageSet> {
+export async function processImage(
+	inputBuffer: Buffer,
+	onProgress?: ProgressCallback
+): Promise<ProcessedImageSet> {
 	let normalizedBuffer: Buffer;
 
 	if (await isHeic(inputBuffer)) {
+		onProgress?.('decoding');
 		const { data, width, height } = await decodeHeic(inputBuffer);
+		onProgress?.('normalizing');
 		normalizedBuffer = await sharp(data, { raw: { width, height, channels: 4 } })
 			.rotate()
 			.png()
 			.toBuffer();
 	} else {
+		onProgress?.('normalizing');
 		normalizedBuffer = await sharp(inputBuffer).rotate().toBuffer();
 	}
 
@@ -56,27 +71,29 @@ export async function processImage(inputBuffer: Buffer): Promise<ProcessedImageS
 	const originalWidth = metadata.width ?? 0;
 	const originalHeight = metadata.height ?? 0;
 
-	const results = await Promise.all(
-		(Object.keys(SIZES) as SizeKey[]).map(async (size) => {
-			const { width } = SIZES[size];
+	const sizeKeys = Object.keys(SIZES) as SizeKey[];
+	const results: ProcessedImage[] = [];
 
-			const { data, info } = await sharp(normalizedBuffer)
-				.resize({
-					width: Math.min(width, originalWidth),
-					withoutEnlargement: true
-				})
-				.webp({ quality: 82 })
-				.toBuffer({ resolveWithObject: true });
+	for (const size of sizeKeys) {
+		onProgress?.(`resizing:${size}`);
+		const { width } = SIZES[size];
 
-			return {
-				size,
-				buffer: data,
-				width: info.width,
-				height: info.height,
-				byteLength: info.size
-			} satisfies ProcessedImage;
-		})
-	);
+		const { data, info } = await sharp(normalizedBuffer)
+			.resize({
+				width: Math.min(width, originalWidth),
+				withoutEnlargement: true
+			})
+			.webp({ quality: 82 })
+			.toBuffer({ resolveWithObject: true });
+
+		results.push({
+			size,
+			buffer: data,
+			width: info.width,
+			height: info.height,
+			byteLength: info.size
+		});
+	}
 
 	const map = Object.fromEntries(results.map((r) => [r.size, r])) as Record<SizeKey, ProcessedImage>;
 
