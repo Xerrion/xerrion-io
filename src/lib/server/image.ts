@@ -33,7 +33,7 @@ async function isHeic(buffer: Buffer): Promise<boolean> {
 async function convertHeicToJpeg(buffer: Buffer): Promise<Buffer> {
 	const convert = (await import('heic-convert')).default;
 	const result = await convert({
-		buffer: buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength),
+		buffer: new Uint8Array(buffer) as unknown as ArrayBufferLike,
 		format: 'JPEG',
 		quality: 0.92
 	});
