@@ -75,5 +75,53 @@ export const actions: Actions = {
 		]);
 
 		return { success: true };
+	},
+
+	deleteMany: async ({ request }) => {
+		const data = await request.formData();
+		const idsRaw = data.get('photoIds')?.toString();
+
+		if (!idsRaw) {
+			return fail(400, { error: 'No photos selected' });
+		}
+
+		const ids = idsRaw
+			.split(',')
+			.map((id) => Number(id.trim()))
+			.filter((id) => !isNaN(id) && id > 0);
+
+		if (ids.length === 0) {
+			return fail(400, { error: 'No valid photo IDs provided' });
+		}
+
+		const db = getDb();
+		const token = env.BLOB_READ_WRITE_TOKEN;
+
+		const placeholders = ids.map(() => '?').join(',');
+		const result = await db.execute({
+			sql: `SELECT id, thumb_url, medium_url, full_url FROM photo WHERE id IN (${placeholders})`,
+			args: ids
+		});
+
+		if (result.rows.length === 0) {
+			return fail(404, { error: 'No photos found' });
+		}
+
+		const allBlobUrls = result.rows.flatMap((row) =>
+			[row.thumb_url as string, row.medium_url as string, row.full_url as string].filter(Boolean)
+		);
+
+		const foundIds = result.rows.map((row) => row.id as number);
+		const deletePlaceholders = foundIds.map(() => '?').join(',');
+
+		await Promise.all([
+			del(allBlobUrls, { token }),
+			db.execute({
+				sql: `DELETE FROM photo WHERE id IN (${deletePlaceholders})`,
+				args: foundIds
+			})
+		]);
+
+		return { success: true, deletedCount: foundIds.length };
 	}
 };
