@@ -1,6 +1,9 @@
 import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import { fail } from '@sveltejs/kit';
+import { superValidate, setError, message } from 'sveltekit-superforms';
+import { zod4 } from 'sveltekit-superforms/adapters';
+import { categoryCreateSchema, categoryUpdateSchema } from '$lib/schemas/admin';
 
 export const load: PageServerLoad = async () => {
 	const db = getDb();
@@ -14,7 +17,9 @@ export const load: PageServerLoad = async () => {
 			description: row.description as string | null,
 			sortOrder: row.sort_order as number,
 			createdAt: row.created_at as string
-		}))
+		})),
+		createForm: await superValidate(zod4(categoryCreateSchema)),
+		updateForm: await superValidate(zod4(categoryUpdateSchema))
 	};
 };
 
@@ -27,18 +32,17 @@ function toSlug(name: string): string {
 
 export const actions: Actions = {
 	create: async ({ request }) => {
-		const data = await request.formData();
-		const name = data.get('name')?.toString().trim();
-		const description = data.get('description')?.toString().trim() || null;
-		const sortOrder = Number(data.get('sortOrder') ?? 0);
+		const form = await superValidate(request, zod4(categoryCreateSchema));
 
-		if (!name) {
-			return fail(400, { error: 'Name is required' });
+		if (!form.valid) {
+			return fail(400, { createForm: form });
 		}
+
+		const { name, description, sortOrder } = form.data;
 
 		const slug = toSlug(name);
 		if (!slug) {
-			return fail(400, { error: 'Name must contain at least one letter or number' });
+			return setError(form, 'name', 'Name must contain at least one letter or number');
 		}
 
 		const db = getDb();
@@ -49,35 +53,33 @@ export const actions: Actions = {
 		});
 
 		if (existing.rows.length > 0) {
-			return fail(409, { error: `Category "${slug}" already exists` });
+			return setError(form, 'name', `Category "${slug}" already exists`);
 		}
 
 		await db.execute({
 			sql: 'INSERT INTO category (slug, name, description, sort_order) VALUES (?, ?, ?, ?)',
-			args: [slug, name, description, sortOrder]
+			args: [slug, name, description || null, sortOrder]
 		});
 
-		return { success: true };
+		return message(form, 'Category created successfully');
 	},
 
 	update: async ({ request }) => {
-		const data = await request.formData();
-		const id = Number(data.get('id'));
-		const name = data.get('name')?.toString().trim();
-		const description = data.get('description')?.toString().trim() || null;
-		const sortOrder = Number(data.get('sortOrder') ?? 0);
+		const form = await superValidate(request, zod4(categoryUpdateSchema));
 
-		if (!id || !name) {
-			return fail(400, { error: 'ID and name are required' });
+		if (!form.valid) {
+			return fail(400, { updateForm: form });
 		}
+
+		const { id, name, description, sortOrder } = form.data;
 
 		const db = getDb();
 		await db.execute({
 			sql: 'UPDATE category SET name = ?, description = ?, sort_order = ? WHERE id = ?',
-			args: [name, description, sortOrder, id]
+			args: [name, description || null, sortOrder, id]
 		});
 
-		return { success: true };
+		return message(form, 'Category updated successfully');
 	},
 
 	delete: async ({ request }) => {

@@ -1,9 +1,19 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/state';
+  import { superForm } from 'sveltekit-superforms';
+  import { zod4Client } from 'sveltekit-superforms/adapters';
+  import { Field, Control, Label, FieldErrors } from 'formsnap';
+  import { categoryCreateSchema } from '$lib/schemas/admin';
 
   let { data } = $props();
   let editingId = $state<number | null>(null);
+
+  const createForm = superForm(data.createForm, {
+    validators: zod4Client(categoryCreateSchema),
+    resetForm: true
+  });
+  const { form: createFormData, enhance: createEnhance, submitting: createSubmitting, message: createMessage } = createForm;
 
   function toggleEdit(id: number | null) {
     editingId = id;
@@ -19,28 +29,74 @@
     {#if page.form?.success}
       <p class="message success">Success</p>
     {/if}
+    {#if $createMessage}
+      <p class="message success">{$createMessage}</p>
+    {/if}
   </header>
 
   <section class="create-section">
     <h2>Add New Category</h2>
-    <form method="POST" action="?/create" use:enhance class="form-grid">
-      <div class="field">
-        <label for="name">Name</label>
-        <input type="text" id="name" name="name" required placeholder="e.g. Landscapes" />
-      </div>
+    <form method="POST" action="?/create" use:createEnhance class="form-grid">
+      <Field form={createForm} name="name">
+        <Control>
+          {#snippet children({ props })}
+            <div class="field">
+              <Label>Name</Label>
+              <input 
+                {...props}
+                type="text" 
+                placeholder="e.g. Landscapes"
+                bind:value={$createFormData.name}
+                disabled={$createSubmitting}
+              />
+            </div>
+          {/snippet}
+        </Control>
+        <FieldErrors />
+      </Field>
       
-      <div class="field">
-        <label for="sortOrder">Sort Order</label>
-        <input type="number" id="sortOrder" name="sortOrder" value="0" />
-      </div>
+      <Field form={createForm} name="sortOrder">
+        <Control>
+          {#snippet children({ props })}
+            <div class="field">
+              <Label>Sort Order</Label>
+              <input 
+                {...props}
+                type="number" 
+                bind:value={$createFormData.sortOrder}
+                disabled={$createSubmitting}
+              />
+            </div>
+          {/snippet}
+        </Control>
+        <FieldErrors />
+      </Field>
 
-      <div class="field full">
-        <label for="description">Description</label>
-        <textarea id="description" name="description" rows="2"></textarea>
-      </div>
+      <Field form={createForm} name="description">
+        <Control>
+          {#snippet children({ props })}
+            <div class="field full">
+              <Label>Description</Label>
+              <textarea 
+                {...props}
+                rows="2"
+                bind:value={$createFormData.description}
+                disabled={$createSubmitting}
+              ></textarea>
+            </div>
+          {/snippet}
+        </Control>
+        <FieldErrors />
+      </Field>
 
       <div class="actions">
-        <button type="submit" class="btn primary">Create Category</button>
+        <button type="submit" class="btn primary" disabled={$createSubmitting}>
+          {#if $createSubmitting}
+            Creating...
+          {:else}
+            Create Category
+          {/if}
+        </button>
       </div>
     </form>
   </section>
@@ -384,5 +440,21 @@
     display: flex;
     gap: var(--space-2);
     justify-content: flex-end;
+  }
+
+  input:disabled, textarea:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  .btn:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+
+  :global([data-fs-error]) {
+    font-size: var(--text-xs);
+    color: #ef4444;
+    margin-top: var(--space-1);
   }
 </style>
