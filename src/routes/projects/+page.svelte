@@ -83,16 +83,17 @@
 						<circle cx="11" cy="11" r="8" />
 						<line x1="21" y1="21" x2="16.65" y2="16.65" />
 					</svg>
-					<input
-						type="text"
-						placeholder="Search projects..."
-						bind:value={searchQuery}
-						class="search-input"
-					/>
+				<input
+					type="text"
+					placeholder="Search projects..."
+					bind:value={searchQuery}
+					class="search-input"
+					aria-label="Search projects"
+				/>
 				</div>
 
 				<div class="language-filter">
-					<select bind:value={selectedLanguage} class="language-select">
+					<select bind:value={selectedLanguage} class="language-select" aria-label="Filter by programming language">
 						<option value={null}>All languages</option>
 						{#each languages() as lang}
 							<option value={lang}>{lang}</option>
@@ -113,6 +114,7 @@
 			</p>
 
 			{#if filteredProjects().length > 0}
+				<h2 class="sr-only">Project list</h2>
 				<div class="projects-grid">
 					{#each filteredProjects() as repo (repo.id)}
 						<ProjectCard {repo} />
