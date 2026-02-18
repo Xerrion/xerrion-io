@@ -65,6 +65,87 @@
 		if (event.key === 'ArrowRight') navigateLightbox(1);
 	}
 
+	// Touch/swipe gesture support
+	let touchStartX = $state(0);
+	let touchStartY = $state(0);
+	let touchDeltaX = $state(0);
+	let touchDeltaY = $state(0);
+	let isSwiping = $state(false);
+	let swipeHintShown = $state(false);
+
+	const SWIPE_THRESHOLD = 50;
+	const SWIPE_Y_THRESHOLD = 100;
+
+	function handleTouchStart(event: TouchEvent) {
+		if (!lightboxPhoto) return;
+		const touch = event.touches[0];
+		touchStartX = touch.clientX;
+		touchStartY = touch.clientY;
+		touchDeltaX = 0;
+		touchDeltaY = 0;
+		isSwiping = true;
+	}
+
+	function handleTouchMove(event: TouchEvent) {
+		if (!isSwiping || !lightboxPhoto) return;
+		const touch = event.touches[0];
+		touchDeltaX = touch.clientX - touchStartX;
+		touchDeltaY = touch.clientY - touchStartY;
+
+		// Prevent default scroll when swiping horizontally
+		if (Math.abs(touchDeltaX) > 10) {
+			event.preventDefault();
+		}
+	}
+
+	function handleTouchEnd() {
+		if (!isSwiping || !lightboxPhoto) return;
+		isSwiping = false;
+
+		// Swipe left → next photo
+		if (touchDeltaX < -SWIPE_THRESHOLD && Math.abs(touchDeltaY) < Math.abs(touchDeltaX)) {
+			navigateLightbox(1);
+		}
+		// Swipe right → previous photo
+		else if (touchDeltaX > SWIPE_THRESHOLD && Math.abs(touchDeltaY) < Math.abs(touchDeltaX)) {
+			navigateLightbox(-1);
+		}
+		// Swipe down → close
+		else if (touchDeltaY > SWIPE_Y_THRESHOLD && Math.abs(touchDeltaX) < Math.abs(touchDeltaY)) {
+			closeLightbox();
+		}
+
+		touchDeltaX = 0;
+		touchDeltaY = 0;
+
+		// Hide swipe hint after first interaction
+		if (!swipeHintShown) {
+			swipeHintShown = true;
+		}
+	}
+
+	// Compute transform for swipe feedback
+	const swipeTransform = $derived(() => {
+		if (!isSwiping || (touchDeltaX === 0 && touchDeltaY === 0)) return '';
+		// Horizontal drag: follow finger with dampening
+		if (Math.abs(touchDeltaX) > Math.abs(touchDeltaY)) {
+			const dampened = touchDeltaX * 0.4;
+			return `translateX(${dampened}px)`;
+		}
+		// Vertical drag down: follow finger with opacity fade hint
+		if (touchDeltaY > 0) {
+			const dampened = touchDeltaY * 0.3;
+			return `translateY(${dampened}px)`;
+		}
+		return '';
+	});
+
+	const swipeOpacity = $derived(() => {
+		if (!isSwiping || touchDeltaY <= 0) return 1;
+		// Fade out as user swipes down
+		return Math.max(0.3, 1 - (touchDeltaY / 400));
+	});
+
 	function onImageLoad(event: Event) {
 		const img = event.target as HTMLImageElement;
 		img.classList.add('loaded');
@@ -218,6 +299,11 @@
 		role="dialog"
 		aria-modal="true"
 		aria-label="Photo viewer"
+		tabindex="-1"
+		style:opacity={swipeOpacity()}
+		ontouchstart={handleTouchStart}
+		ontouchmove={handleTouchMove}
+		ontouchend={handleTouchEnd}
 	>
 		<div class="lightbox-header">
 			<span class="lightbox-counter">
@@ -244,7 +330,11 @@
 				</svg>
 			</button>
 
-			<div class="lightbox-image-wrapper" onclick={(e) => e.stopPropagation()}>
+			<div
+				class="lightbox-image-wrapper"
+				onclick={(e) => e.stopPropagation()}
+				style:transform={swipeTransform()}
+			>
 				{#key lightboxPhoto.id}
 					<img
 						class="lightbox-image"
@@ -268,6 +358,9 @@
 		<div class="lightbox-footer">
 			{#if getCategoryInfo(lightboxPhoto.category)}
 				<span class="lightbox-category">{getCategoryInfo(lightboxPhoto.category)?.name}</span>
+			{/if}
+			{#if !swipeHintShown && displayedPhotos().length > 1}
+				<span class="swipe-hint">Swipe to navigate</span>
 			{/if}
 		</div>
 	</div>
@@ -617,6 +710,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		transition: transform 0.1s ease-out;
+		will-change: transform;
 	}
 
 	.lightbox-image {
@@ -651,6 +746,20 @@
 		font-weight: 500;
 	}
 
+	.swipe-hint {
+		font-size: var(--text-xs);
+		color: rgba(255, 255, 255, 0.4);
+		animation: swipeHintFade 3s ease-out forwards;
+		display: none;
+	}
+
+	@keyframes swipeHintFade {
+		0% { opacity: 0; }
+		15% { opacity: 1; }
+		70% { opacity: 1; }
+		100% { opacity: 0; }
+	}
+
 	/* ===== Responsive ===== */
 	@media (max-width: 1024px) {
 		.photo-masonry {
@@ -682,34 +791,45 @@
 		}
 
 		.lightbox-body {
-			padding: 0 var(--space-2);
+			padding: 0;
 		}
 
-		.lightbox-nav {
-			width: 36px;
-			height: 36px;
+		.lightbox-header {
+			padding: var(--space-3) var(--space-4);
 		}
 
-		.lightbox-nav svg {
-			width: 20px;
-			height: 20px;
-		}
-
-		.lightbox-prev {
-			left: var(--space-1);
-		}
-
-		.lightbox-next {
-			right: var(--space-1);
+		.lightbox-footer {
+			padding: var(--space-3) var(--space-4);
+			gap: var(--space-2);
 		}
 
 		.lightbox-image-wrapper {
-			max-width: calc(100vw - 24px);
-			max-height: calc(100vh - 140px);
+			max-width: 100vw;
+			max-height: calc(100vh - 120px);
 		}
 
 		.lightbox-image {
-			max-height: calc(100vh - 140px);
+			max-height: calc(100vh - 120px);
+			border-radius: 0;
+		}
+	}
+
+	/* Hide nav buttons on touch devices — swipe instead */
+	@media (pointer: coarse) {
+		.lightbox-nav {
+			display: none;
+		}
+
+		.swipe-hint {
+			display: inline;
+		}
+
+		.lightbox-body {
+			padding: 0;
+		}
+
+		.lightbox-image-wrapper {
+			max-width: 100vw;
 		}
 	}
 
