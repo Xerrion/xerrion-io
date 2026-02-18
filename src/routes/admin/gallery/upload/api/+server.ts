@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { put } from '@vercel/blob';
 import { processImage, generateBlobPath } from '$lib/server/image';
+import { env } from '$env/dynamic/private';
 
 const MAX_FILE_SIZE_50MB = 50 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
@@ -10,6 +11,11 @@ const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user) {
 		error(401, 'Unauthorized');
+	}
+
+	const token = env.BLOB_READ_WRITE_TOKEN;
+	if (!token) {
+		error(500, 'Blob storage not configured');
 	}
 
 	const data = await request.formData();
@@ -54,9 +60,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const fullPath = generateBlobPath(categorySlug, file.name, 'full');
 
 	const [thumbBlob, mediumBlob, fullBlob] = await Promise.all([
-		put(thumbPath, processed.thumb.buffer, { access: 'public', contentType: 'image/webp' }),
-		put(mediumPath, processed.medium.buffer, { access: 'public', contentType: 'image/webp' }),
-		put(fullPath, processed.full.buffer, { access: 'public', contentType: 'image/webp' })
+		put(thumbPath, processed.thumb.buffer, { access: 'public', contentType: 'image/webp', token }),
+		put(mediumPath, processed.medium.buffer, { access: 'public', contentType: 'image/webp', token }),
+		put(fullPath, processed.full.buffer, { access: 'public', contentType: 'image/webp', token })
 	]);
 
 	await db.execute({

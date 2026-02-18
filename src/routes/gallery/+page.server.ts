@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { list } from '@vercel/blob';
+import { env } from '$env/dynamic/private';
 import {
 	GALLERY_PREFIX,
 	CATEGORY_CONFIG_FILE,
@@ -79,7 +80,7 @@ async function loadFromBlob(): Promise<{
 	let totalPhotos = 0;
 
 	try {
-		const root = await list({ prefix: GALLERY_PREFIX, mode: 'folded' });
+		const root = await list({ prefix: GALLERY_PREFIX, mode: 'folded', token: env.BLOB_READ_WRITE_TOKEN });
 
 		for (const folder of root.folders) {
 			const slug = folder.replace(GALLERY_PREFIX, '').replace(/\/$/, '');
@@ -91,7 +92,7 @@ async function loadFromBlob(): Promise<{
 			let hasMore = true;
 
 			while (hasMore) {
-				const result = await list({ prefix: folder, cursor, limit: 1000 });
+				const result = await list({ prefix: folder, cursor, limit: 1000, token: env.BLOB_READ_WRITE_TOKEN });
 
 				for (const blob of result.blobs) {
 					if (blob.size === 0) continue;

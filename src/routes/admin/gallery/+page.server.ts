@@ -2,6 +2,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { getDb } from '$lib/server/db';
 import { fail } from '@sveltejs/kit';
 import { del } from '@vercel/blob';
+import { env } from '$env/dynamic/private';
 
 export const load: PageServerLoad = async () => {
 	const db = getDb();
@@ -69,7 +70,7 @@ export const actions: Actions = {
 		].filter(Boolean);
 
 		await Promise.all([
-			del(urlsToDelete),
+			del(urlsToDelete, { token: env.BLOB_READ_WRITE_TOKEN }),
 			db.execute({ sql: 'DELETE FROM photo WHERE id = ?', args: [Number(photoId)] })
 		]);
 
