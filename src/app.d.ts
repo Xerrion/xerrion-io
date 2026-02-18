@@ -1,17 +1,11 @@
-// See https://kit.svelte.dev/docs/types#app
-// for information about these interfaces
 declare global {
 	namespace App {
-		// interface Error {}
-		// interface Locals {}
-		// interface PageData {}
-		// interface PageState {}
+		interface Locals {
+			user: { id: number; username: string } | null;
+			sessionId: string | null;
+		}
 		interface Platform {
-			env?: {
-				// Add Cloudflare bindings here if needed
-				// MY_KV: KVNamespace;
-				// MY_DURABLE_OBJECT: DurableObjectNamespace;
-			};
+			env?: Record<string, string>;
 			context?: {
 				waitUntil(promise: Promise<unknown>): void;
 			};
