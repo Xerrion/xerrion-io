@@ -762,66 +762,22 @@
     margin: 0;
   }
 
+  /* Upload page btn overrides */
   .btn {
     padding: var(--space-3) var(--space-6);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    transition: all var(--transition-fast);
-    border: none;
   }
 
   .btn.primary {
-    background-color: var(--color-primary);
-    color: white;
     min-width: 200px;
   }
 
   .btn.primary:hover:not(:disabled) {
-    background-color: var(--color-primary-hover);
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
   }
 
-  .btn.primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .btn.secondary {
-    background-color: var(--color-bg-secondary);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-  }
-
-  .btn.secondary:hover {
-    background-color: var(--color-bg-tertiary);
-  }
-
-  .btn.text {
-    background: none;
-    color: var(--color-text-secondary);
-    padding: var(--space-1) var(--space-2);
-  }
-
-  .btn.text:hover {
-    color: var(--color-primary);
-  }
-
-  .btn.text:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
   .btn.icon {
     padding: var(--space-1);
-    background: transparent;
     color: var(--color-text-muted);
     flex-shrink: 0;
   }
@@ -832,14 +788,8 @@
     border-radius: var(--radius-sm);
   }
 
-  .btn.icon:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
   .btn.small {
     padding: var(--space-2) var(--space-3);
-    font-size: var(--text-xs);
   }
 
   .reset-btn {

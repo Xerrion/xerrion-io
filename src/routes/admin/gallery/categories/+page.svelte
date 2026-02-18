@@ -282,59 +282,6 @@
     margin-top: var(--space-2);
   }
 
-  .btn {
-    padding: var(--space-2) var(--space-4);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    cursor: pointer;
-    border: none;
-    transition: all var(--transition-fast);
-  }
-
-  .btn.primary {
-    background-color: var(--color-primary);
-    color: white;
-  }
-
-  .btn.primary:hover {
-    background-color: var(--color-primary-hover);
-  }
-
-  .btn.secondary {
-    background-color: var(--color-bg-secondary);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-  }
-
-  .btn.secondary:hover {
-    background-color: var(--color-bg-tertiary);
-  }
-
-  .btn.icon {
-    padding: var(--space-2);
-    background: transparent;
-    color: var(--color-text-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .btn.icon:hover {
-    background-color: var(--color-bg-secondary);
-    color: var(--color-primary);
-  }
-
-  .btn.icon.danger:hover {
-    color: #ef4444;
-    background-color: #fee2e2;
-  }
-
-  .btn.small {
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--text-xs);
-  }
-
   .table-container {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
