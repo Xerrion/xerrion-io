@@ -7,6 +7,7 @@
 
   let { data } = $props();
 
+  // svelte-ignore state_referenced_locally — superForm captures the initial value intentionally
   const form = superForm(data.form, {
     validators: zod4Client(loginSchema)
   });
@@ -146,6 +147,7 @@
     inset: 0;
     z-index: 0;
     opacity: 0.4;
+    pointer-events: none;
     background: 
       radial-gradient(circle at 15% 50%, var(--color-primary-light) 0%, transparent 25%),
       radial-gradient(circle at 85% 30%, var(--color-accent) 0%, transparent 25%);
