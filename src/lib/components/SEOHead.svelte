@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { SITE_URL, SITE_NAME } from '$lib/seo';
 
 	interface Props {
 		title: string;
@@ -10,9 +11,6 @@
 		noindex?: boolean;
 		jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 	}
-
-	const SITE_URL = 'https://xerrion.io';
-	const SITE_NAME = 'Xerrion';
 	const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 	const DEFAULT_IMAGE_ALT = 'Xerrion - Software Engineer';
 
