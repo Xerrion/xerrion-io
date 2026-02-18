@@ -30,10 +30,11 @@ async function isHeic(buffer: Buffer): Promise<boolean> {
 	return header.includes('ftyp') && (header.includes('heic') || header.includes('heix') || header.includes('mif1'));
 }
 
-async function decodeHeic(buffer: Buffer): Promise<{ data: Buffer; width: number; height: number }> {
+async function decodeHeic(input: Buffer): Promise<{ data: Buffer; width: number; height: number }> {
 	const decode = (await import('heic-decode')).default;
-	const { data, width, height } = await decode({ buffer: buffer.buffer as ArrayBufferLike });
-	return { data: Buffer.from(data.buffer), width, height };
+	const arrayBuffer = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength);
+	const { data, width, height } = await decode({ buffer: arrayBuffer as ArrayBufferLike });
+	return { data: Buffer.from(data), width, height };
 }
 
 export async function processImage(inputBuffer: Buffer): Promise<ProcessedImageSet> {
