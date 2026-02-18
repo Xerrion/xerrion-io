@@ -11,6 +11,7 @@
 			categories: PhotoCategory[];
 			photosByCategory: Record<string, Photo[]>;
 			totalPhotos: number;
+			error: string | null;
 		};
 	}
 
@@ -85,28 +86,34 @@
 			<p class="subtitle">Photos from life. Mostly Charlie, let's be honest.</p>
 		</header>
 
-		<CategoryFilter
-			categories={data.categories}
-			photoCounts={photoCounts()}
-			totalPhotos={data.totalPhotos}
-			{selectedCategory}
-			onselect={selectCategory}
-		/>
+		{#if data.error}
+			<div class="gallery-error">
+				<p>Gallery is temporarily unavailable. Please try again later.</p>
+			</div>
+		{:else}
+			<CategoryFilter
+				categories={data.categories}
+				photoCounts={photoCounts()}
+				totalPhotos={data.totalPhotos}
+				{selectedCategory}
+				onselect={selectCategory}
+			/>
 
-		{#if selectedCategory}
-			{@const info = getCategoryInfo(selectedCategory)}
-			{#if info?.description}
-				<p class="category-description">{info.description}</p>
+			{#if selectedCategory}
+				{@const info = getCategoryInfo(selectedCategory)}
+				{#if info?.description}
+					<p class="category-description">{info.description}</p>
+				{/if}
 			{/if}
-		{/if}
 
-		<PhotoGrid
-			photos={displayedPhotos()}
-			categories={data.categories}
-			{selectedCategory}
-			visible={gridVisible}
-			onphotoclick={openLightbox}
-		/>
+			<PhotoGrid
+				photos={displayedPhotos()}
+				categories={data.categories}
+				{selectedCategory}
+				visible={gridVisible}
+				onphotoclick={openLightbox}
+			/>
+		{/if}
 	</div>
 </div>
 
@@ -175,5 +182,12 @@
 		.category-description {
 			animation: none;
 		}
+	}
+
+	.gallery-error {
+		text-align: center;
+		padding: var(--space-16) var(--space-4);
+		color: var(--color-text-muted);
+		font-size: var(--text-lg);
 	}
 </style>
