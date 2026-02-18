@@ -1,7 +1,7 @@
 <script lang="ts">
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { breadcrumbSchema } from '$lib/seo';
-	import type { PhotoCategory, Photo } from '$lib/supabase';
+	import type { PhotoCategory, Photo } from '$lib/gallery';
 
 	interface Props {
 		data: {
