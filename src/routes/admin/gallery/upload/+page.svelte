@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { upload } from '@vercel/blob/client';
+
   let { data } = $props();
 
   type UploadStatus = 'pending' | 'uploading' | 'processing' | 'done' | 'error';
@@ -16,7 +18,6 @@
   let fileInput = $state<HTMLInputElement | null>(null);
   let dragActive = $state(false);
 
-  // Derived state
   let doneCount = $derived(fileUploads.filter(f => f.status === 'done').length);
   let errorCount = $derived(fileUploads.filter(f => f.status === 'error').length);
   let totalCount = $derived(fileUploads.length);
@@ -46,14 +47,13 @@
       const ext = f.name.toLowerCase().split('.').pop();
       return ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].includes(ext ?? '') && f.size <= MAX_SIZE;
     });
-    
-    // Add new files to the list
+
     const newUploads = valid.map(f => ({
       file: f,
       status: 'pending' as UploadStatus,
       progress: 0
     }));
-    
+
     fileUploads = [...fileUploads, ...newUploads];
   }
 
@@ -81,97 +81,64 @@
   }
 
   async function uploadFile(index: number) {
-    return new Promise<void>((resolve) => {
-      const item = fileUploads[index];
-      item.status = 'uploading';
-      item.progress = 0;
+    const item = fileUploads[index];
+    item.status = 'uploading';
+    item.progress = 0;
 
-      const xhr = new XMLHttpRequest();
-      const formData = new FormData();
-      formData.append('file', item.file);
-      formData.append('categoryId', categoryId);
-
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const percent = Math.round((e.loaded / e.total) * 90);
-          item.progress = Math.min(percent, 90);
+    try {
+      const blob = await upload(item.file.name, item.file, {
+        access: 'public',
+        handleUploadUrl: '/admin/gallery/upload/api',
+        multipart: item.file.size > 4 * 1024 * 1024,
+        onUploadProgress: ({ percentage }) => {
+          item.progress = Math.round(percentage * 0.7);
         }
-      };
+      });
 
-      xhr.upload.onload = () => {
-        // Upload transfer complete, server is now processing (HEIC conversion, sharp resize, blob upload)
-        item.status = 'processing';
-        item.progress = 90;
-      };
+      item.status = 'processing';
+      item.progress = 70;
 
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            if (response.success) {
-              item.status = 'done';
-              item.progress = 100;
-            } else {
-              item.status = 'error';
-              item.error = response.error || 'Upload failed';
-            }
-          } catch {
-            item.status = 'error';
-            item.error = 'Invalid server response';
-          }
-        } else {
-          item.status = 'error';
-          try {
-            const errData = JSON.parse(xhr.responseText);
-            item.error = errData.message || `Server error (${xhr.status})`;
-          } catch {
-            item.error = `Server error (${xhr.status})`;
-          }
-        }
-      };
+      const processResponse = await fetch('/admin/gallery/upload/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blobUrl: blob.url,
+          originalName: item.file.name,
+          categoryId: Number(categoryId)
+        })
+      });
 
-      xhr.onerror = () => {
-        item.status = 'error';
-        item.error = 'Network error';
-      };
+      if (!processResponse.ok) {
+        const errData = await processResponse.json().catch(() => null);
+        throw new Error(errData?.message || `Processing failed (${processResponse.status})`);
+      }
 
-      xhr.onloadend = () => {
-        resolve();
-      };
-
-      xhr.open('POST', '/admin/gallery/upload/api', true);
-      xhr.send(formData);
-    });
+      item.status = 'done';
+      item.progress = 100;
+    } catch (err) {
+      item.status = 'error';
+      item.error = err instanceof Error ? err.message : 'Upload failed';
+    }
   }
 
   async function startUpload() {
     if (uploading || fileUploads.length === 0 || !categoryId) return;
-    
+
     uploading = true;
-    const queue = [...fileUploads];
     let index = 0;
 
-    // Worker function to process the queue
     async function processNext() {
-      while (index < queue.length) {
+      while (index < fileUploads.length) {
         const currentIndex = index++;
-        // Skip if already done or error (allows retrying only failed/pending)
-        if (queue[currentIndex].status === 'done') continue;
-        
+        if (fileUploads[currentIndex].status === 'done') continue;
         await uploadFile(currentIndex);
       }
     }
 
-    // Start 3 concurrent workers
-    const workers = Array.from({ length: Math.min(3, queue.length) }, () => processNext());
+    const workers = Array.from({ length: Math.min(3, fileUploads.length) }, () => processNext());
     await Promise.all(workers);
-    
-    // Check if we're all done (could be some failed)
-    // We don't set uploading = false here if we want to show the "Done" state.
-    // But the requirements say "Has a 'Upload more' button when overallDone to reset state".
-    // So we can keep uploading = true to lock the UI until reset.
   }
-  
+
   function resetUpload() {
     uploading = false;
     fileUploads = [];
