@@ -16,7 +16,6 @@
 	let selectedCategory = $state<string | null>(null);
 	let lightboxPhoto = $state<Photo | null>(null);
 	let gridVisible = $state(true);
-	let loadedImages = $state(new Set<string>());
 
 	const displayedPhotos = $derived(() => {
 		if (selectedCategory === null) {
@@ -37,7 +36,6 @@
 		gridVisible = false;
 		setTimeout(() => {
 			selectedCategory = slug;
-			loadedImages = new Set();
 			gridVisible = true;
 		}, 200);
 	}
@@ -67,8 +65,14 @@
 		if (event.key === 'ArrowRight') navigateLightbox(1);
 	}
 
-	function onImageLoad(photoId: string) {
-		loadedImages = new Set([...loadedImages, photoId]);
+	function onImageLoad(event: Event) {
+		const img = event.target as HTMLImageElement;
+		img.classList.add('loaded');
+		// Hide the shimmer sibling
+		const shimmer = img.previousElementSibling;
+		if (shimmer?.classList.contains('photo-shimmer')) {
+			shimmer.classList.add('loaded');
+		}
 	}
 
 	function getCategoryInfo(slug: string): PhotoCategory | undefined {
@@ -160,13 +164,12 @@
 							onclick={() => openLightbox(photo)}
 							aria-label="View {photo.name} in fullscreen"
 						>
-							<div class="photo-shimmer" class:loaded={loadedImages.has(photo.id)}></div>
+							<div class="photo-shimmer"></div>
 							<img
 								src={photo.url}
 								alt={photo.name}
 								loading="lazy"
-								class:loaded={loadedImages.has(photo.id)}
-								onload={() => onImageLoad(photo.id)}
+								onload={onImageLoad}
 							/>
 							<div class="photo-overlay">
 								<svg class="expand-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -428,7 +431,7 @@
 		transition: opacity 0.4s ease;
 	}
 
-	.photo-shimmer.loaded {
+	.photo-shimmer:global(.loaded) {
 		opacity: 0;
 		pointer-events: none;
 	}
@@ -446,11 +449,11 @@
 		transition: opacity 0.4s ease, transform 0.4s ease;
 	}
 
-	.photo-button img.loaded {
+	.photo-button img:global(.loaded) {
 		opacity: 1;
 	}
 
-	.photo-button:hover img.loaded {
+	.photo-button:hover img:global(.loaded) {
 		transform: scale(1.04);
 	}
 
