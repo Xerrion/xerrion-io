@@ -30,48 +30,45 @@ async function isHeic(buffer: Buffer): Promise<boolean> {
 	return header.includes('ftyp') && (header.includes('heic') || header.includes('heix') || header.includes('mif1'));
 }
 
-async function convertHeicToJpeg(buffer: Buffer): Promise<Buffer> {
-	const convert = (await import('heic-convert')).default;
-	const result = await convert({
-		buffer: new Uint8Array(buffer) as unknown as ArrayBufferLike,
-		format: 'JPEG',
-		quality: 0.92
-	});
-	return Buffer.from(result);
+async function decodeHeic(buffer: Buffer): Promise<{ data: Buffer; width: number; height: number }> {
+	const decode = (await import('heic-decode')).default;
+	const { data, width, height } = await decode({ buffer: buffer.buffer as ArrayBufferLike });
+	return { data: Buffer.from(data.buffer), width, height };
 }
 
 export async function processImage(inputBuffer: Buffer): Promise<ProcessedImageSet> {
-	let buffer = inputBuffer;
+	let sharpInput: sharp.Sharp;
 
-	if (await isHeic(buffer)) {
-		buffer = await convertHeicToJpeg(buffer);
+	if (await isHeic(inputBuffer)) {
+		const { data, width, height } = await decodeHeic(inputBuffer);
+		sharpInput = sharp(data, { raw: { width, height, channels: 4 } }).rotate();
+	} else {
+		sharpInput = sharp(inputBuffer).rotate();
 	}
 
-	const metadata = await sharp(buffer).metadata();
+	const metadata = await sharpInput.metadata();
 	const originalWidth = metadata.width ?? 0;
 	const originalHeight = metadata.height ?? 0;
+	const rotatedBuffer = await sharpInput.toBuffer();
 
 	const results = await Promise.all(
 		(Object.keys(SIZES) as SizeKey[]).map(async (size) => {
 			const { width } = SIZES[size];
 
-			const resized = sharp(buffer)
-				.rotate()
+			const { data, info } = await sharp(rotatedBuffer)
 				.resize({
 					width: Math.min(width, originalWidth),
 					withoutEnlargement: true
 				})
-				.webp({ quality: 82 });
-
-			const outputBuffer = await resized.toBuffer();
-			const outputMeta = await sharp(outputBuffer).metadata();
+				.webp({ quality: 82 })
+				.toBuffer({ resolveWithObject: true });
 
 			return {
 				size,
-				buffer: outputBuffer,
-				width: outputMeta.width ?? 0,
-				height: outputMeta.height ?? 0,
-				byteLength: outputBuffer.byteLength
+				buffer: data,
+				width: info.width,
+				height: info.height,
+				byteLength: info.size
 			} satisfies ProcessedImage;
 		})
 	);
