@@ -1,19 +1,28 @@
-import type { Actions } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
 import { verifyPassword, createSession, deleteSession } from '$lib/server/auth';
+import { superValidate, setError } from 'sveltekit-superforms';
+import { zod4 } from 'sveltekit-superforms/adapters';
+import { loginSchema } from '$lib/schemas/admin';
 
 const SESSION_COOKIE = 'session';
 
+export const load: PageServerLoad = async () => {
+	return {
+		form: await superValidate(zod4(loginSchema))
+	};
+};
+
 export const actions: Actions = {
 	login: async ({ request, cookies }) => {
-		const data = await request.formData();
-		const username = data.get('username')?.toString().trim();
-		const password = data.get('password')?.toString();
+		const form = await superValidate(request, zod4(loginSchema));
 
-		if (!username || !password) {
-			return fail(400, { error: 'Username and password are required', username });
+		if (!form.valid) {
+			return fail(400, { form });
 		}
+
+		const { username, password } = form.data;
 
 		const db = getDb();
 		const result = await db.execute({
@@ -22,14 +31,14 @@ export const actions: Actions = {
 		});
 
 		if (result.rows.length === 0) {
-			return fail(401, { error: 'Invalid credentials', username });
+			return setError(form, 'username', 'Invalid credentials');
 		}
 
 		const user = result.rows[0];
 		const valid = await verifyPassword(user.password_hash as string, password);
 
 		if (!valid) {
-			return fail(401, { error: 'Invalid credentials', username });
+			return setError(form, 'username', 'Invalid credentials');
 		}
 
 		const sessionId = await createSession(user.id as number);
