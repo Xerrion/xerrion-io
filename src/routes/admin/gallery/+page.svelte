@@ -1,6 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import { page } from '$app/state';
+  import { toastStore } from '$lib/stores/toast.svelte';
 
   let { data } = $props();
 
@@ -39,13 +39,6 @@
     </div>
   </header>
 
-  {#if page.form?.error}
-    <div class="message error">{page.form.error}</div>
-  {/if}
-  {#if page.form?.success}
-    <div class="message success">Photo deleted successfully</div>
-  {/if}
-
   {#if filteredPhotos.length === 0}
     <div class="empty-state">
       <p>No photos found.</p>
@@ -80,7 +73,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
               </a>
               
-              <form method="POST" action="?/delete" use:enhance onsubmit={(e) => !confirm('Delete this photo permanently?') && e.preventDefault()}>
+              <form method="POST" action="?/delete" use:enhance={() => { return async ({ result, update }) => { if (result.type === 'success') { toastStore.success('Photo deleted successfully'); } else if (result.type === 'failure') { toastStore.error(result.data?.error as string || 'Failed to delete photo'); } await update(); }; }} onsubmit={(e) => !confirm('Delete this photo permanently?') && e.preventDefault()}>
                 <input type="hidden" name="photoId" value={photo.id} />
                 <button type="submit" class="btn icon danger" title="Delete photo">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -151,23 +144,6 @@
     color: var(--color-text);
     font-size: var(--text-sm);
     cursor: pointer;
-  }
-
-  .message {
-    margin-bottom: var(--space-6);
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-  }
-
-  .message.error {
-    background-color: #fee2e2;
-    color: #991b1b;
-  }
-
-  .message.success {
-    background-color: #dcfce7;
-    color: #166534;
   }
 
   .empty-state {

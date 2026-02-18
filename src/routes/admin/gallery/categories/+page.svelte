@@ -1,6 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import { page } from '$app/state';
+  import { toastStore } from '$lib/stores/toast.svelte';
   import { superForm } from 'sveltekit-superforms';
   import { zod4Client } from 'sveltekit-superforms/adapters';
   import { Field, Control, Label, FieldErrors } from 'formsnap';
@@ -12,9 +12,14 @@
   // svelte-ignore state_referenced_locally — superForm captures the initial value intentionally
   const createForm = superForm(data.createForm, {
     validators: zod4Client(categoryCreateSchema),
-    resetForm: true
+    resetForm: true,
+    onResult({ result }) {
+      if (result.type === 'success' && result.data?.createForm?.message) {
+        toastStore.success(result.data.createForm.message);
+      }
+    }
   });
-  const { form: createFormData, enhance: createEnhance, submitting: createSubmitting, message: createMessage } = createForm;
+  const { form: createFormData, enhance: createEnhance, submitting: createSubmitting } = createForm;
 
   function toggleEdit(id: number | null) {
     editingId = id;
@@ -24,15 +29,6 @@
 <div class="page">
   <header class="header">
     <h1>Categories <span class="count">({data.categories.length})</span></h1>
-    {#if page.form?.error}
-      <p class="message error">{page.form.error}</p>
-    {/if}
-    {#if page.form?.success}
-      <p class="message success">Success</p>
-    {/if}
-    {#if $createMessage}
-      <p class="message success">{$createMessage}</p>
-    {/if}
   </header>
 
   <section class="create-section">
@@ -119,7 +115,7 @@
             <tr class:editing={editingId === category.id}>
               {#if editingId === category.id}
                 <td colspan="5" class="edit-cell">
-                  <form method="POST" action="?/update" use:enhance={() => { return async ({ update }) => { await update(); editingId = null; }; }} class="edit-form">
+                  <form method="POST" action="?/update" use:enhance={() => { return async ({ result, update }) => { if (result.type === 'success') { toastStore.success('Category updated'); } else if (result.type === 'failure') { toastStore.error(result.data?.error as string || 'Failed to update category'); } await update(); editingId = null; }; }} class="edit-form">
                     <input type="hidden" name="id" value={category.id} />
                     
                     <div class="edit-fields">
@@ -157,7 +153,7 @@
                   <button class="btn icon" onclick={() => toggleEdit(category.id)} aria-label="Edit">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 1 22l1.5-6.5L17 3z"></path></svg>
                   </button>
-                  <form method="POST" action="?/delete" use:enhance class="inline-form" onsubmit={(e) => !confirm('Delete this category?') && e.preventDefault()}>
+                  <form method="POST" action="?/delete" use:enhance={() => { return async ({ result, update }) => { if (result.type === 'success') { toastStore.success('Category deleted'); } else if (result.type === 'failure') { toastStore.error(result.data?.error as string || 'Failed to delete category'); } await update(); }; }} class="inline-form" onsubmit={(e) => !confirm('Delete this category?') && e.preventDefault()}>
                     <input type="hidden" name="id" value={category.id} />
                     <button type="submit" class="btn icon danger" aria-label="Delete">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -200,22 +196,6 @@
     color: var(--color-text-secondary);
     font-size: var(--text-lg);
     font-weight: 400;
-  }
-
-  .message {
-    font-size: var(--text-sm);
-    padding: var(--space-2) var(--space-4);
-    border-radius: var(--radius-sm);
-  }
-
-  .message.error {
-    background-color: #fee2e2;
-    color: #991b1b;
-  }
-
-  .message.success {
-    background-color: #dcfce7;
-    color: #166534;
   }
 
   .create-section {
