@@ -9,6 +9,7 @@
   let { data } = $props();
   let editingId = $state<number | null>(null);
 
+  // svelte-ignore state_referenced_locally — superForm captures the initial value intentionally
   const createForm = superForm(data.createForm, {
     validators: zod4Client(categoryCreateSchema),
     resetForm: true
@@ -118,7 +119,7 @@
             <tr class:editing={editingId === category.id}>
               {#if editingId === category.id}
                 <td colspan="5" class="edit-cell">
-                  <form method="POST" action="?/update" use:enhance class="edit-form">
+                  <form method="POST" action="?/update" use:enhance={() => { return async ({ update }) => { await update(); editingId = null; }; }} class="edit-form">
                     <input type="hidden" name="id" value={category.id} />
                     
                     <div class="edit-fields">
