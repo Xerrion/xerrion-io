@@ -40,25 +40,27 @@ async function decodeHeic(input: Buffer): Promise<{ data: Buffer; width: number;
 }
 
 export async function processImage(inputBuffer: Buffer): Promise<ProcessedImageSet> {
-	let sharpInput: sharp.Sharp;
+	let normalizedBuffer: Buffer;
 
 	if (await isHeic(inputBuffer)) {
 		const { data, width, height } = await decodeHeic(inputBuffer);
-		sharpInput = sharp(data, { raw: { width, height, channels: 4 } }).rotate();
+		normalizedBuffer = await sharp(data, { raw: { width, height, channels: 4 } })
+			.rotate()
+			.png()
+			.toBuffer();
 	} else {
-		sharpInput = sharp(inputBuffer).rotate();
+		normalizedBuffer = await sharp(inputBuffer).rotate().toBuffer();
 	}
 
-	const metadata = await sharpInput.metadata();
+	const metadata = await sharp(normalizedBuffer).metadata();
 	const originalWidth = metadata.width ?? 0;
 	const originalHeight = metadata.height ?? 0;
-	const rotatedBuffer = await sharpInput.toBuffer();
 
 	const results = await Promise.all(
 		(Object.keys(SIZES) as SizeKey[]).map(async (size) => {
 			const { width } = SIZES[size];
 
-			const { data, info } = await sharp(rotatedBuffer)
+			const { data, info } = await sharp(normalizedBuffer)
 				.resize({
 					width: Math.min(width, originalWidth),
 					withoutEnlargement: true
