@@ -1,14 +1,45 @@
 <script lang="ts">
   import { upload } from '@vercel/blob/client';
+  import { motion } from '@humanspeak/svelte-motion';
 
   let { data } = $props();
 
   type UploadStatus = 'pending' | 'uploading' | 'processing' | 'done' | 'error';
 
+  const STEP_PROGRESS: Record<string, number> = {
+    fetching: 72,
+    decoding: 75,
+    normalizing: 78,
+    'resizing:thumb': 82,
+    'resizing:medium': 86,
+    'resizing:full': 90,
+    'uploading:thumb': 93,
+    'uploading:medium': 95,
+    'uploading:full': 97,
+    saving: 98,
+    cleanup: 99,
+    done: 100
+  };
+
+  const STEP_LABELS: Record<string, string> = {
+    fetching: 'Fetching…',
+    decoding: 'Decoding HEIC…',
+    normalizing: 'Normalizing…',
+    'resizing:thumb': 'Resizing thumbnail…',
+    'resizing:medium': 'Resizing medium…',
+    'resizing:full': 'Resizing full…',
+    'uploading:thumb': 'Saving thumbnail…',
+    'uploading:medium': 'Saving medium…',
+    'uploading:full': 'Saving full…',
+    saving: 'Saving to database…',
+    cleanup: 'Cleaning up…'
+  };
+
   interface FileUploadItem {
     file: File;
     status: UploadStatus;
     progress: number;
+    stepLabel: string;
     error?: string;
   }
 
@@ -51,7 +82,8 @@
     const newUploads = valid.map(f => ({
       file: f,
       status: 'pending' as UploadStatus,
-      progress: 0
+      progress: 0,
+      stepLabel: ''
     }));
 
     fileUploads = [...fileUploads, ...newUploads];
@@ -80,10 +112,45 @@
     return ext === 'heic' || ext === 'heif';
   }
 
+  async function readProcessStream(response: Response, item: FileUploadItem): Promise<void> {
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const match = line.match(/^data:\s*(.+)$/m);
+        if (!match) continue;
+
+        const event = JSON.parse(match[1]);
+
+        if (event.step === 'done') {
+          if (event.error) {
+            throw new Error(event.error);
+          }
+          item.progress = 100;
+          item.stepLabel = '';
+          return;
+        }
+
+        item.progress = STEP_PROGRESS[event.step] ?? item.progress;
+        item.stepLabel = STEP_LABELS[event.step] ?? '';
+      }
+    }
+  }
+
   async function uploadFile(index: number) {
     const item = fileUploads[index];
     item.status = 'uploading';
     item.progress = 0;
+    item.stepLabel = 'Uploading…';
 
     try {
       const blob = await upload(item.file.name, item.file, {
@@ -92,11 +159,13 @@
         multipart: item.file.size > 4 * 1024 * 1024,
         onUploadProgress: ({ percentage }) => {
           item.progress = Math.round(percentage * 0.7);
+          item.stepLabel = `Uploading… ${Math.round(percentage)}%`;
         }
       });
 
       item.status = 'processing';
       item.progress = 70;
+      item.stepLabel = 'Starting processing…';
 
       const processResponse = await fetch('/admin/gallery/upload/process', {
         method: 'POST',
@@ -113,11 +182,15 @@
         throw new Error(errData?.message || `Processing failed (${processResponse.status})`);
       }
 
+      await readProcessStream(processResponse, item);
+
       item.status = 'done';
       item.progress = 100;
+      item.stepLabel = '';
     } catch (err) {
       item.status = 'error';
       item.error = err instanceof Error ? err.message : 'Upload failed';
+      item.stepLabel = '';
     }
   }
 
@@ -264,15 +337,16 @@
                 </div>
                 
                 <div class="progress-container">
-                   <div 
-                     class="progress-bar" 
-                     class:uploading={item.status === 'uploading'}
-                     class:processing={item.status === 'processing'}
-                     class:done={item.status === 'done'}
-                     class:error={item.status === 'error'}
-                     style="width: {item.progress}%"
-                   ></div>
+                   <motion.div
+                     class="progress-bar {item.status}"
+                     animate={{ width: `${item.progress}%` }}
+                     transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+                   />
                 </div>
+                
+                {#if item.stepLabel}
+                   <div class="step-label">{item.stepLabel}</div>
+                {/if}
                 
                 {#if item.status === 'error' && item.error}
                    <div class="error-message">{item.error}</div>
@@ -636,26 +710,24 @@
     width: 100%;
   }
 
-  .progress-bar {
+  :global(.progress-bar) {
     height: 100%;
     width: 0%;
-    background: var(--color-border); /* Pending state */
     border-radius: var(--radius-full);
-    transition: width 0.3s ease;
+    background: var(--color-border);
   }
 
-  .progress-bar.uploading {
+  :global(.progress-bar.uploading) {
     background: var(--color-primary);
   }
 
-  .progress-bar.processing {
+  :global(.progress-bar.processing) {
     background: var(--color-primary);
     position: relative;
     overflow: hidden;
   }
-  
-  /* Shimmer effect for processing state */
-  .progress-bar.processing::after {
+
+  :global(.progress-bar.processing)::after {
     content: '';
     position: absolute;
     top: 0;
@@ -671,12 +743,18 @@
     animation: pulse-bar 1.5s infinite;
   }
 
-  .progress-bar.done {
+  :global(.progress-bar.done) {
     background: #22c55e;
   }
 
-  .progress-bar.error {
+  :global(.progress-bar.error) {
     background: #ef4444;
+  }
+
+  .step-label {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
   }
   
   .error-message {
