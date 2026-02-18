@@ -32,8 +32,10 @@ async function isHeic(buffer: Buffer): Promise<boolean> {
 
 async function decodeHeic(input: Buffer): Promise<{ data: Buffer; width: number; height: number }> {
 	const decode = (await import('heic-decode')).default;
-	const arrayBuffer = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength);
-	const { data, width, height } = await decode({ buffer: arrayBuffer as ArrayBufferLike });
+	// heic-decode internally spreads buffer.slice() — ArrayBuffer.slice() returns
+	// a non-iterable ArrayBuffer, so we must pass a Uint8Array instead.
+	const uint8 = new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+	const { data, width, height } = await decode({ buffer: uint8 as unknown as ArrayBufferLike });
 	return { data: Buffer.from(data), width, height };
 }
 
