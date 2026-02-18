@@ -1,23 +1,39 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
-  import { page } from '$app/state';
-
   let { data } = $props();
+
+  type UploadStatus = 'pending' | 'uploading' | 'processing' | 'done' | 'error';
+
+  interface FileUploadItem {
+    file: File;
+    status: UploadStatus;
+    progress: number;
+    error?: string;
+  }
+
+  let fileUploads = $state<FileUploadItem[]>([]);
   let uploading = $state(false);
-  let dragActive = $state(false);
-  let selectedFiles = $state<File[]>([]);
+  let categoryId = $state('');
   let fileInput = $state<HTMLInputElement | null>(null);
+  let dragActive = $state(false);
+
+  // Derived state
+  let doneCount = $derived(fileUploads.filter(f => f.status === 'done').length);
+  let errorCount = $derived(fileUploads.filter(f => f.status === 'error').length);
+  let totalCount = $derived(fileUploads.length);
+  let overallDone = $derived(totalCount > 0 && fileUploads.every(f => f.status === 'done' || f.status === 'error'));
 
   const ACCEPTED_TYPES = '.jpg,.jpeg,.png,.webp,.heic,.heif';
   const MAX_SIZE = 50 * 1024 * 1024;
 
   function handleDrop(e: DragEvent) {
+    if (uploading) return;
     dragActive = false;
     if (!e.dataTransfer?.files) return;
     addFiles(Array.from(e.dataTransfer.files));
   }
 
   function handleFileSelect(e: Event) {
+    if (uploading) return;
     const input = e.target as HTMLInputElement;
     if (!input.files) return;
     addFiles(Array.from(input.files));
@@ -25,19 +41,30 @@
   }
 
   function addFiles(files: File[]) {
+    if (uploading) return;
     const valid = files.filter((f) => {
       const ext = f.name.toLowerCase().split('.').pop();
       return ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].includes(ext ?? '') && f.size <= MAX_SIZE;
     });
-    selectedFiles = [...selectedFiles, ...valid];
+    
+    // Add new files to the list
+    const newUploads = valid.map(f => ({
+      file: f,
+      status: 'pending' as UploadStatus,
+      progress: 0
+    }));
+    
+    fileUploads = [...fileUploads, ...newUploads];
   }
 
   function removeFile(index: number) {
-    selectedFiles = selectedFiles.filter((_, i) => i !== index);
+    if (uploading) return;
+    fileUploads = fileUploads.filter((_, i) => i !== index);
   }
 
   function clearFiles() {
-    selectedFiles = [];
+    if (uploading) return;
+    fileUploads = [];
   }
 
   function formatBytes(bytes: number) {
@@ -53,8 +80,102 @@
     return ext === 'heic' || ext === 'heif';
   }
 
-  let results = $derived(page.form?.results as { name: string; success: boolean; error?: string }[] | undefined);
-  let summary = $derived(page.form?.summary as { total: number; success: number; failed: number } | undefined);
+  async function uploadFile(index: number) {
+    return new Promise<void>((resolve) => {
+      const item = fileUploads[index];
+      item.status = 'uploading';
+      item.progress = 0;
+
+      const xhr = new XMLHttpRequest();
+      const formData = new FormData();
+      formData.append('file', item.file);
+      formData.append('categoryId', categoryId);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 90);
+          item.progress = Math.min(percent, 90);
+        }
+      };
+
+      xhr.upload.onload = () => {
+        // Upload transfer complete, server is now processing (HEIC conversion, sharp resize, blob upload)
+        item.status = 'processing';
+        item.progress = 90;
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            if (response.success) {
+              item.status = 'done';
+              item.progress = 100;
+            } else {
+              item.status = 'error';
+              item.error = response.error || 'Upload failed';
+            }
+          } catch {
+            item.status = 'error';
+            item.error = 'Invalid server response';
+          }
+        } else {
+          item.status = 'error';
+          try {
+            const errData = JSON.parse(xhr.responseText);
+            item.error = errData.message || `Server error (${xhr.status})`;
+          } catch {
+            item.error = `Server error (${xhr.status})`;
+          }
+        }
+      };
+
+      xhr.onerror = () => {
+        item.status = 'error';
+        item.error = 'Network error';
+      };
+
+      xhr.onloadend = () => {
+        resolve();
+      };
+
+      xhr.open('POST', '/admin/gallery/upload/api', true);
+      xhr.send(formData);
+    });
+  }
+
+  async function startUpload() {
+    if (uploading || fileUploads.length === 0 || !categoryId) return;
+    
+    uploading = true;
+    const queue = [...fileUploads];
+    let index = 0;
+
+    // Worker function to process the queue
+    async function processNext() {
+      while (index < queue.length) {
+        const currentIndex = index++;
+        // Skip if already done or error (allows retrying only failed/pending)
+        if (queue[currentIndex].status === 'done') continue;
+        
+        await uploadFile(currentIndex);
+      }
+    }
+
+    // Start 3 concurrent workers
+    const workers = Array.from({ length: Math.min(3, queue.length) }, () => processNext());
+    await Promise.all(workers);
+    
+    // Check if we're all done (could be some failed)
+    // We don't set uploading = false here if we want to show the "Done" state.
+    // But the requirements say "Has a 'Upload more' button when overallDone to reset state".
+    // So we can keep uploading = true to lock the UI until reset.
+  }
+  
+  function resetUpload() {
+    uploading = false;
+    fileUploads = [];
+  }
 </script>
 
 <div class="page">
@@ -65,57 +186,39 @@
     </div>
   </header>
 
-  {#if page.form?.error}
-    <div class="message error">{page.form.error}</div>
-  {/if}
-
-  {#if results && summary}
+  <!-- Overall Progress Banner -->
+  {#if uploading || overallDone}
     <div class="results-panel">
-      <div class="results-summary" class:all-success={summary.failed === 0} class:has-errors={summary.failed > 0}>
-        <span class="summary-icon">{summary.failed === 0 ? '✓' : '!'}</span>
-        <span>{summary.success} of {summary.total} uploaded successfully</span>
-        {#if summary.failed > 0}
-          <span class="failed-count">({summary.failed} failed)</span>
+      <div class="results-summary" class:all-success={doneCount === totalCount} class:has-errors={errorCount > 0} class:uploading={!overallDone}>
+        {#if !overallDone}
+           <span class="spinner summary-icon"></span>
+           <span>Uploading {doneCount + errorCount + 1} of {totalCount}...</span>
+        {:else if errorCount === 0}
+           <span class="summary-icon">✓</span>
+           <span>All {totalCount} photos uploaded successfully</span>
+        {:else}
+           <span class="summary-icon">!</span>
+           <span>{doneCount} of {totalCount} uploaded, {errorCount} failed</span>
         {/if}
-      </div>
-      <div class="results-list">
-        {#each results as result}
-          <div class="result-item" class:success={result.success} class:error={!result.success}>
-            <span class="result-status">{result.success ? '✓' : '✕'}</span>
-            <span class="result-name">{result.name}</span>
-            {#if result.error}
-              <span class="result-error">{result.error}</span>
-            {/if}
-          </div>
-        {/each}
+        
+        {#if overallDone}
+           <button class="btn secondary small reset-btn" onclick={resetUpload}>
+              Upload more
+           </button>
+        {/if}
       </div>
     </div>
   {/if}
 
-  <form
-    method="POST"
-    action="?/upload"
-    enctype="multipart/form-data"
-    use:enhance={({ formData, cancel }) => {
-      if (selectedFiles.length === 0) {
-        cancel();
-        return;
-      }
-      formData.delete('files');
-      for (const file of selectedFiles) {
-        formData.append('files', file);
-      }
-      uploading = true;
-      return async ({ update }) => {
-        await update();
-        uploading = false;
-        selectedFiles = [];
-      };
-    }}
-  >
+  <div class="upload-container">
     <div class="form-section">
       <label for="categoryId" class="field-label">Category</label>
-      <select id="categoryId" name="categoryId" required disabled={uploading}>
+      <select 
+        id="categoryId" 
+        bind:value={categoryId} 
+        disabled={uploading}
+        class:error={!categoryId && fileUploads.length > 0}
+      >
         <option value="">Select a category...</option>
         {#each data.categories as category}
           <option value={category.id}>{category.name}</option>
@@ -129,7 +232,7 @@
     <div
       class="drop-zone"
       class:active={dragActive}
-      class:has-files={selectedFiles.length > 0}
+      class:has-files={fileUploads.length > 0}
       class:disabled={uploading}
       role="button"
       tabindex="0"
@@ -137,13 +240,12 @@
       ondragover={(e) => { e.preventDefault(); dragActive = true; }}
       ondragleave={() => { dragActive = false; }}
       ondrop={(e) => { e.preventDefault(); handleDrop(e); }}
-      onclick={() => fileInput?.click()}
-      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInput?.click(); }}
+      onclick={() => !uploading && fileInput?.click()}
+      onkeydown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !uploading) fileInput?.click(); }}
     >
       <input
         bind:this={fileInput}
         type="file"
-        name="files"
         multiple
         accept={ACCEPTED_TYPES}
         onchange={handleFileSelect}
@@ -166,28 +268,69 @@
       </div>
     </div>
 
-    {#if selectedFiles.length > 0}
+    {#if fileUploads.length > 0}
       <div class="file-list">
         <div class="file-list-header">
-          <span class="file-count">{selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected</span>
-          <button type="button" class="btn text small" onclick={clearFiles} disabled={uploading}>Clear all</button>
+          <span class="file-count">{fileUploads.length} file{fileUploads.length !== 1 ? 's' : ''} selected</span>
+          <button 
+            type="button" 
+            class="btn text small" 
+            onclick={clearFiles} 
+            disabled={uploading}
+          >
+            Clear all
+          </button>
         </div>
 
         <div class="file-items">
-          {#each selectedFiles as file, index}
-            <div class="file-item">
+          {#each fileUploads as item, index}
+            <div class="file-item" class:error={item.status === 'error'}>
               <div class="file-info">
-                <span class="file-name" title={file.name}>{file.name}</span>
-                <span class="file-meta">
-                  {formatBytes(file.size)}
-                  {#if isHeic(file.name)}
-                    <span class="heic-badge">HEIC</span>
-                  {/if}
-                </span>
+                <div class="file-header">
+                   <span class="file-name" title={item.file.name}>{item.file.name}</span>
+                   <span class="file-meta">
+                     {formatBytes(item.file.size)}
+                     {#if isHeic(item.file.name)}
+                       <span class="heic-badge">HEIC</span>
+                     {/if}
+                   </span>
+                </div>
+                
+                <div class="progress-container">
+                   <div 
+                     class="progress-bar" 
+                     class:uploading={item.status === 'uploading'}
+                     class:processing={item.status === 'processing'}
+                     class:done={item.status === 'done'}
+                     class:error={item.status === 'error'}
+                     style="width: {item.progress}%"
+                   ></div>
+                </div>
+                
+                {#if item.status === 'error' && item.error}
+                   <div class="error-message">{item.error}</div>
+                {/if}
               </div>
-              <button type="button" class="btn icon small" onclick={() => removeFile(index)} disabled={uploading} aria-label="Remove file">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-              </button>
+
+              <div class="file-actions">
+                 {#if item.status === 'pending'}
+                    <button 
+                      type="button" 
+                      class="btn icon small" 
+                      onclick={() => removeFile(index)} 
+                      disabled={uploading} 
+                      aria-label="Remove file"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                 {:else if item.status === 'uploading' || item.status === 'processing'}
+                    <div class="status-spinner"></div>
+                 {:else if item.status === 'done'}
+                    <div class="status-icon success">✓</div>
+                 {:else if item.status === 'error'}
+                    <div class="status-icon error">✕</div>
+                 {/if}
+              </div>
             </div>
           {/each}
         </div>
@@ -196,22 +339,24 @@
       <div class="submit-area">
         <p class="processing-note">
           Each image will be converted to 3 WebP sizes (thumbnail, medium, full).
-          {#if selectedFiles.some((f) => isHeic(f.name))}
+          {#if fileUploads.some((f) => isHeic(f.file.name))}
             HEIC files will be converted automatically.
           {/if}
         </p>
 
-        <button type="submit" class="btn primary" disabled={uploading || data.categories.length === 0}>
-          {#if uploading}
-            <span class="spinner"></span>
-            Processing {selectedFiles.length} image{selectedFiles.length !== 1 ? 's' : ''}...
-          {:else}
-            Upload {selectedFiles.length} image{selectedFiles.length !== 1 ? 's' : ''}
-          {/if}
-        </button>
+        {#if !uploading && !overallDone}
+           <button 
+             type="button" 
+             class="btn primary" 
+             onclick={startUpload}
+             disabled={uploading || !categoryId || fileUploads.length === 0}
+           >
+             Upload {fileUploads.length} image{fileUploads.length !== 1 ? 's' : ''}
+           </button>
+        {/if}
       </div>
     {/if}
-  </form>
+  </div>
 </div>
 
 <style>
@@ -241,19 +386,7 @@
     margin: 0;
   }
 
-  .message {
-    margin-bottom: var(--space-6);
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-  }
-
-  .message.error {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-    border: 1px solid rgba(239, 68, 68, 0.2);
-  }
-
+  /* Results Panel */
   .results-panel {
     margin-bottom: var(--space-6);
     border: 1px solid var(--color-border);
@@ -268,6 +401,11 @@
     padding: var(--space-4);
     font-size: var(--text-sm);
     font-weight: 500;
+  }
+
+  .results-summary.uploading {
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text);
   }
 
   .results-summary.all-success {
@@ -299,57 +437,7 @@
     background-color: rgba(245, 158, 11, 0.2);
   }
 
-  .failed-count {
-    color: #ef4444;
-  }
-
-  .results-list {
-    border-top: 1px solid var(--color-border);
-  }
-
-  .result-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--text-sm);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .result-item:last-child {
-    border-bottom: none;
-  }
-
-  .result-status {
-    flex-shrink: 0;
-    width: 18px;
-    text-align: center;
-    font-weight: 600;
-  }
-
-  .result-item.success .result-status {
-    color: #22c55e;
-  }
-
-  .result-item.error .result-status {
-    color: #ef4444;
-  }
-
-  .result-name {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-  }
-
-  .result-error {
-    color: #ef4444;
-    font-size: var(--text-xs);
-    flex-shrink: 0;
-  }
-
+  /* Form & Drop Zone */
   .form-section {
     margin-bottom: var(--space-6);
   }
@@ -386,6 +474,10 @@
   select:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+  
+  select.error {
+    border-color: #ef4444;
   }
 
   .hint {
@@ -477,6 +569,7 @@
     color: var(--color-text-muted);
   }
 
+  /* File List */
   .file-list {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
@@ -500,7 +593,7 @@
   }
 
   .file-items {
-    max-height: 300px;
+    max-height: 400px;
     overflow-y: auto;
   }
 
@@ -525,9 +618,17 @@
   .file-info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-2);
     min-width: 0;
     flex: 1;
+    margin-right: var(--space-4);
+  }
+
+  .file-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
   }
 
   .file-name {
@@ -544,6 +645,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    flex-shrink: 0;
   }
 
   .heic-badge {
@@ -557,6 +659,94 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
+
+  /* Progress Bar */
+  .progress-container {
+    height: 4px;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--color-border); /* Pending state */
+    border-radius: var(--radius-full);
+    transition: width 0.3s ease;
+  }
+
+  .progress-bar.uploading {
+    background: var(--color-primary);
+  }
+
+  .progress-bar.processing {
+    background: var(--color-primary);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* Shimmer effect for processing state */
+  .progress-bar.processing::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.4),
+      transparent
+    );
+    animation: pulse-bar 1.5s infinite;
+  }
+
+  .progress-bar.done {
+    background: #22c55e;
+  }
+
+  .progress-bar.error {
+    background: #ef4444;
+  }
+  
+  .error-message {
+    color: #ef4444;
+    font-size: var(--text-xs);
+    margin-top: 2px;
+  }
+
+  @keyframes pulse-bar {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* Status Icons & Buttons */
+  .file-actions {
+    flex-shrink: 0;
+    width: 24px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .status-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--color-primary-light);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .status-icon {
+    font-weight: bold;
+    font-size: var(--text-sm);
+  }
+
+  .status-icon.success { color: #22c55e; }
+  .status-icon.error { color: #ef4444; }
 
   .submit-area {
     display: flex;
@@ -652,6 +842,10 @@
     font-size: var(--text-xs);
   }
 
+  .reset-btn {
+    margin-left: auto;
+  }
+
   .spinner {
     width: 16px;
     height: 16px;
@@ -659,6 +853,11 @@
     border-top-color: white;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
+  }
+  
+  .summary-icon.spinner {
+    border-color: rgba(0, 0, 0, 0.1);
+    border-top-color: var(--color-primary);
   }
 
   @keyframes spin {
