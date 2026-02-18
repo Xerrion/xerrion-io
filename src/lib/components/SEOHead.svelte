@@ -13,7 +13,7 @@
 
 	const SITE_URL = 'https://xerrion.io';
 	const SITE_NAME = 'Xerrion';
-	const DEFAULT_IMAGE = `${SITE_URL}/og-image.svg`;
+	const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 	const DEFAULT_IMAGE_ALT = 'Xerrion - Software Engineer';
 
 	let {
@@ -49,6 +49,9 @@
 	<meta property="og:url" content={canonicalUrl} />
 	<meta property="og:image" content={image} />
 	<meta property="og:image:alt" content={imageAlt} />
+	<meta property="og:image:type" content="image/png" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
 	<meta property="og:locale" content="en_US" />
 
 	<!-- Twitter Card -->
