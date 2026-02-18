@@ -114,6 +114,7 @@
 			</p>
 
 			{#if filteredProjects().length > 0}
+				<h2 class="sr-only">Project list</h2>
 				<div class="projects-grid">
 					{#each filteredProjects() as repo (repo.id)}
 						<ProjectCard {repo} />
