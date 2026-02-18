@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { socialLinks } from '$lib/types/navigation';
+	import { socialLinks } from '$lib/config/navigation';
 
 	interface Props {
 		size?: 'sm' | 'md' | 'lg';

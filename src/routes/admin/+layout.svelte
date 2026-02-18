@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { motion } from '@humanspeak/svelte-motion';
+	import '$lib/styles/admin.css';
 
 	interface Props {
 		children: import('svelte').Snippet;

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { navigation } from '$lib/types/navigation';
+	import { navigation } from '$lib/config/navigation';
 	import ThemeToggle from './ThemeToggle.svelte';
 
 	let mobileMenuOpen = $state(false);
