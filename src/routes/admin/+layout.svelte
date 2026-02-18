@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { motion } from '@humanspeak/svelte-motion';
+	import Toast from '$lib/components/Toast.svelte';
 	import '$lib/styles/admin.css';
 
 	interface Props {
@@ -13,6 +14,7 @@
 </script>
 
 {#if isLoggedIn}
+	<Toast />
 	<div class="admin-shell">
 		<aside class="admin-sidebar">
 			<div class="sidebar-header">
