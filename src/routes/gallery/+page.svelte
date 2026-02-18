@@ -88,6 +88,13 @@
 			{/each}
 		</div>
 
+		{#if selectedCategory}
+			{@const info = getCategoryInfo(selectedCategory)}
+			{#if info?.description}
+				<p class="category-description">{info.description}</p>
+			{/if}
+		{/if}
+
 		<!-- Photo Grid -->
 		{#if displayedPhotos().length > 0}
 			<div class="photo-grid">
@@ -166,7 +173,13 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-2);
-		margin-bottom: var(--space-8);
+		margin-bottom: var(--space-4);
+	}
+
+	.category-description {
+		color: var(--color-text-muted);
+		font-size: var(--text-sm);
+		margin: 0 0 var(--space-8);
 	}
 
 	.filter-btn {

@@ -1,7 +1,25 @@
-/** Photo category discovered from Vercel Blob folder structure */
+import { parse } from 'yaml';
+
+/**
+ * Raw config from category.yaml in each gallery folder.
+ *
+ * Example category.yaml:
+ *   name: Charlie
+ *   description: The goodest boy
+ *   order: 1
+ */
+export interface CategoryConfig {
+	name?: string;
+	description?: string;
+	order?: number;
+}
+
+/** Photo category with resolved metadata */
 export interface PhotoCategory {
 	name: string;
 	slug: string;
+	description?: string;
+	order: number;
 }
 
 /** Photo item from Vercel Blob Storage */
@@ -15,6 +33,9 @@ export interface Photo {
 
 /** Root prefix for gallery blobs */
 export const GALLERY_PREFIX = 'gallery/';
+
+/** Config filename to look for in each category folder */
+export const CATEGORY_CONFIG_FILE = 'category.yaml';
 
 /** Image file extensions supported by browsers */
 const IMAGE_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|avif)$/i;
@@ -32,4 +53,13 @@ export function getFileName(pathname: string): string {
 /** Convert a folder slug to a display name (e.g. "charlie" -> "Charlie") */
 export function slugToName(slug: string): string {
 	return slug.charAt(0).toUpperCase() + slug.slice(1);
+}
+
+/** Parse a category.yaml blob into a CategoryConfig */
+export function parseCategoryConfig(content: string): CategoryConfig {
+	try {
+		return (parse(content) as CategoryConfig) ?? {};
+	} catch {
+		return {};
+	}
 }
