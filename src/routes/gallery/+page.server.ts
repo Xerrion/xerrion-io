@@ -1,54 +1,63 @@
 import type { PageServerLoad } from './$types';
-import { supabase, photoCategories, type Photo } from '$lib/supabase';
-
-const BUCKET_NAME = 'gallery'; // Change this to your actual bucket name
+import { list } from '@vercel/blob';
+import {
+	GALLERY_PREFIX,
+	isDisplayableImage,
+	getFileName,
+	slugToName,
+	type PhotoCategory,
+	type Photo
+} from '$lib/gallery';
 
 export const load: PageServerLoad = async () => {
 	const photosByCategory: Record<string, Photo[]> = {};
+	const categories: PhotoCategory[] = [];
 	let totalPhotos = 0;
 
-	for (const category of photoCategories) {
-		const { data, error } = await supabase.storage
-			.from(BUCKET_NAME)
-			.list(category.slug, {
-				limit: 100,
-				sortBy: { column: 'created_at', order: 'desc' }
-			});
+	try {
+		// Discover category folders dynamically
+		const root = await list({ prefix: GALLERY_PREFIX, mode: 'folded' });
 
-		if (error) {
-			console.error(`Error fetching ${category.slug}:`, error);
-			photosByCategory[category.slug] = [];
-			continue;
+		for (const folder of root.folders) {
+			// folder looks like "gallery/charlie/"
+			const slug = folder.replace(GALLERY_PREFIX, '').replace(/\/$/, '');
+			if (!slug) continue;
+
+			categories.push({ name: slugToName(slug), slug });
+
+			// Fetch all photos in this category
+			let photos: Photo[] = [];
+			let cursor: string | undefined;
+			let hasMore = true;
+
+			while (hasMore) {
+				const result = await list({ prefix: folder, cursor, limit: 1000 });
+
+				const batch = result.blobs
+					.filter((blob) => blob.size > 0 && isDisplayableImage(blob.pathname))
+					.map((blob) => ({
+						id: blob.pathname,
+						name: getFileName(blob.pathname),
+						url: blob.url,
+						category: slug,
+						createdAt: blob.uploadedAt
+					}));
+
+				photos.push(...batch);
+				hasMore = result.hasMore;
+				cursor = result.cursor;
+			}
+
+			photos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+			photosByCategory[slug] = photos;
+			totalPhotos += photos.length;
 		}
-
-		const photos = (data || [])
-			.filter((file) => {
-				// Filter out folders and placeholder files
-				const isFolder = file.id === null || file.name.endsWith('/');
-				const isPlaceholder = file.name === '.emptyFolderPlaceholder';
-				const isImage = /\.(jpg|jpeg|png|gif|webp|avif)$/i.test(file.name);
-				return !isFolder && !isPlaceholder && isImage;
-			})
-			.map((file) => {
-				const { data: urlData } = supabase.storage
-					.from(BUCKET_NAME)
-					.getPublicUrl(`${category.slug}/${file.name}`);
-
-				return {
-					id: file.id || file.name,
-					name: file.name,
-					url: urlData.publicUrl,
-					category: category.slug,
-					createdAt: new Date(file.created_at || Date.now())
-				};
-			});
-
-		photosByCategory[category.slug] = photos;
-		totalPhotos += photos.length;
+	} catch (error) {
+		console.error('Error fetching gallery:', error);
 	}
 
 	return {
-		categories: photoCategories,
+		categories,
 		photosByCategory,
 		totalPhotos
 	};
