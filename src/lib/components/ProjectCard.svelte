@@ -1,44 +1,13 @@
 <script lang="ts">
 	import type { ProjectRepo } from '$lib/types/github';
+	import { formatDate } from '$lib/utils/format';
+	import { languageColors } from '$lib/utils/languages';
 
 	interface Props {
 		repo: ProjectRepo;
 	}
 
 	let { repo }: Props = $props();
-
-	// Language colors (common languages)
-	const languageColors: Record<string, string> = {
-		TypeScript: '#3178c6',
-		JavaScript: '#f7df1e',
-		Python: '#3572A5',
-		Rust: '#dea584',
-		Go: '#00ADD8',
-		Java: '#b07219',
-		'C#': '#178600',
-		'C++': '#f34b7d',
-		C: '#555555',
-		HTML: '#e34c26',
-		CSS: '#563d7c',
-		Shell: '#89e051',
-		Ruby: '#701516',
-		PHP: '#4F5D95',
-		Swift: '#F05138',
-		Kotlin: '#A97BFF',
-		Svelte: '#ff3e00'
-	};
-
-	function formatDate(date: Date): string {
-		const now = new Date();
-		const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-		if (diffInDays === 0) return 'Today';
-		if (diffInDays === 1) return 'Yesterday';
-		if (diffInDays < 7) return `${diffInDays} days ago`;
-		if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
-		if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`;
-		return `${Math.floor(diffInDays / 365)} years ago`;
-	}
 </script>
 
 <article class="project-card hover-lift" class:pinned={repo.isPinned}>
