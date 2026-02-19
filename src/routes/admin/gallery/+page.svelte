@@ -107,8 +107,8 @@
             
             <div class="meta-row">
               <span class="badge">{photo.categoryName}</span>
-              <span class="sizes" title="thumb / medium / full">
-                {formatBytes(photo.thumbSize)} / {formatBytes(photo.mediumSize)} / {formatBytes(photo.fullSize)}
+              <span class="sizes">
+                {formatBytes(photo.fullSize)}
               </span>
             </div>
             
