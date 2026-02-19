@@ -132,15 +132,13 @@
 	</div>
 </div>
 
-{#if lightboxPhoto}
-	<GalleryLightbox
-		photo={lightboxPhoto}
-		photos={displayedPhotos()}
-		categories={data.categories}
-		onclose={closeLightbox}
-		onnavigate={navigateLightbox}
-	/>
-{/if}
+<GalleryLightbox
+	photo={lightboxPhoto}
+	photos={displayedPhotos()}
+	categories={data.categories}
+	onclose={closeLightbox}
+	onnavigate={navigateLightbox}
+/>
 
 <style>
 	.gallery-page {

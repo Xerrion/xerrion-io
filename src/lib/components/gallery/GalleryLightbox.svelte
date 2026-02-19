@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { Photo, PhotoCategory } from '$lib/gallery';
-	import { motion } from '@humanspeak/svelte-motion';
+	import { motion, AnimatePresence } from '@humanspeak/svelte-motion';
 
 	interface Props {
-		photo: Photo;
+		photo: Photo | null;
 		photos: Photo[];
 		categories: PhotoCategory[];
 		onclose: () => void;
@@ -12,7 +12,8 @@
 
 	let { photo, photos, categories, onclose, onnavigate }: Props = $props();
 
-	const currentIndex = $derived(photos.findIndex((p) => p.id === photo.id));
+	const isOpen = $derived(photo !== null);
+	const currentIndex = $derived(photo ? photos.findIndex((p) => p.id === photo!.id) : -1);
 
 	function handleClose() {
 		onclose();
@@ -98,8 +99,11 @@
 	}
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
+<svelte:window onkeydown={isOpen ? handleKeydown : undefined} />
 
+<AnimatePresence>
+{#if photo}
+	{@const currentPhoto = photo}
 <motion.div
 	class="lightbox-backdrop"
 	role="dialog"
@@ -112,6 +116,7 @@
 	ontouchend={handleTouchEnd}
 	initial={{ opacity: 0 }}
 	animate={{ opacity: 1 }}
+	exit={{ opacity: 0 }}
 	transition={{ duration: 0.3 }}
 >
 	<motion.div
@@ -152,12 +157,12 @@
 			animate={{ opacity: 1, scale: 1 }}
 			transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
 		>
-			{#key photo.id}
-				<img
-					class="lightbox-image"
-					src={photo.fullUrl || photo.url}
-					alt={photo.name}
-				/>
+		{#key currentPhoto.id}
+			<img
+				class="lightbox-image"
+				src={currentPhoto.fullUrl || currentPhoto.url}
+				alt={currentPhoto.name}
+			/>
 			{/key}
 		</motion.div>
 
@@ -178,14 +183,16 @@
 		animate={{ opacity: 1, y: 0 }}
 		transition={{ duration: 0.35, delay: 0.15 }}
 	>
-		{#if getCategoryName(photo.category)}
-			<span class="lightbox-category">{getCategoryName(photo.category)}</span>
+	{#if getCategoryName(currentPhoto.category)}
+		<span class="lightbox-category">{getCategoryName(currentPhoto.category)}</span>
 		{/if}
 		{#if !swipeHintShown && photos.length > 1}
 			<span class="swipe-hint">Swipe to navigate</span>
 		{/if}
 	</motion.div>
 </motion.div>
+{/if}
+</AnimatePresence>
 
 <style>
 	:global(.lightbox-backdrop) {
