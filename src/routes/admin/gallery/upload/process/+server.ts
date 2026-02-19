@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { put, del } from '@vercel/blob';
-import { processImage, generateBlobPath } from '$lib/server/image';
+import { processImage, generateBlobPath, randomSuffix } from '$lib/server/image';
 import type { ProcessingStep } from '$lib/server/image';
 import { env } from '$env/dynamic/private';
 
@@ -71,9 +71,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					send(step);
 				});
 
-				const thumbPath = generateBlobPath(categorySlug, originalName, 'thumb');
-				const mediumPath = generateBlobPath(categorySlug, originalName, 'medium');
-				const fullPath = generateBlobPath(categorySlug, originalName, 'full');
+				const suffix = randomSuffix();
+				const thumbPath = generateBlobPath(categorySlug, originalName, 'thumb', suffix);
+				const mediumPath = generateBlobPath(categorySlug, originalName, 'medium', suffix);
+				const fullPath = generateBlobPath(categorySlug, originalName, 'full', suffix);
 
 				send('uploading:thumb');
 				const thumbBlob = await put(thumbPath, processed.thumb.buffer, {
@@ -98,8 +99,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 				send('saving');
 				await db.execute({
-					sql: `INSERT INTO photo (category_id, original_name, blob_path, thumb_url, medium_url, full_url, width, height, file_size)
-						  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					sql: `INSERT INTO photo (category_id, original_name, blob_path, thumb_url, medium_url, full_url, width, height, thumb_size, medium_size, full_size, metadata)
+						  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 					args: [
 						categoryId,
 						originalName,
@@ -109,7 +110,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						fullBlob.url,
 						processed.originalWidth,
 						processed.originalHeight,
-						inputBuffer.byteLength
+						processed.thumb.byteLength,
+						processed.medium.byteLength,
+						processed.full.byteLength,
+						JSON.stringify(processed.metadata)
 					]
 				});
 

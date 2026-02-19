@@ -1,4 +1,17 @@
 import sharp from 'sharp';
+import exifr from 'exifr';
+
+export interface ImageMetadata {
+	cameraMake: string | null;
+	cameraModel: string | null;
+	lensModel: string | null;
+	iso: number | null;
+	aperture: number | null;
+	shutterSpeed: string | null;
+	focalLength: number | null;
+	dateTaken: string | null;
+	colorSpace: string | null;
+}
 
 const SIZES = {
 	thumb: { width: 400, label: 'thumb' },
@@ -30,6 +43,95 @@ export interface ProcessedImageSet {
 	full: ProcessedImage;
 	originalWidth: number;
 	originalHeight: number;
+	metadata: ImageMetadata;
+}
+
+function formatShutterSpeed(exposureTime: number | undefined): string | null {
+	if (!exposureTime) return null;
+	if (exposureTime >= 1) return `${exposureTime}s`;
+	return `1/${Math.round(1 / exposureTime)}s`;
+}
+
+function resolveColorSpace(space: number | string | undefined): string | null {
+	if (space === 1 || space === 'sRGB') return 'sRGB';
+	if (space === 2 || space === 'Adobe RGB') return 'Adobe RGB';
+	if (space === 0xffff || space === 'Uncalibrated') return 'Uncalibrated';
+	if (typeof space === 'string') return space;
+	return null;
+}
+
+/**
+ * Wraps a raw EXIF buffer (starting with 'Exif\0\0') in a minimal JPEG
+ * container so exifr can parse it. HEIC files can't be parsed directly
+ * by exifr, but sharp can read HEIC container metadata. We extract the
+ * raw EXIF buffer from sharp and wrap it in SOI + APP1 + EOI.
+ */
+function wrapExifInJpeg(exifBuf: Buffer): Buffer {
+	const app1Len = exifBuf.length + 2;
+	return Buffer.concat([
+		Buffer.from([0xff, 0xd8]), // SOI
+		Buffer.from([0xff, 0xe1]), // APP1 marker
+		Buffer.from([(app1Len >> 8) & 0xff, app1Len & 0xff]),
+		exifBuf,
+		Buffer.from([0xff, 0xd9]) // EOI
+	]);
+}
+
+async function extractMetadata(buffer: Buffer): Promise<ImageMetadata> {
+	try {
+		let parseBuf: Buffer = buffer;
+
+		// For HEIC files, exifr can't parse the container directly.
+		// Use sharp to extract the raw EXIF buffer and wrap it in JPEG.
+		if (isHeic(buffer)) {
+			const meta = await sharp(buffer).metadata();
+			if (!meta.exif) return emptyMetadata();
+			parseBuf = wrapExifInJpeg(Buffer.from(meta.exif));
+		}
+
+		const exif = await exifr.parse(parseBuf, {
+			pick: [
+				'Make', 'Model', 'LensModel',
+				'ISO', 'FNumber', 'ExposureTime', 'FocalLength',
+				'DateTimeOriginal', 'CreateDate',
+				'ColorSpace', 'ProfileDescription'
+			]
+		});
+
+		if (!exif) {
+			return emptyMetadata();
+		}
+
+		const dateTaken = exif.DateTimeOriginal || exif.CreateDate;
+
+		return {
+			cameraMake: exif.Make?.trim() || null,
+			cameraModel: exif.Model?.trim() || null,
+			lensModel: exif.LensModel?.trim() || null,
+			iso: exif.ISO ?? null,
+			aperture: exif.FNumber ?? null,
+			shutterSpeed: formatShutterSpeed(exif.ExposureTime),
+			focalLength: exif.FocalLength ?? null,
+			dateTaken: dateTaken instanceof Date ? dateTaken.toISOString() : null,
+			colorSpace: resolveColorSpace(exif.ColorSpace) || exif.ProfileDescription || null
+		};
+	} catch {
+		return emptyMetadata();
+	}
+}
+
+function emptyMetadata(): ImageMetadata {
+	return {
+		cameraMake: null,
+		cameraModel: null,
+		lensModel: null,
+		iso: null,
+		aperture: null,
+		shutterSpeed: null,
+		focalLength: null,
+		dateTaken: null,
+		colorSpace: null
+	};
 }
 
 function isHeic(buffer: Buffer): boolean {
@@ -111,7 +213,10 @@ export async function processImage(
 	inputBuffer: Buffer,
 	onProgress?: ProgressCallback
 ): Promise<ProcessedImageSet> {
-	const source = await prepareSource(inputBuffer, onProgress);
+	const [source, metadata] = await Promise.all([
+		prepareSource(inputBuffer, onProgress),
+		extractMetadata(inputBuffer)
+	]);
 
 	const [thumb, medium, full] = await Promise.all([
 		resizeToWebp(source, 'thumb', onProgress),
@@ -124,15 +229,25 @@ export async function processImage(
 		medium,
 		full,
 		originalWidth: source.width,
-		originalHeight: source.height
+		originalHeight: source.height,
+		metadata
 	};
 }
 
-export function generateBlobPath(categorySlug: string, baseName: string, size: SizeKey): string {
+export function generateBlobPath(
+	categorySlug: string,
+	baseName: string,
+	size: SizeKey,
+	suffix: string
+): string {
 	const sanitized = baseName
 		.replace(/\.[^.]+$/, '')
 		.replace(/[^a-zA-Z0-9_-]/g, '_')
 		.toLowerCase();
 
-	return `gallery/${categorySlug}/${sanitized}-${size}.webp`;
+	return `gallery/${categorySlug}/${sanitized}-${suffix}-${size}.webp`;
+}
+
+export function randomSuffix(): string {
+	return Math.random().toString(36).slice(2, 8);
 }
