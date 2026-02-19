@@ -1,11 +1,24 @@
 <script lang="ts">
 	import { toastStore } from '$lib/stores/toast.svelte';
+	import { slideInRight, animateOut } from '$lib/utils/animate';
+
+	function animateToastIn(el: HTMLElement) {
+		slideInRight(el, { duration: 250 });
+	}
+
+	async function dismissWithAnimation(el: HTMLElement, id: number) {
+		await animateOut(el, [
+			{ opacity: 1, transform: 'translateX(0)' },
+			{ opacity: 0, transform: 'translateX(30px)' }
+		], { duration: 200, easing: 'ease-in' });
+		toastStore.dismiss(id);
+	}
 </script>
 
 {#if toastStore.items.length > 0}
 	<div class="toast-container" aria-live="polite">
 		{#each toastStore.items as toast (toast.id)}
-			<div class="toast toast-{toast.type}" role="alert">
+			<div class="toast toast-{toast.type}" role="alert" use:animateToastIn>
 				<span class="toast-icon">
 					{#if toast.type === 'success'}
 						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -16,7 +29,7 @@
 					{/if}
 				</span>
 				<span class="toast-message">{toast.message}</span>
-				<button class="toast-dismiss" onclick={() => toastStore.dismiss(toast.id)} aria-label="Dismiss">
+				<button class="toast-dismiss" onclick={(e) => { const toastEl = (e.currentTarget as HTMLElement).closest('.toast') as HTMLElement; dismissWithAnimation(toastEl, toast.id); }} aria-label="Dismiss">
 					<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
 				</button>
 			</div>
@@ -47,19 +60,7 @@
 		font-family: var(--font-sans);
 		box-shadow: var(--shadow-lg);
 		pointer-events: auto;
-		animation: toast-in 0.25s ease-out;
 		border: 1px solid transparent;
-	}
-
-	@keyframes toast-in {
-		from {
-			opacity: 0;
-			transform: translateX(20px);
-		}
-		to {
-			opacity: 1;
-			transform: translateX(0);
-		}
 	}
 
 	.toast-success {
