@@ -3,6 +3,7 @@
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { breadcrumbSchema } from '$lib/seo';
 	import type { ProjectRepo } from '$lib/types/github';
+	import { fadeInUp, fadeIn, stagger } from '$lib/utils/animate';
 
 	interface Props {
 		data: {
@@ -15,6 +16,7 @@
 
 	let searchQuery = $state('');
 	let selectedLanguage = $state<string | null>(null);
+	let gridEl = $state<HTMLElement | null>(null);
 
 	// Get unique languages for filter
 	const languages = $derived(() => {
@@ -44,6 +46,15 @@
 		searchQuery = '';
 		selectedLanguage = null;
 	}
+
+	// Re-animate project cards when filter changes
+	$effect(() => {
+		// Track the filtered list so this re-runs on filter changes
+		filteredProjects();
+		if (gridEl) {
+			stagger(gridEl, { staggerDelay: 50, duration: 350, type: 'fadeInUp' });
+		}
+	});
 </script>
 
 <SEOHead
@@ -57,7 +68,7 @@
 
 <div class="projects-page">
 	<div class="container">
-		<header class="projects-header">
+		<header class="projects-header" use:fadeInUp={{ duration: 500 }}>
 			<h1>🛠️ Projects</h1>
 			<p class="subtitle">Stuff I've built. Pulled from GitHub, so it's always up to date.</p>
 		</header>
@@ -69,7 +80,7 @@
 				<p class="error-hint">GitHub might be having issues, or I hit the rate limit. Try again in a bit!</p>
 			</div>
 		{:else}
-			<div class="filters">
+			<div class="filters" use:fadeIn={{ duration: 400, delay: 100 }}>
 				<div class="search-box">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -115,7 +126,7 @@
 
 			{#if filteredProjects().length > 0}
 				<h2 class="sr-only">Project list</h2>
-				<div class="projects-grid">
+				<div class="projects-grid" bind:this={gridEl}>
 					{#each filteredProjects() as repo (repo.id)}
 						<ProjectCard {repo} />
 					{/each}

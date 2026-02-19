@@ -2,6 +2,7 @@
 	import SocialLinks from '$lib/components/SocialLinks.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { websiteSchema, personSchema } from '$lib/seo';
+	import { fadeInUp, fadeIn, stagger, staggerReveal } from '$lib/utils/animate';
 </script>
 
 <SEOHead
@@ -13,16 +14,16 @@
 <section class="hero">
 	<div class="container">
 		<div class="hero-content">
-			<span class="wave">👋</span>
-			<h1>Hey, I'm <span class="highlight">Lasse</span></h1>
-			<p class="tagline">
+			<span class="wave" use:fadeIn={{ duration: 400, delay: 0 }}>👋</span>
+			<h1 use:fadeInUp={{ duration: 500, delay: 80 }}>Hey, I'm <span class="highlight">Lasse</span></h1>
+			<p class="tagline" use:fadeInUp={{ duration: 500, delay: 160 }}>
 				Software dev from Odense, Denmark. I go by <strong>Xerrion</strong> online.
 			</p>
-			<p class="intro">
+			<p class="intro" use:fadeInUp={{ duration: 500, delay: 240 }}>
 				I build things with code, take way too many photos of my golden retriever Charlie, 
 				and have strong opinions about TypeScript. Currently making internal tools at TV 2 Danmark.
 			</p>
-			<div class="hero-links">
+			<div class="hero-links" use:fadeInUp={{ duration: 500, delay: 320 }}>
 				<SocialLinks />
 			</div>
 		</div>
@@ -31,7 +32,7 @@
 
 <section class="quick-nav section">
 	<div class="container">
-		<div class="nav-cards">
+		<div class="nav-cards" use:stagger={{ staggerDelay: 100, duration: 500 }}>
 			<a href="/about" class="nav-card">
 				<span class="card-emoji">🧑‍💻</span>
 				<h2>About Me</h2>
@@ -53,8 +54,8 @@
 
 <section class="currently section">
 	<div class="container">
-		<h2>What I'm up to</h2>
-		<ul class="status-list">
+		<h2 use:fadeInUp={{ duration: 450 }}>What I'm up to</h2>
+		<ul class="status-list" use:staggerReveal={{ staggerDelay: 80, duration: 400, type: 'fadeInUp' }}>
 			<li>
 				<span class="status-icon">💼</span>
 				<span>Building internal tools at <strong>TV 2 Danmark</strong></span>

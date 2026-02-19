@@ -2,6 +2,7 @@
 	import SocialLinks from '$lib/components/SocialLinks.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { personSchema, breadcrumbSchema } from '$lib/seo';
+	import { fadeInUp, fadeIn, staggerReveal } from '$lib/utils/animate';
 </script>
 
 <SEOHead
@@ -19,12 +20,12 @@
 
 <article class="about">
 	<div class="container">
-		<header class="about-header">
+		<header class="about-header" use:fadeInUp={{ duration: 500 }}>
 			<h1>About Me</h1>
 			<p class="subtitle">The longer version</p>
 		</header>
 
-		<div class="about-content">
+		<div class="about-content" use:staggerReveal={{ staggerDelay: 100, duration: 500, selector: '.about-section', rootMargin: '0px 0px -60px 0px' }}>
 			<section class="about-section">
 				<h2>👋 The basics</h2>
 				<p>

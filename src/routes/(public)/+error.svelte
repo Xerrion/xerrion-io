@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { scaleIn, fadeInUp } from '$lib/utils/animate';
 </script>
 
 <SEOHead
@@ -11,15 +12,15 @@
 
 <div class="error-page">
 	<div class="error-content container">
-		<span class="error-emoji">🤔</span>
-		<h1>404</h1>
-		<p class="error-message">
+		<span class="error-emoji" use:scaleIn={{ duration: 500 }}>🤔</span>
+		<h1 use:fadeInUp={{ duration: 450, delay: 80 }}>404</h1>
+		<p class="error-message" use:fadeInUp={{ duration: 450, delay: 160 }}>
 			This page doesn't exist. Maybe it never did, maybe I moved it, maybe you typo'd the URL.
 		</p>
-		<p class="error-suggestion">
+		<p class="error-suggestion" use:fadeInUp={{ duration: 450, delay: 240 }}>
 			Either way, let's get you back on track.
 		</p>
-		<a href="/" class="btn-home">← Back home</a>
+		<a href="/" class="btn-home" use:fadeInUp={{ duration: 450, delay: 320 }}>← Back home</a>
 	</div>
 </div>
 
