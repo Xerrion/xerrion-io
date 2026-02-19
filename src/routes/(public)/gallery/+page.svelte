@@ -5,7 +5,7 @@
 	import GalleryLightbox from '$lib/components/gallery/GalleryLightbox.svelte';
 	import { breadcrumbSchema } from '$lib/seo';
 	import type { PhotoCategory, Photo } from '$lib/gallery';
-	import { motion, AnimatePresence } from '@humanspeak/svelte-motion';
+	import { motion } from '@humanspeak/svelte-motion';
 
 	interface Props {
 		data: {
@@ -132,17 +132,15 @@
 	</div>
 </div>
 
-<AnimatePresence>
-	{#if lightboxPhoto}
-		<GalleryLightbox
-			photo={lightboxPhoto}
-			photos={displayedPhotos()}
-			categories={data.categories}
-			onclose={closeLightbox}
-			onnavigate={navigateLightbox}
-		/>
-	{/if}
-</AnimatePresence>
+{#if lightboxPhoto}
+	<GalleryLightbox
+		photo={lightboxPhoto}
+		photos={displayedPhotos()}
+		categories={data.categories}
+		onclose={closeLightbox}
+		onnavigate={navigateLightbox}
+	/>
+{/if}
 
 <style>
 	.gallery-page {
