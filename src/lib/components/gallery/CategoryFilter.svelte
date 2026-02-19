@@ -76,11 +76,11 @@
 		background-color: var(--color-primary);
 		border-color: var(--color-primary);
 		color: white;
-		box-shadow: 0 2px 8px rgba(91, 94, 224, 0.3);
+		box-shadow: 0 2px 8px color-mix(in oklch, var(--color-primary) 30%, transparent);
 	}
 
 	:global([data-theme="dark"]) .filter-btn.active {
-		box-shadow: 0 2px 8px rgba(129, 140, 248, 0.25);
+		box-shadow: 0 2px 8px color-mix(in oklch, var(--color-primary-light) 25%, transparent);
 	}
 
 	.filter-count {

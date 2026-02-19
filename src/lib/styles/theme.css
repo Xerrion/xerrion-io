@@ -1,26 +1,26 @@
 /* Theme CSS Variables */
 :root {
-	/* Color Palette - Warmer, more personal */
-	--color-primary: #5b5ee0;
-	--color-primary-hover: #4f46e5;
-	--color-primary-light: #818cf8;
+	/* Color Palette */
+	--color-primary: oklch(0.5532 0.1936 277.02);
+	--color-primary-hover: oklch(0.5106 0.2301 276.97);
+	--color-primary-light: oklch(0.6801 0.1584 276.94);
 	
-	--color-accent: #f59e0b;
-	--color-accent-hover: #d97706;
+	--color-accent: oklch(0.8155 0.1164 209.92);
+	--color-accent-hover: oklch(0.72 0.1164 209.92);
 	
-	/* Light Theme - Warm white */
-	--color-bg: #fefdfb;
-	--color-bg-secondary: #faf8f5;
-	--color-bg-tertiary: #f5f1eb;
-	--color-surface: #ffffff;
-	--color-surface-hover: #faf8f5;
+	/* Light Theme */
+	--color-bg: oklch(0.9943 0.0028 84.60);
+	--color-bg-secondary: oklch(0.9798 0.0044 78.21);
+	--color-bg-tertiary: oklch(0.9596 0.0090 78.24);
+	--color-surface: oklch(1.0000 0.0000 0);
+	--color-surface-hover: oklch(0.9798 0.0044 78.21);
 	
-	--color-text: #1f1f1f;
-	--color-text-secondary: #525252;
-	--color-text-muted: #686c76;
+	--color-text: oklch(0.2393 0.0000 0);
+	--color-text-secondary: oklch(0.4386 0.0000 0);
+	--color-text-muted: oklch(0.5313 0.0164 268.35);
 	
-	--color-border: #e5e2dc;
-	--color-border-hover: #d1cdc5;
+	--color-border: oklch(0.9135 0.0086 84.59);
+	--color-border-hover: oklch(0.8493 0.0117 84.59);
 	
 	/* Shadows - Softer */
 	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
@@ -73,23 +73,23 @@
 	--header-height: 4rem;
 }
 
-/* Dark Theme - Cozy dark */
+/* Dark Theme */
 [data-theme="dark"] {
-	--color-primary: #818cf8;
-	--color-primary-hover: #6366f1;
+	--color-primary: oklch(0.6801 0.1584 276.94);
+	--color-primary-hover: oklch(0.5854 0.2041 277.12);
 
-	--color-bg: #18181b;
-	--color-bg-secondary: #1f1f23;
-	--color-bg-tertiary: #27272a;
-	--color-surface: #1f1f23;
-	--color-surface-hover: #27272a;
+	--color-bg: oklch(0.2103 0.0059 285.82);
+	--color-bg-secondary: oklch(0.2410 0.0076 285.76);
+	--color-bg-tertiary: oklch(0.2739 0.0055 285.94);
+	--color-surface: oklch(0.2410 0.0076 285.76);
+	--color-surface-hover: oklch(0.2739 0.0055 285.94);
 	
-	--color-text: #fafafa;
-	--color-text-secondary: #a1a1aa;
-	--color-text-muted: #9494a0;
+	--color-text: oklch(0.9851 0.0000 0);
+	--color-text-secondary: oklch(0.7118 0.0130 285.96);
+	--color-text-muted: oklch(0.6704 0.0176 285.85);
 	
-	--color-border: #2e2e33;
-	--color-border-hover: #3f3f46;
+	--color-border: oklch(0.3032 0.0089 285.79);
+	--color-border-hover: oklch(0.3703 0.0119 285.75);
 	
 	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
 	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
