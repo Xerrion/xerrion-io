@@ -42,8 +42,9 @@
     selectedIds = new Set();
   }
 
-  function formatBytes(bytes: number | null) {
-    if (!bytes) return '0 B';
+  function formatBytes(bytes: number | null | undefined) {
+    if (bytes == null) return '—';
+    if (bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -106,7 +107,9 @@
             
             <div class="meta-row">
               <span class="badge">{photo.categoryName}</span>
-              <span class="size">{formatBytes(photo.fileSize)}</span>
+              <span class="sizes" title="thumb / medium / full">
+                {formatBytes(photo.thumbSize)} / {formatBytes(photo.mediumSize)} / {formatBytes(photo.fullSize)}
+              </span>
             </div>
             
             <div class="meta-row">
@@ -313,6 +316,12 @@
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+  }
+
+  .sizes {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    white-space: nowrap;
   }
 
   .actions {

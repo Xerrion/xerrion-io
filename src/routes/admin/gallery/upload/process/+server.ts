@@ -98,8 +98,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 				send('saving');
 				await db.execute({
-					sql: `INSERT INTO photo (category_id, original_name, blob_path, thumb_url, medium_url, full_url, width, height, file_size)
-						  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					sql: `INSERT INTO photo (category_id, original_name, blob_path, thumb_url, medium_url, full_url, width, height, thumb_size, medium_size, full_size)
+						  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 					args: [
 						categoryId,
 						originalName,
@@ -109,7 +109,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						fullBlob.url,
 						processed.originalWidth,
 						processed.originalHeight,
-						inputBuffer.byteLength
+						processed.thumb.byteLength,
+						processed.medium.byteLength,
+						processed.full.byteLength
 					]
 				});
 
