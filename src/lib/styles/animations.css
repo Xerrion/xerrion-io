@@ -1,83 +1,13 @@
-/* Animations */
-
-/* Fade In */
-@keyframes fadeIn {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-	}
-}
-
-/* Fade In Up */
-@keyframes fadeInUp {
-	from {
-		opacity: 0;
-		transform: translateY(20px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
-/* Fade In Down */
-@keyframes fadeInDown {
-	from {
-		opacity: 0;
-		transform: translateY(-20px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
-/* Scale In */
-@keyframes scaleIn {
-	from {
-		opacity: 0;
-		transform: scale(0.95);
-	}
-	to {
-		opacity: 1;
-		transform: scale(1);
-	}
-}
-
-/* Slide In Left */
-@keyframes slideInLeft {
-	from {
-		opacity: 0;
-		transform: translateX(-20px);
-	}
-	to {
-		opacity: 1;
-		transform: translateX(0);
-	}
-}
-
-/* Utility Classes */
-.animate-fade-in {
-	animation: fadeIn var(--transition-slow) ease-out;
-}
-
-.animate-fade-in-up {
-	animation: fadeInUp var(--transition-slow) ease-out;
-}
-
-.animate-fade-in-down {
-	animation: fadeInDown var(--transition-slow) ease-out;
-}
-
-.animate-scale-in {
-	animation: scaleIn var(--transition-slow) ease-out;
-}
-
-.animate-slide-in-left {
-	animation: slideInLeft var(--transition-slow) ease-out;
-}
+/* Animations
+ *
+ * Most entrance animations now use the Web Animations API (WAAPI)
+ * via Svelte actions in $lib/utils/animate.ts.
+ *
+ * This file retains:
+ *  - Hover-lift utility class (CSS transitions)
+ *  - Reduced-motion global override
+ *  - slideInUpSmall keyframe (used by gallery badges only)
+ */
 
 /* Slide In Up Small — subtle micro entrance (used by gallery badges) */
 @keyframes slideInUpSmall {
@@ -100,16 +30,6 @@
 	transform: translateY(-4px);
 	box-shadow: var(--shadow-lg);
 }
-
-/* Staggered animations */
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
-.stagger-5 { animation-delay: 0.5s; }
-.stagger-6 { animation-delay: 0.6s; }
-.stagger-7 { animation-delay: 0.7s; }
-.stagger-8 { animation-delay: 0.8s; }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {

@@ -12,6 +12,8 @@ export interface Photo {
 	thumbUrl?: string;
 	mediumUrl?: string;
 	fullUrl?: string;
+	width?: number;
+	height?: number;
 	category: string;
 	createdAt: Date;
 }
