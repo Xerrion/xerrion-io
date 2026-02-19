@@ -5,6 +5,7 @@
 	import GalleryLightbox from '$lib/components/gallery/GalleryLightbox.svelte';
 	import { breadcrumbSchema } from '$lib/seo';
 	import type { PhotoCategory, Photo } from '$lib/gallery';
+	import { motion, AnimatePresence } from '@humanspeak/svelte-motion';
 
 	interface Props {
 		data: {
@@ -43,8 +44,10 @@
 		gridVisible = false;
 		setTimeout(() => {
 			selectedCategory = slug;
-			gridVisible = true;
-		}, 200);
+			requestAnimationFrame(() => {
+				gridVisible = true;
+			});
+		}, 250);
 	}
 
 	function openLightbox(photo: Photo) {
@@ -81,10 +84,15 @@
 
 <div class="gallery-page">
 	<div class="container">
-		<header class="gallery-header">
+		<motion.header
+			class="gallery-header"
+			initial={{ opacity: 0, y: -16 }}
+			animate={{ opacity: 1, y: 0 }}
+			transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+		>
 			<h1>Gallery</h1>
 			<p class="subtitle">Photos from life. Mostly Charlie, let's be honest.</p>
-		</header>
+		</motion.header>
 
 		{#if data.error}
 			<div class="gallery-error">
@@ -102,7 +110,14 @@
 			{#if selectedCategory}
 				{@const info = getCategoryInfo(selectedCategory)}
 				{#if info?.description}
-					<p class="category-description">{info.description}</p>
+					<motion.p
+						class="category-description"
+						initial={{ opacity: 0, y: 8 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.35 }}
+					>
+						{info.description}
+					</motion.p>
 				{/if}
 			{/if}
 
@@ -117,15 +132,17 @@
 	</div>
 </div>
 
-{#if lightboxPhoto}
-	<GalleryLightbox
-		photo={lightboxPhoto}
-		photos={displayedPhotos()}
-		categories={data.categories}
-		onclose={closeLightbox}
-		onnavigate={navigateLightbox}
-	/>
-{/if}
+<AnimatePresence>
+	{#if lightboxPhoto}
+		<GalleryLightbox
+			photo={lightboxPhoto}
+			photos={displayedPhotos()}
+			categories={data.categories}
+			onclose={closeLightbox}
+			onnavigate={navigateLightbox}
+		/>
+	{/if}
+</AnimatePresence>
 
 <style>
 	.gallery-page {
@@ -133,20 +150,14 @@
 		min-height: calc(100vh - var(--header-height) - 200px);
 	}
 
-	.gallery-header {
+	:global(.gallery-header) {
 		margin-bottom: var(--space-8);
-		animation: fadeInDown 0.5s ease-out;
 	}
 
-	@keyframes fadeInDown {
-		from { opacity: 0; transform: translateY(-12px); }
-		to { opacity: 1; transform: translateY(0); }
-	}
-
-	.gallery-header h1 {
+	:global(.gallery-header) h1 {
 		font-size: var(--text-4xl);
 		margin-bottom: var(--space-2);
-		letter-spacing: -0.02em;
+		letter-spacing: -0.03em;
 	}
 
 	.subtitle {
@@ -155,16 +166,10 @@
 		margin: 0;
 	}
 
-	.category-description {
+	:global(.category-description) {
 		color: var(--color-text-muted);
 		font-size: var(--text-sm);
 		margin: 0 0 var(--space-6);
-		animation: fadeIn 0.3s ease-out;
-	}
-
-	@keyframes fadeIn {
-		from { opacity: 0; }
-		to { opacity: 1; }
 	}
 
 	@media (max-width: 768px) {
@@ -172,15 +177,8 @@
 			padding: var(--space-8) 0 var(--space-16);
 		}
 
-		.gallery-header h1 {
+		:global(.gallery-header) h1 {
 			font-size: var(--text-3xl);
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.gallery-header,
-		.category-description {
-			animation: none;
 		}
 	}
 
