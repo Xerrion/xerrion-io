@@ -60,9 +60,36 @@ function resolveColorSpace(space: number | string | undefined): string | null {
 	return null;
 }
 
+/**
+ * Wraps a raw EXIF buffer (starting with 'Exif\0\0') in a minimal JPEG
+ * container so exifr can parse it. HEIC files can't be parsed directly
+ * by exifr, but sharp can read HEIC container metadata. We extract the
+ * raw EXIF buffer from sharp and wrap it in SOI + APP1 + EOI.
+ */
+function wrapExifInJpeg(exifBuf: Buffer): Buffer {
+	const app1Len = exifBuf.length + 2;
+	return Buffer.concat([
+		Buffer.from([0xff, 0xd8]), // SOI
+		Buffer.from([0xff, 0xe1]), // APP1 marker
+		Buffer.from([(app1Len >> 8) & 0xff, app1Len & 0xff]),
+		exifBuf,
+		Buffer.from([0xff, 0xd9]) // EOI
+	]);
+}
+
 async function extractMetadata(buffer: Buffer): Promise<ImageMetadata> {
 	try {
-		const exif = await exifr.parse(buffer, {
+		let parseBuf: Buffer = buffer;
+
+		// For HEIC files, exifr can't parse the container directly.
+		// Use sharp to extract the raw EXIF buffer and wrap it in JPEG.
+		if (isHeic(buffer)) {
+			const meta = await sharp(buffer).metadata();
+			if (!meta.exif) return emptyMetadata();
+			parseBuf = wrapExifInJpeg(Buffer.from(meta.exif));
+		}
+
+		const exif = await exifr.parse(parseBuf, {
 			pick: [
 				'Make', 'Model', 'LensModel',
 				'ISO', 'FNumber', 'ExposureTime', 'FocalLength',
