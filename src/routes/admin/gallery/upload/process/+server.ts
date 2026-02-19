@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { put, del } from '@vercel/blob';
-import { processImage, generateBlobPath } from '$lib/server/image';
+import { processImage, generateBlobPath, randomSuffix } from '$lib/server/image';
 import type { ProcessingStep } from '$lib/server/image';
 import { env } from '$env/dynamic/private';
 
@@ -71,9 +71,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					send(step);
 				});
 
-				const thumbPath = generateBlobPath(categorySlug, originalName, 'thumb');
-				const mediumPath = generateBlobPath(categorySlug, originalName, 'medium');
-				const fullPath = generateBlobPath(categorySlug, originalName, 'full');
+				const suffix = randomSuffix();
+				const thumbPath = generateBlobPath(categorySlug, originalName, 'thumb', suffix);
+				const mediumPath = generateBlobPath(categorySlug, originalName, 'medium', suffix);
+				const fullPath = generateBlobPath(categorySlug, originalName, 'full', suffix);
 
 				send('uploading:thumb');
 				const thumbBlob = await put(thumbPath, processed.thumb.buffer, {

@@ -92,7 +92,18 @@
     const parts = [meta.cameraMake, meta.cameraModel].filter(Boolean);
     return parts.length > 0 ? parts.join(' ') : '—';
   }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'a' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      if (!allSelected) {
+        selectedIds = new Set(filteredPhotos.map((p) => p.id));
+      }
+    }
+  }
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="page">
   <header class="header">

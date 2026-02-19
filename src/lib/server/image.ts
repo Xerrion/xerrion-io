@@ -234,11 +234,20 @@ export async function processImage(
 	};
 }
 
-export function generateBlobPath(categorySlug: string, baseName: string, size: SizeKey): string {
+export function generateBlobPath(
+	categorySlug: string,
+	baseName: string,
+	size: SizeKey,
+	suffix: string
+): string {
 	const sanitized = baseName
 		.replace(/\.[^.]+$/, '')
 		.replace(/[^a-zA-Z0-9_-]/g, '_')
 		.toLowerCase();
 
-	return `gallery/${categorySlug}/${sanitized}-${size}.webp`;
+	return `gallery/${categorySlug}/${sanitized}-${suffix}-${size}.webp`;
+}
+
+export function randomSuffix(): string {
+	return Math.random().toString(36).slice(2, 8);
 }
