@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Photo, PhotoCategory } from '$lib/gallery';
+	import { motion } from '@humanspeak/svelte-motion';
 
 	interface Props {
 		photos: Photo[];
@@ -23,38 +24,22 @@
 	function getCategoryInfo(slug: string): PhotoCategory | undefined {
 		return categories.find((c) => c.slug === slug);
 	}
-
-	function observeCard(node: HTMLElement, _index: number) {
-		const observer = new IntersectionObserver(
-			(entries) => {
-				entries.forEach((entry) => {
-					if (entry.isIntersecting) {
-						node.classList.add('visible');
-						observer.unobserve(node);
-					}
-				});
-			},
-			{ threshold: 0.1, rootMargin: '50px' }
-		);
-		observer.observe(node);
-		return {
-			destroy() {
-				observer.disconnect();
-			}
-		};
-	}
 </script>
 
 {#if photos.length > 0}
 	<div class="photo-masonry" class:grid-hidden={!visible}>
 		{#each photos as photo, index (photo.id)}
-			<figure
+			<motion.figure
 				class="photo-card"
-				style="--stagger: {Math.min(index, 15)}"
-				use:observeCard={index}
+				initial={{ opacity: 0, scale: 0.92, y: 24 }}
+				whileInView={{ opacity: 1, scale: 1, y: 0 }}
+				viewport={{ once: true, margin: "100px" }}
+				transition={{ duration: 0.6, delay: Math.min(index, 15) * 0.06, ease: [0.16, 1, 0.3, 1] }}
 			>
-				<button
+				<motion.button
 					class="photo-button"
+					whileHover={{ y: -4, transition: { duration: 0.15 } }}
+					whileTap={{ scale: 0.98 }}
 					onclick={() => onphotoclick(photo)}
 					aria-label="View {photo.name} in fullscreen"
 				>
@@ -73,14 +58,14 @@
 							<line x1="3" y1="21" x2="10" y2="14"></line>
 						</svg>
 					</div>
-				</button>
+				</motion.button>
 				{#if selectedCategory === null}
 					{@const categoryInfo = getCategoryInfo(photo.category)}
 					{#if categoryInfo}
 						<figcaption class="photo-badge">{categoryInfo.name}</figcaption>
 					{/if}
 				{/if}
-			</figure>
+			</motion.figure>
 		{/each}
 	</div>
 {:else}
@@ -108,33 +93,25 @@
 	.photo-masonry {
 		columns: 3;
 		column-gap: var(--space-4);
-		transition: opacity 0.2s ease;
+		transition: opacity 0.3s ease, transform 0.3s ease;
 	}
 
 	.photo-masonry.grid-hidden {
 		opacity: 0;
+		transform: scale(0.98);
 	}
 
 	/* ===== Photo Card ===== */
-	.photo-card {
+	:global(.photo-card) {
 		break-inside: avoid;
 		margin: 0 0 var(--space-4);
 		padding: 0;
 		position: relative;
 		border-radius: var(--radius-xl);
 		overflow: hidden;
-		opacity: 0;
-		transform: translateY(20px);
-		transition: opacity 0.5s ease-out, transform 0.5s ease-out;
-		transition-delay: calc(var(--stagger) * 50ms);
 	}
 
-	.photo-card:global(.visible) {
-		opacity: 1;
-		transform: translateY(0);
-	}
-
-	.photo-button {
+	:global(.photo-button) {
 		display: block;
 		width: 100%;
 		border: none;
@@ -147,7 +124,11 @@
 		border-radius: var(--radius-xl);
 	}
 
-	.photo-button:focus-visible {
+	:global(.photo-button:hover) {
+		box-shadow: var(--shadow-lg);
+	}
+
+	:global(.photo-button:focus-visible) {
 		outline: 2px solid var(--color-primary);
 		outline-offset: 2px;
 	}
@@ -178,20 +159,25 @@
 	}
 
 	/* Image */
-	.photo-button img {
+	:global(.photo-button img) {
 		display: block;
 		width: 100%;
 		height: auto;
 		opacity: 0;
-		transition: opacity 0.4s ease, transform 0.4s ease;
-	}
-
-	.photo-button img:global(.loaded) {
-		opacity: 1;
-	}
-
-	.photo-button:hover img:global(.loaded) {
+		filter: blur(8px);
 		transform: scale(1.04);
+		transition: opacity 0.5s ease, filter 0.6s ease, transform 0.6s ease;
+	}
+
+	:global(.photo-button img.loaded) {
+		opacity: 1;
+		filter: blur(0);
+		transform: scale(1);
+	}
+
+	:global(.photo-button:hover img.loaded) {
+		transform: scale(1.04);
+		filter: blur(0);
 	}
 
 	/* Hover overlay */
@@ -208,14 +194,23 @@
 		z-index: 2;
 	}
 
-	.photo-button:hover .photo-overlay,
-	.photo-button:focus-visible .photo-overlay {
+	:global(.photo-button:hover) .photo-overlay,
+	:global(.photo-button:focus-visible) .photo-overlay {
 		opacity: 1;
 	}
 
 	.expand-icon {
 		color: white;
 		filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+		transform: translateY(4px);
+		opacity: 0;
+		transition: transform 0.3s ease, opacity 0.3s ease;
+	}
+
+	:global(.photo-button:hover) .expand-icon,
+	:global(.photo-button:focus-visible) .expand-icon {
+		transform: translateY(0);
+		opacity: 1;
 	}
 
 	/* Category badge on card */
@@ -233,6 +228,7 @@
 		font-weight: 500;
 		z-index: 3;
 		pointer-events: none;
+		animation: slideInUpSmall 0.4s ease-out 0.3s both;
 	}
 
 	/* ===== Empty State ===== */
@@ -277,12 +273,12 @@
 			column-gap: var(--space-2);
 		}
 
-		.photo-card {
+		:global(.photo-card) {
 			margin-bottom: var(--space-2);
 			border-radius: var(--radius-lg);
 		}
 
-		.photo-button {
+		:global(.photo-button) {
 			border-radius: var(--radius-lg);
 		}
 	}
@@ -295,10 +291,15 @@
 
 	/* ===== Reduced Motion ===== */
 	@media (prefers-reduced-motion: reduce) {
-		.photo-card {
+		:global(.photo-button img) {
 			opacity: 1;
+			filter: none;
 			transform: none;
 			transition: none;
+		}
+
+		.photo-badge {
+			animation: none;
 		}
 
 		.empty-state {

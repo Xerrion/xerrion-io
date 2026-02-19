@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Photo, PhotoCategory } from '$lib/gallery';
+	import { motion } from '@humanspeak/svelte-motion';
 
 	interface Props {
 		photo: Photo;
@@ -12,6 +13,10 @@
 	let { photo, photos, categories, onclose, onnavigate }: Props = $props();
 
 	const currentIndex = $derived(photos.findIndex((p) => p.id === photo.id));
+
+	function handleClose() {
+		onclose();
+	}
 
 	// Touch/swipe gesture support
 	let touchStartX = $state(0);
@@ -53,7 +58,7 @@
 		} else if (touchDeltaX > SWIPE_THRESHOLD && Math.abs(touchDeltaY) < Math.abs(touchDeltaX)) {
 			onnavigate(-1);
 		} else if (touchDeltaY > SWIPE_Y_THRESHOLD && Math.abs(touchDeltaX) < Math.abs(touchDeltaY)) {
-			onclose();
+			handleClose();
 		}
 
 		touchDeltaX = 0;
@@ -83,7 +88,7 @@
 	});
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') onclose();
+		if (event.key === 'Escape') handleClose();
 		if (event.key === 'ArrowLeft') onnavigate(-1);
 		if (event.key === 'ArrowRight') onnavigate(1);
 	}
@@ -95,32 +100,41 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div
+<motion.div
 	class="lightbox-backdrop"
 	role="dialog"
 	aria-modal="true"
 	aria-label="Photo viewer"
 	tabindex="-1"
-	style:opacity={swipeOpacity()}
+	style={`opacity: ${swipeOpacity()}`}
 	ontouchstart={handleTouchStart}
 	ontouchmove={handleTouchMove}
 	ontouchend={handleTouchEnd}
+	initial={{ opacity: 0 }}
+	animate={{ opacity: 1 }}
+	exit={{ opacity: 0 }}
+	transition={{ duration: 0.3 }}
 >
-	<div class="lightbox-header">
+	<motion.div
+		class="lightbox-header"
+		initial={{ opacity: 0, y: -10 }}
+		animate={{ opacity: 1, y: 0 }}
+		transition={{ duration: 0.35, delay: 0.1 }}
+	>
 		<span class="lightbox-counter">
 			{currentIndex + 1} / {photos.length}
 		</span>
-		<button class="lightbox-btn lightbox-close" onclick={onclose} aria-label="Close viewer">
+		<button class="lightbox-btn lightbox-close" onclick={handleClose} aria-label="Close viewer">
 			<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 				<line x1="18" y1="6" x2="6" y2="18"></line>
 				<line x1="6" y1="6" x2="18" y2="18"></line>
 			</svg>
 		</button>
-	</div>
+	</motion.div>
 
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="lightbox-body" onclick={onclose}>
+	<div class="lightbox-body" onclick={handleClose}>
 		<button
 			class="lightbox-btn lightbox-nav lightbox-prev"
 			onclick={(e) => { e.stopPropagation(); onnavigate(-1); }}
@@ -131,10 +145,13 @@
 			</svg>
 		</button>
 
-		<div
+		<motion.div
 			class="lightbox-image-wrapper"
-			onclick={(e) => e.stopPropagation()}
-			style:transform={swipeTransform()}
+			onclick={(e: MouseEvent) => e.stopPropagation()}
+			style={`transform: ${swipeTransform()}`}
+			initial={{ opacity: 0, scale: 0.94 }}
+			animate={{ opacity: 1, scale: 1 }}
+			transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
 		>
 			{#key photo.id}
 				<img
@@ -143,7 +160,7 @@
 					alt={photo.name}
 				/>
 			{/key}
-		</div>
+		</motion.div>
 
 		<button
 			class="lightbox-btn lightbox-nav lightbox-next"
@@ -156,18 +173,23 @@
 		</button>
 	</div>
 
-	<div class="lightbox-footer">
+	<motion.div
+		class="lightbox-footer"
+		initial={{ opacity: 0, y: 10 }}
+		animate={{ opacity: 1, y: 0 }}
+		transition={{ duration: 0.35, delay: 0.15 }}
+	>
 		{#if getCategoryName(photo.category)}
 			<span class="lightbox-category">{getCategoryName(photo.category)}</span>
 		{/if}
 		{#if !swipeHintShown && photos.length > 1}
 			<span class="swipe-hint">Swipe to navigate</span>
 		{/if}
-	</div>
-</div>
+	</motion.div>
+</motion.div>
 
 <style>
-	.lightbox-backdrop {
+	:global(.lightbox-backdrop) {
 		position: fixed;
 		inset: 0;
 		z-index: 1000;
@@ -176,15 +198,9 @@
 		-webkit-backdrop-filter: blur(12px);
 		display: flex;
 		flex-direction: column;
-		animation: lightboxIn 0.25s ease-out;
 	}
 
-	@keyframes lightboxIn {
-		from { opacity: 0; }
-		to { opacity: 1; }
-	}
-
-	.lightbox-header {
+	:global(.lightbox-header) {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -255,7 +271,7 @@
 		right: var(--space-4);
 	}
 
-	.lightbox-image-wrapper {
+	:global(.lightbox-image-wrapper) {
 		max-width: calc(100vw - 160px);
 		max-height: calc(100vh - 160px);
 		display: flex;
@@ -270,16 +286,10 @@
 		max-height: calc(100vh - 160px);
 		object-fit: contain;
 		border-radius: var(--radius-lg);
-		animation: imageReveal 0.3s ease-out;
 		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 	}
 
-	@keyframes imageReveal {
-		from { opacity: 0; transform: scale(0.97); }
-		to { opacity: 1; transform: scale(1); }
-	}
-
-	.lightbox-footer {
+	:global(.lightbox-footer) {
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -317,16 +327,16 @@
 			padding: 0;
 		}
 
-		.lightbox-header {
+		:global(.lightbox-header) {
 			padding: var(--space-3) var(--space-4);
 		}
 
-		.lightbox-footer {
+		:global(.lightbox-footer) {
 			padding: var(--space-3) var(--space-4);
 			gap: var(--space-2);
 		}
 
-		.lightbox-image-wrapper {
+		:global(.lightbox-image-wrapper) {
 			max-width: 100vw;
 			max-height: calc(100vh - 120px);
 		}
@@ -351,19 +361,13 @@
 			padding: 0;
 		}
 
-		.lightbox-image-wrapper {
+		:global(.lightbox-image-wrapper) {
 			max-width: 100vw;
 		}
 	}
 
 	/* ===== Reduced Motion ===== */
 	@media (prefers-reduced-motion: reduce) {
-		.lightbox-backdrop {
-			animation: none;
-		}
-
-		.lightbox-image {
-			animation: none;
-		}
+		/* Motion is now handled by motion.div */
 	}
 </style>
