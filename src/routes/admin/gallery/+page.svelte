@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import { toastStore } from '$lib/stores/toast.svelte';
   import type { ImageMetadata } from '$lib/server/image';
+  import { scaleIn, slideUp, animateOut } from '$lib/utils/animate';
 
   let { data } = $props();
 
@@ -190,7 +191,7 @@
     </div>
 
     {#if selectionCount > 0}
-      <div class="bulk-bar">
+      <div class="bulk-bar" use:slideUp={{ duration: 200 }}>
         <span class="bulk-count">{selectionCount} photo{selectionCount !== 1 ? 's' : ''} selected</span>
         <div class="bulk-actions">
           <button class="btn text small" onclick={clearSelection}>Cancel</button>
@@ -227,7 +228,7 @@
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_interactive_supports_focus -->
   <div class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Photo details" onkeydown={handleModalKeydown}>
     <button class="modal-backdrop-close" onclick={closeDetail} aria-label="Close"></button>
-    <div class="modal">
+    <div class="modal" use:scaleIn={{ duration: 200 }}>
       <div class="modal-header">
         <h2>{detailPhoto.originalName}</h2>
         <button class="btn icon" onclick={closeDetail} aria-label="Close">
@@ -545,18 +546,6 @@
     gap: var(--space-4);
     box-shadow: var(--shadow-lg);
     z-index: 100;
-    animation: slide-up 0.2s ease-out;
-  }
-
-  @keyframes slide-up {
-    from {
-      opacity: 0;
-      transform: translateX(-50%) translateY(16px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
   }
 
   .bulk-count {
@@ -615,18 +604,6 @@
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
-    animation: modal-in 0.2s ease-out;
-  }
-
-  @keyframes modal-in {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
   }
 
   .modal-header {

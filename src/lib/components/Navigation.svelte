@@ -4,13 +4,80 @@
 	import ThemeToggle from './ThemeToggle.svelte';
 
 	let mobileMenuOpen = $state(false);
+	let navContentEl = $state<HTMLElement | null>(null);
+
+	const REDUCED_MOTION =
+		typeof window !== 'undefined' &&
+		window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	function isMobile() {
+		return typeof window !== 'undefined' && window.innerWidth <= 768;
+	}
 
 	function toggleMenu() {
 		mobileMenuOpen = !mobileMenuOpen;
+
+		if (!isMobile() || !navContentEl || REDUCED_MOTION) return;
+
+		if (mobileMenuOpen) {
+			// Animate menu in
+			navContentEl.style.transform = 'translateX(0)';
+			navContentEl.style.visibility = 'visible';
+			navContentEl.animate(
+				[
+					{ transform: 'translateX(100%)', opacity: 0 },
+					{ transform: 'translateX(0)', opacity: 1 }
+				],
+				{ duration: 280, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' }
+			);
+
+			// Stagger-animate nav links
+			const links = navContentEl.querySelectorAll<HTMLElement>('.nav-link');
+			links.forEach((link, i) => {
+				link.animate(
+					[
+						{ opacity: 0, transform: 'translateX(20px)' },
+						{ opacity: 1, transform: 'translateX(0)' }
+					],
+					{
+						duration: 300,
+						delay: 60 + i * 50,
+						easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+						fill: 'both'
+					}
+				);
+			});
+		} else {
+			// Animate menu out
+			const anim = navContentEl.animate(
+				[
+					{ transform: 'translateX(0)', opacity: 1 },
+					{ transform: 'translateX(100%)', opacity: 0 }
+				],
+				{ duration: 200, easing: 'ease-in', fill: 'forwards' }
+			);
+			anim.onfinish = () => {
+				if (navContentEl) navContentEl.style.visibility = '';
+			};
+		}
 	}
 
 	function closeMenu() {
+		if (!mobileMenuOpen) return;
 		mobileMenuOpen = false;
+
+		if (!isMobile() || !navContentEl || REDUCED_MOTION) return;
+
+		const anim = navContentEl.animate(
+			[
+				{ transform: 'translateX(0)', opacity: 1 },
+				{ transform: 'translateX(100%)', opacity: 0 }
+			],
+			{ duration: 200, easing: 'ease-in', fill: 'forwards' }
+		);
+		anim.onfinish = () => {
+			if (navContentEl) navContentEl.style.visibility = '';
+		};
 	}
 </script>
 
@@ -29,7 +96,7 @@
 			<span class="hamburger" class:open={mobileMenuOpen}></span>
 		</button>
 
-		<div class="nav-content" class:open={mobileMenuOpen}>
+		<div class="nav-content" class:open={mobileMenuOpen} bind:this={navContentEl}>
 			<ul class="nav-links">
 				{#each navigation as item}
 					<li>
@@ -186,10 +253,11 @@
 			padding: var(--space-8);
 			background-color: var(--color-bg);
 			transform: translateX(100%);
-			transition: transform var(--transition-base);
+			visibility: hidden;
 		}
 
 		.nav-content.open {
+			visibility: visible;
 			transform: translateX(0);
 		}
 

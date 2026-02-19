@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PhotoCategory } from '$lib/gallery';
+	import { motion } from '@humanspeak/svelte-motion';
 
 	interface Props {
 		categories: PhotoCategory[];
@@ -13,25 +14,33 @@
 </script>
 
 <nav class="category-filter" aria-label="Photo categories">
-	<button
-		class="filter-btn"
-		class:active={selectedCategory === null}
+	<motion.button
+		class="filter-btn {selectedCategory === null ? 'active' : ''}"
+		initial={{ opacity: 0, scale: 0.92, y: 8 }}
+		animate={{ opacity: 1, scale: 1, y: 0 }}
+		transition={{ duration: 0.4, delay: 0.15 }}
+		whileHover={{ y: -2, transition: { duration: 0.12 } }}
+		whileTap={{ scale: 0.95 }}
 		onclick={() => onselect(null)}
 	>
 		All
 		<span class="filter-count">{totalPhotos}</span>
-	</button>
-	{#each categories as category}
+	</motion.button>
+	{#each categories as category, i}
 		{@const count = photoCounts[category.slug] || 0}
 		{#if count > 0}
-			<button
-				class="filter-btn"
-				class:active={selectedCategory === category.slug}
+			<motion.button
+				class="filter-btn {selectedCategory === category.slug ? 'active' : ''}"
+				initial={{ opacity: 0, scale: 0.92, y: 8 }}
+				animate={{ opacity: 1, scale: 1, y: 0 }}
+				transition={{ duration: 0.4, delay: (i + 1) * 0.06 + 0.15 }}
+				whileHover={{ y: -2, transition: { duration: 0.12 } }}
+				whileTap={{ scale: 0.95 }}
 				onclick={() => onselect(category.slug)}
 			>
 				{category.name}
 				<span class="filter-count">{count}</span>
-			</button>
+			</motion.button>
 		{/if}
 	{/each}
 </nav>
@@ -42,15 +51,9 @@
 		flex-wrap: wrap;
 		gap: var(--space-2);
 		margin-bottom: var(--space-4);
-		animation: fadeInUp 0.5s ease-out 0.1s both;
 	}
 
-	@keyframes fadeInUp {
-		from { opacity: 0; transform: translateY(12px); }
-		to { opacity: 1; transform: translateY(0); }
-	}
-
-	.filter-btn {
+	:global(.filter-btn) {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
@@ -61,25 +64,32 @@
 		font-size: var(--text-sm);
 		color: var(--color-text-secondary);
 		cursor: pointer;
-		transition: all var(--transition-base);
+		transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base), box-shadow var(--transition-base);
 		font-weight: 500;
 	}
 
-	.filter-btn:hover {
+	:global(.filter-btn:hover) {
 		background-color: var(--color-bg-tertiary);
 		border-color: var(--color-border-hover);
 		color: var(--color-text);
-		transform: translateY(-1px);
+		box-shadow: var(--shadow-sm);
 	}
 
-	.filter-btn.active {
+	:global(.filter-btn.active .filter-count) {
+		opacity: 0.9;
+		background: rgba(255, 255, 255, 0.2);
+		padding: 0.1em 0.5em;
+		border-radius: var(--radius-full);
+	}
+
+	:global(.filter-btn.active) {
 		background-color: var(--color-primary);
 		border-color: var(--color-primary);
 		color: white;
 		box-shadow: 0 2px 8px color-mix(in oklch, var(--color-primary) 30%, transparent);
 	}
 
-	:global([data-theme="dark"]) .filter-btn.active {
+	:global([data-theme="dark"]) :global(.filter-btn.active) {
 		box-shadow: 0 2px 8px color-mix(in oklch, var(--color-primary-light) 25%, transparent);
 	}
 
@@ -90,7 +100,7 @@
 	}
 
 	@media (max-width: 480px) {
-		.filter-btn {
+		:global(.filter-btn) {
 			font-size: var(--text-xs);
 			padding: var(--space-1) var(--space-3);
 		}
