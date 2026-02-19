@@ -8,13 +8,12 @@
 
   const STEP_PROGRESS: Record<string, number> = {
     fetching: 72,
-    decoding: 75,
-    normalizing: 78,
+    decoding: 76,
     'resizing:thumb': 82,
-    'resizing:medium': 86,
-    'resizing:full': 90,
-    'uploading:thumb': 93,
-    'uploading:medium': 95,
+    'resizing:medium': 88,
+    'resizing:full': 92,
+    'uploading:thumb': 94,
+    'uploading:medium': 96,
     'uploading:full': 97,
     saving: 98,
     cleanup: 99,
@@ -24,7 +23,6 @@
   const STEP_LABELS: Record<string, string> = {
     fetching: 'Fetching…',
     decoding: 'Decoding HEIC…',
-    normalizing: 'Normalizing…',
     'resizing:thumb': 'Resizing thumbnail…',
     'resizing:medium': 'Resizing medium…',
     'resizing:full': 'Resizing full…',
