@@ -554,7 +554,7 @@
 
   .drop-zone.active {
     border-color: var(--color-primary);
-    background: rgba(91, 94, 224, 0.05);
+    background: color-mix(in oklch, var(--color-primary) 5%, transparent);
     border-style: solid;
   }
 
@@ -690,7 +690,7 @@
   .heic-badge {
     display: inline-block;
     padding: 1px 5px;
-    background: rgba(91, 94, 224, 0.1);
+    background: color-mix(in oklch, var(--color-primary) 10%, transparent);
     color: var(--color-primary);
     font-size: 10px;
     font-weight: 600;

@@ -179,22 +179,22 @@
 	}
 
 	.action-icon.upload {
-		background: rgba(99, 102, 241, 0.1);
+		background: color-mix(in oklch, var(--color-primary) 10%, transparent);
 		color: var(--color-primary);
 	}
 
 	.action-icon.gallery {
-		background: rgba(245, 158, 11, 0.1);
+		background: color-mix(in oklch, var(--color-accent) 15%, transparent);
 		color: var(--color-accent);
 	}
 
 	.action-icon.categories {
-		background: rgba(16, 185, 129, 0.1);
-		color: #10b981;
+		background: color-mix(in oklch, oklch(0.6957 0.1522 163.29) 10%, transparent);
+		color: oklch(0.6957 0.1522 163.29);
 	}
 
 	.action-icon.site {
-		background: rgba(99, 102, 241, 0.1);
+		background: color-mix(in oklch, var(--color-primary) 10%, transparent);
 		color: var(--color-primary-light);
 	}
 
