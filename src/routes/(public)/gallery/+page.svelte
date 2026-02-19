@@ -5,7 +5,8 @@
 	import GalleryLightbox from '$lib/components/gallery/GalleryLightbox.svelte';
 	import { breadcrumbSchema } from '$lib/seo';
 	import type { PhotoCategory, Photo } from '$lib/gallery';
-	import { motion } from '@humanspeak/svelte-motion';
+	import { fadeInDown, fadeInUp } from '$lib/utils/animate';
+
 
 	interface Props {
 		data: {
@@ -22,7 +23,7 @@
 	let lightboxPhoto = $state<Photo | null>(null);
 	let gridVisible = $state(true);
 
-	const displayedPhotos = $derived(() => {
+	const displayedPhotos = $derived.by(() => {
 		if (selectedCategory === null) {
 			return Object.values(data.photosByCategory)
 				.flat()
@@ -31,7 +32,7 @@
 		return data.photosByCategory[selectedCategory] || [];
 	});
 
-	const photoCounts = $derived(() => {
+	const photoCounts = $derived.by(() => {
 		const counts: Record<string, number> = {};
 		for (const [slug, photos] of Object.entries(data.photosByCategory)) {
 			counts[slug] = photos.length;
@@ -47,7 +48,7 @@
 			requestAnimationFrame(() => {
 				gridVisible = true;
 			});
-		}, 250);
+		}, 300);
 	}
 
 	function openLightbox(photo: Photo) {
@@ -60,8 +61,15 @@
 		document.body.style.overflow = '';
 	}
 
+	// Safety: restore body scroll if component unmounts while lightbox is open
+	$effect(() => {
+		return () => {
+			document.body.style.overflow = '';
+		};
+	});
+
 	function navigateLightbox(direction: 1 | -1) {
-		const photos = displayedPhotos();
+		const photos = displayedPhotos;
 		const currentIndex = lightboxPhoto ? photos.findIndex((p) => p.id === lightboxPhoto!.id) : -1;
 		if (currentIndex === -1) return;
 		const nextIndex = (currentIndex + direction + photos.length) % photos.length;
@@ -84,15 +92,10 @@
 
 <div class="gallery-page">
 	<div class="container">
-		<motion.header
-			class="gallery-header"
-			initial={{ opacity: 0, y: -16 }}
-			animate={{ opacity: 1, y: 0 }}
-			transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-		>
+		<header class="gallery-header" use:fadeInDown={{ duration: 500, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }}>
 			<h1>Gallery</h1>
 			<p class="subtitle">Photos from life. Mostly Charlie, let's be honest.</p>
-		</motion.header>
+		</header>
 
 		{#if data.error}
 			<div class="gallery-error">
@@ -101,7 +104,7 @@
 		{:else}
 			<CategoryFilter
 				categories={data.categories}
-				photoCounts={photoCounts()}
+				photoCounts={photoCounts}
 				totalPhotos={data.totalPhotos}
 				{selectedCategory}
 				onselect={selectCategory}
@@ -110,19 +113,14 @@
 			{#if selectedCategory}
 				{@const info = getCategoryInfo(selectedCategory)}
 				{#if info?.description}
-					<motion.p
-						class="category-description"
-						initial={{ opacity: 0, y: 8 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.35 }}
-					>
+					<p class="category-description" use:fadeInUp={{ duration: 350 }}>
 						{info.description}
-					</motion.p>
+					</p>
 				{/if}
 			{/if}
 
 			<PhotoGrid
-				photos={displayedPhotos()}
+				photos={displayedPhotos}
 				categories={data.categories}
 				{selectedCategory}
 				visible={gridVisible}
@@ -134,7 +132,7 @@
 
 <GalleryLightbox
 	photo={lightboxPhoto}
-	photos={displayedPhotos()}
+	photos={displayedPhotos}
 	categories={data.categories}
 	onclose={closeLightbox}
 	onnavigate={navigateLightbox}
@@ -146,11 +144,11 @@
 		min-height: calc(100vh - var(--header-height) - 200px);
 	}
 
-	:global(.gallery-header) {
+	.gallery-header {
 		margin-bottom: var(--space-8);
 	}
 
-	:global(.gallery-header) h1 {
+	.gallery-header h1 {
 		font-size: var(--text-4xl);
 		margin-bottom: var(--space-2);
 		letter-spacing: -0.03em;
@@ -162,7 +160,7 @@
 		margin: 0;
 	}
 
-	:global(.category-description) {
+	.category-description {
 		color: var(--color-text-muted);
 		font-size: var(--text-sm);
 		margin: 0 0 var(--space-6);
@@ -173,7 +171,7 @@
 			padding: var(--space-8) 0 var(--space-16);
 		}
 
-		:global(.gallery-header) h1 {
+		.gallery-header h1 {
 			font-size: var(--text-3xl);
 		}
 	}

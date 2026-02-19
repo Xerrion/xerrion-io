@@ -19,7 +19,7 @@ export const load: PageServerLoad = async () => {
 
 		const photoResult = await db.execute(
 			`SELECT p.id, p.original_name, p.thumb_url, p.medium_url, p.full_url,
-					p.uploaded_at, c.slug as category_slug
+					p.width, p.height, p.uploaded_at, c.slug as category_slug
 			 FROM photo p
 			 JOIN category c ON p.category_id = c.id
 			 ORDER BY p.uploaded_at DESC`
@@ -41,6 +41,8 @@ export const load: PageServerLoad = async () => {
 				thumbUrl: row.thumb_url as string,
 				mediumUrl: row.medium_url as string,
 				fullUrl: row.full_url as string,
+				width: row.width as number | undefined,
+				height: row.height as number | undefined,
 				category: slug,
 				createdAt: new Date(row.uploaded_at as string)
 			});
