@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS photo (
 	thumb_size INTEGER,
 	medium_size INTEGER,
 	full_size INTEGER,
+	metadata TEXT,
 	uploaded_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `;

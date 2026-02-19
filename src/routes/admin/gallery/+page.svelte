@@ -1,12 +1,16 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { toastStore } from '$lib/stores/toast.svelte';
+  import type { ImageMetadata } from '$lib/server/image';
 
   let { data } = $props();
 
   let selectedCategoryId = $state<string>('all');
   let selectedIds = $state<Set<number>>(new Set());
   let isDeleting = $state(false);
+
+  type Photo = (typeof data.photos)[number];
+  let detailPhoto = $state<Photo | null>(null);
 
   let filteredPhotos = $derived(
     selectedCategoryId === 'all'
@@ -42,6 +46,18 @@
     selectedIds = new Set();
   }
 
+  function openDetail(photo: Photo) {
+    detailPhoto = photo;
+  }
+
+  function closeDetail() {
+    detailPhoto = null;
+  }
+
+  function handleModalKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') closeDetail();
+  }
+
   function formatBytes(bytes: number | null | undefined) {
     if (bytes == null) return '—';
     if (bytes === 0) return '0 B';
@@ -49,6 +65,32 @@
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  function formatAperture(f: number | null | undefined) {
+    if (f == null) return '—';
+    return `f/${f}`;
+  }
+
+  function formatFocalLength(fl: number | null | undefined) {
+    if (fl == null) return '—';
+    return `${fl}mm`;
+  }
+
+  function formatDimensions(w: number | null | undefined, h: number | null | undefined) {
+    if (w == null || h == null) return '—';
+    return `${w} × ${h}`;
+  }
+
+  function formatDateTaken(d: string | null | undefined) {
+    if (!d) return '—';
+    return new Date(d).toLocaleString();
+  }
+
+  function formatCamera(meta: ImageMetadata | null | undefined) {
+    if (!meta) return '—';
+    const parts = [meta.cameraMake, meta.cameraModel].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : '—';
   }
 </script>
 
@@ -117,6 +159,9 @@
             </div>
 
             <div class="actions">
+              <button class="btn icon" title="Photo details" onclick={() => openDetail(photo)}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+              </button>
               <a href={photo.fullUrl} target="_blank" rel="noopener noreferrer" class="btn icon" title="View full size">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
               </a>
@@ -166,6 +211,93 @@
     {/if}
   {/if}
 </div>
+
+{#if detailPhoto}
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_interactive_supports_focus -->
+  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Photo details" onkeydown={handleModalKeydown}>
+    <button class="modal-backdrop-close" onclick={closeDetail} aria-label="Close"></button>
+    <div class="modal">
+      <div class="modal-header">
+        <h2>{detailPhoto.originalName}</h2>
+        <button class="btn icon" onclick={closeDetail} aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-preview">
+          <img src={detailPhoto.mediumUrl} alt={detailPhoto.originalName} />
+        </div>
+
+        <div class="modal-meta">
+          <div class="meta-section">
+            <h3>Image</h3>
+            <dl class="meta-grid">
+              <dt>Dimensions</dt>
+              <dd>{formatDimensions(detailPhoto.width, detailPhoto.height)}</dd>
+              <dt>Category</dt>
+              <dd>{detailPhoto.categoryName}</dd>
+              <dt>Uploaded</dt>
+              <dd>{new Date(detailPhoto.uploadedAt).toLocaleString()}</dd>
+            </dl>
+          </div>
+
+          <div class="meta-section">
+            <h3>File Sizes</h3>
+            <dl class="meta-grid">
+              <dt>Thumb</dt>
+              <dd>{formatBytes(detailPhoto.thumbSize)}</dd>
+              <dt>Medium</dt>
+              <dd>{formatBytes(detailPhoto.mediumSize)}</dd>
+              <dt>Full</dt>
+              <dd>{formatBytes(detailPhoto.fullSize)}</dd>
+            </dl>
+          </div>
+
+          {#if detailPhoto.metadata}
+            <div class="meta-section">
+              <h3>Camera</h3>
+              <dl class="meta-grid">
+                <dt>Camera</dt>
+                <dd>{formatCamera(detailPhoto.metadata)}</dd>
+                <dt>Lens</dt>
+                <dd>{detailPhoto.metadata.lensModel || '—'}</dd>
+                <dt>Date Taken</dt>
+                <dd>{formatDateTaken(detailPhoto.metadata.dateTaken)}</dd>
+              </dl>
+            </div>
+
+            <div class="meta-section">
+              <h3>Exposure</h3>
+              <dl class="meta-grid">
+                <dt>ISO</dt>
+                <dd>{detailPhoto.metadata.iso ?? '—'}</dd>
+                <dt>Aperture</dt>
+                <dd>{formatAperture(detailPhoto.metadata.aperture)}</dd>
+                <dt>Shutter Speed</dt>
+                <dd>{detailPhoto.metadata.shutterSpeed || '—'}</dd>
+                <dt>Focal Length</dt>
+                <dd>{formatFocalLength(detailPhoto.metadata.focalLength)}</dd>
+              </dl>
+            </div>
+
+            <div class="meta-section">
+              <h3>Color</h3>
+              <dl class="meta-grid">
+                <dt>Color Space</dt>
+                <dd>{detailPhoto.metadata.colorSpace || '—'}</dd>
+              </dl>
+            </div>
+          {:else}
+            <div class="meta-section">
+              <p class="no-metadata">No EXIF metadata available for this photo.</p>
+            </div>
+          {/if}
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .page {
@@ -441,6 +573,161 @@
   .btn.danger:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6);
+  }
+
+  .modal-backdrop-close {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal {
+    position: relative;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-lg);
+    max-width: 900px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modal-in 0.2s ease-out;
+  }
+
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .modal-header h2 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--color-text);
+  }
+
+  .modal-body {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 0;
+  }
+
+  .modal-preview {
+    padding: var(--space-4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-secondary);
+    min-height: 300px;
+  }
+
+  .modal-preview img {
+    max-width: 100%;
+    max-height: 60vh;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+  }
+
+  .modal-meta {
+    padding: var(--space-4);
+    border-left: 1px solid var(--color-border);
+    overflow-y: auto;
+    max-height: calc(90vh - 60px);
+  }
+
+  .meta-section {
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .meta-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .meta-section h3 {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--space-2) 0;
+  }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-1) var(--space-3);
+    font-size: var(--text-sm);
+    margin: 0;
+  }
+
+  .meta-grid dt {
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+
+  .meta-grid dd {
+    color: var(--color-text);
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    word-break: break-word;
+  }
+
+  .no-metadata {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    font-style: italic;
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    .modal-body {
+      grid-template-columns: 1fr;
+    }
+
+    .modal-meta {
+      border-left: none;
+      border-top: 1px solid var(--color-border);
+      max-height: none;
+    }
+
+    .modal-preview {
+      min-height: 200px;
+    }
   }
 
 </style>

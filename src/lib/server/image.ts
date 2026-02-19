@@ -1,4 +1,17 @@
 import sharp from 'sharp';
+import exifr from 'exifr';
+
+export interface ImageMetadata {
+	cameraMake: string | null;
+	cameraModel: string | null;
+	lensModel: string | null;
+	iso: number | null;
+	aperture: number | null;
+	shutterSpeed: string | null;
+	focalLength: number | null;
+	dateTaken: string | null;
+	colorSpace: string | null;
+}
 
 const SIZES = {
 	thumb: { width: 400, label: 'thumb' },
@@ -30,6 +43,68 @@ export interface ProcessedImageSet {
 	full: ProcessedImage;
 	originalWidth: number;
 	originalHeight: number;
+	metadata: ImageMetadata;
+}
+
+function formatShutterSpeed(exposureTime: number | undefined): string | null {
+	if (!exposureTime) return null;
+	if (exposureTime >= 1) return `${exposureTime}s`;
+	return `1/${Math.round(1 / exposureTime)}s`;
+}
+
+function resolveColorSpace(space: number | string | undefined): string | null {
+	if (space === 1 || space === 'sRGB') return 'sRGB';
+	if (space === 2 || space === 'Adobe RGB') return 'Adobe RGB';
+	if (space === 0xffff || space === 'Uncalibrated') return 'Uncalibrated';
+	if (typeof space === 'string') return space;
+	return null;
+}
+
+async function extractMetadata(buffer: Buffer): Promise<ImageMetadata> {
+	try {
+		const exif = await exifr.parse(buffer, {
+			pick: [
+				'Make', 'Model', 'LensModel',
+				'ISO', 'FNumber', 'ExposureTime', 'FocalLength',
+				'DateTimeOriginal', 'CreateDate',
+				'ColorSpace', 'ProfileDescription'
+			]
+		});
+
+		if (!exif) {
+			return emptyMetadata();
+		}
+
+		const dateTaken = exif.DateTimeOriginal || exif.CreateDate;
+
+		return {
+			cameraMake: exif.Make?.trim() || null,
+			cameraModel: exif.Model?.trim() || null,
+			lensModel: exif.LensModel?.trim() || null,
+			iso: exif.ISO ?? null,
+			aperture: exif.FNumber ?? null,
+			shutterSpeed: formatShutterSpeed(exif.ExposureTime),
+			focalLength: exif.FocalLength ?? null,
+			dateTaken: dateTaken instanceof Date ? dateTaken.toISOString() : null,
+			colorSpace: resolveColorSpace(exif.ColorSpace) || exif.ProfileDescription || null
+		};
+	} catch {
+		return emptyMetadata();
+	}
+}
+
+function emptyMetadata(): ImageMetadata {
+	return {
+		cameraMake: null,
+		cameraModel: null,
+		lensModel: null,
+		iso: null,
+		aperture: null,
+		shutterSpeed: null,
+		focalLength: null,
+		dateTaken: null,
+		colorSpace: null
+	};
 }
 
 function isHeic(buffer: Buffer): boolean {
@@ -111,7 +186,10 @@ export async function processImage(
 	inputBuffer: Buffer,
 	onProgress?: ProgressCallback
 ): Promise<ProcessedImageSet> {
-	const source = await prepareSource(inputBuffer, onProgress);
+	const [source, metadata] = await Promise.all([
+		prepareSource(inputBuffer, onProgress),
+		extractMetadata(inputBuffer)
+	]);
 
 	const [thumb, medium, full] = await Promise.all([
 		resizeToWebp(source, 'thumb', onProgress),
@@ -124,7 +202,8 @@ export async function processImage(
 		medium,
 		full,
 		originalWidth: source.width,
-		originalHeight: source.height
+		originalHeight: source.height,
+		metadata
 	};
 }
 

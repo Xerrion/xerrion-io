@@ -1,4 +1,5 @@
 import type { PageServerLoad, Actions } from './$types';
+import type { ImageMetadata } from '$lib/server/image';
 import { getDb } from '$lib/server/db';
 import { fail } from '@sveltejs/kit';
 import { del } from '@vercel/blob';
@@ -32,6 +33,7 @@ export const load: PageServerLoad = async () => {
 			thumbSize: row.thumb_size as number | null,
 			mediumSize: row.medium_size as number | null,
 			fullSize: row.full_size as number | null,
+			metadata: row.metadata ? (JSON.parse(row.metadata as string) as ImageMetadata) : null,
 			uploadedAt: row.uploaded_at as string
 		})),
 		categories: categoriesResult.rows.map((row) => ({
