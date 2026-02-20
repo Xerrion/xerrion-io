@@ -30,10 +30,23 @@ jobs:
           done
 
       - name: Delete stale branches
-        uses: beatlabs/delete-old-branches-action@4eeeb8740ff8b3cb310296ddd6b43c3387734588 # v0.0.11
-        with:
-          repo_token: ${{ github.token }}
-          date: '90 days ago'
-          dry_run: false
-          delete_tags: false
-          extra_protected_branch_regex: '^(master|main|develop|release/.*)$'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cutoff_ts=$(date -d '90 days ago' +%s)
+          gh api "repos/${GH_REPO}/branches" --paginate \
+            --jq '.[] | select(.name | test("^(master|main|develop|release/.*)$") | not) | .name' |
+          while read -r branch; do
+            last_commit=$(gh api "repos/${GH_REPO}/branches/${branch}" \
+              --jq '.commit.commit.committer.date' 2>/dev/null || echo "")
+            [ -z "$last_commit" ] && continue
+            open_prs=$(gh api "repos/${GH_REPO}/pulls?state=open&head=${GITHUB_REPOSITORY_OWNER}:${branch}" \
+              --jq 'length' 2>/dev/null || echo "0")
+            [ "$open_prs" != "0" ] && continue
+            last_ts=$(date -d "$last_commit" +%s)
+            if [ "$last_ts" -lt "$cutoff_ts" ]; then
+              echo "Deleting stale branch: ${branch} (last commit: ${last_commit})"
+              gh api --method DELETE "repos/${GH_REPO}/git/refs/heads/${branch}"
+            fi
+          done
