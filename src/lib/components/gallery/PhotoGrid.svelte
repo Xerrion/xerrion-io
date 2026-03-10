@@ -130,6 +130,7 @@
 
 		<div class="photo-masonry" class:grid-hidden={!visible}>
 		{#each photos as photo, index (photo.id)}
+			{@const srcset = [photo.thumbUrl ? `${photo.thumbUrl} 400w` : '', photo.mediumUrl ? `${photo.mediumUrl} 1200w` : ''].filter(Boolean).join(', ')}
 			<figure
 				class="photo-card"
 				use:revealOnScroll
@@ -142,6 +143,8 @@
 					<div class="photo-shimmer"></div>
 					<img
 						src={photo.thumbUrl || photo.url}
+						srcset={srcset || undefined}
+						sizes="(max-width: 480px) 100vw, (max-width: 1024px) 50vw, 33vw"
 						alt={photo.name}
 						width={photo.width}
 						height={photo.height}

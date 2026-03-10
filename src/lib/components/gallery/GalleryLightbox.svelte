@@ -12,15 +12,16 @@
 
 	let { photo, photos, categories, onclose, onnavigate }: Props = $props();
 
-	const currentIndex = $derived(photo ? photos.findIndex((p) => p.id === photo!.id) : -1);
+	// ─── Visibility state (controls DOM mount, decoupled from `photo` for exit anim) ───
+	let showLightbox = $state(false);
+	let fallbackPhoto = $state<Photo | null>(null);
+	const activePhoto = $derived(photo || fallbackPhoto);
+
+	const currentIndex = $derived(activePhoto ? photos.findIndex((p) => p.id === activePhoto.id) : -1);
 
 	// Adjacent photos for carousel peek
 	const prevPhoto = $derived(currentIndex > 0 ? photos[currentIndex - 1] : null);
 	const nextPhoto = $derived(currentIndex < photos.length - 1 ? photos[currentIndex + 1] : null);
-
-	// ─── Visibility state (controls DOM mount, decoupled from `photo` for exit anim) ───
-	let showLightbox = $state(false);
-	let displayedPhoto = $state<Photo | null>(null);
 
 	// Navigation & closing state
 	let isNavigating = $state(false);
@@ -48,12 +49,12 @@
 	// ─── Open/close lifecycle ─────────────────────────────────────
 
 	$effect(() => {
-		if (photo && !showLightbox && !isClosing) {
-			displayedPhoto = photo;
-			showLightbox = true;
-			tick().then(animateOpen);
-		} else if (photo && showLightbox) {
-			displayedPhoto = photo;
+		if (photo) {
+			fallbackPhoto = photo;
+			if (!showLightbox && !isClosing) {
+				showLightbox = true;
+				tick().then(animateOpen);
+			}
 		}
 	});
 
@@ -93,7 +94,7 @@
 	async function animateClose() {
 		if (prefersReducedMotion) {
 			showLightbox = false;
-			displayedPhoto = null;
+			fallbackPhoto = null;
 			return;
 		}
 
@@ -134,14 +135,14 @@
 
 		await Promise.all(animations.map((a) => a.finished));
 		showLightbox = false;
-		displayedPhoto = null;
+		fallbackPhoto = null;
 	}
 
 	// Swipe-down close: continues from gesture position instead of resetting
 	async function animateSwipeClose(currentY: number, currentOpacity: number) {
 		if (prefersReducedMotion) {
 			showLightbox = false;
-			displayedPhoto = null;
+			fallbackPhoto = null;
 			return;
 		}
 
@@ -187,7 +188,7 @@
 
 		await Promise.all(animations.map((a) => a.finished));
 		showLightbox = false;
-		displayedPhoto = null;
+		fallbackPhoto = null;
 	}
 
 	// Reset state when lightbox fully closes
@@ -297,8 +298,11 @@
 
 		if (swipeDirection === 'horizontal') {
 			event.preventDefault();
-			// Move the track horizontally
-			const dampened = touchDeltaX * DAMPEN_X;
+			// Move the track horizontally with resistance at the edges
+			let dampened = touchDeltaX * DAMPEN_X;
+			if (currentIndex <= 0 && touchDeltaX > 0) dampened *= 0.3;
+			if (currentIndex >= photos.length - 1 && touchDeltaX < 0) dampened *= 0.3;
+			
 			if (trackEl) {
 				trackEl.style.transform = `translateX(calc(-100% + ${dampened}px))`;
 			}
@@ -328,9 +332,9 @@
 		const dy = touchDeltaY;
 
 		if (dir === 'horizontal') {
-			if (dx < -SWIPE_THRESHOLD) {
+			if (dx < -SWIPE_THRESHOLD && currentIndex < photos.length - 1) {
 				handleNavigate(1);
-			} else if (dx > SWIPE_THRESHOLD) {
+			} else if (dx > SWIPE_THRESHOLD && currentIndex > 0) {
 				handleNavigate(-1);
 			} else {
 				// Snap back horizontally
@@ -433,12 +437,26 @@
 	function getCategoryName(slug: string): string | undefined {
 		return categories.find((c) => c.slug === slug)?.name;
 	}
+
+	function getImageStyle(p: Photo) {
+		const styles = [];
+		if (p.width && p.height) {
+			styles.push(`aspect-ratio: ${p.width} / ${p.height}`);
+		}
+		if (p.thumbUrl) {
+			styles.push(`background-image: url('${p.thumbUrl}')`);
+			styles.push(`background-size: contain`);
+			styles.push(`background-position: center`);
+			styles.push(`background-repeat: no-repeat`);
+		}
+		return styles.join('; ');
+	}
 </script>
 
 <svelte:window onkeydown={showLightbox ? handleKeydown : undefined} />
 
-{#if showLightbox && displayedPhoto}
-	{@const currentPhoto = displayedPhoto}
+{#if showLightbox && activePhoto}
+	{@const currentPhoto = activePhoto}
 	<div
 		class="lightbox-backdrop"
 		role="dialog"
@@ -473,15 +491,17 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="lightbox-body" onclick={handleClose}>
-			<button
-				class="lightbox-btn lightbox-nav lightbox-prev"
-				onclick={(e) => { e.stopPropagation(); handleNavigate(-1); }}
-				aria-label="Previous photo"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<polyline points="15 18 9 12 15 6"></polyline>
-				</svg>
-			</button>
+			{#if currentIndex > 0}
+				<button
+					class="lightbox-btn lightbox-nav lightbox-prev"
+					onclick={(e) => { e.stopPropagation(); handleNavigate(-1); }}
+					aria-label="Previous photo"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<polyline points="15 18 9 12 15 6"></polyline>
+					</svg>
+				</button>
+			{/if}
 
 			<div
 				class="lightbox-image-wrapper"
@@ -498,7 +518,10 @@
 							<img
 								class="lightbox-image"
 								src={prevPhoto.fullUrl || prevPhoto.url}
+								srcset={[prevPhoto.mediumUrl ? `${prevPhoto.mediumUrl} 1200w` : '', (prevPhoto.fullUrl || prevPhoto.url) ? `${prevPhoto.fullUrl || prevPhoto.url} 2400w` : ''].filter(Boolean).join(', ') || undefined}
+								sizes="100vw"
 								alt={prevPhoto.name}
+								style={getImageStyle(prevPhoto)}
 							/>
 						{/if}
 					</div>
@@ -507,7 +530,10 @@
 						<img
 							class="lightbox-image"
 							src={currentPhoto.fullUrl || currentPhoto.url}
+							srcset={[currentPhoto.mediumUrl ? `${currentPhoto.mediumUrl} 1200w` : '', (currentPhoto.fullUrl || currentPhoto.url) ? `${currentPhoto.fullUrl || currentPhoto.url} 2400w` : ''].filter(Boolean).join(', ') || undefined}
+							sizes="100vw"
 							alt={currentPhoto.name}
+							style={getImageStyle(currentPhoto)}
 						/>
 					</div>
 					<!-- Next photo slot -->
@@ -516,22 +542,27 @@
 							<img
 								class="lightbox-image"
 								src={nextPhoto.fullUrl || nextPhoto.url}
+								srcset={[nextPhoto.mediumUrl ? `${nextPhoto.mediumUrl} 1200w` : '', (nextPhoto.fullUrl || nextPhoto.url) ? `${nextPhoto.fullUrl || nextPhoto.url} 2400w` : ''].filter(Boolean).join(', ') || undefined}
+								sizes="100vw"
 								alt={nextPhoto.name}
+								style={getImageStyle(nextPhoto)}
 							/>
 						{/if}
 					</div>
 				</div>
 			</div>
 
-			<button
-				class="lightbox-btn lightbox-nav lightbox-next"
-				onclick={(e) => { e.stopPropagation(); handleNavigate(1); }}
-				aria-label="Next photo"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<polyline points="9 18 15 12 9 6"></polyline>
-				</svg>
-			</button>
+			{#if currentIndex < photos.length - 1}
+				<button
+					class="lightbox-btn lightbox-nav lightbox-next"
+					onclick={(e) => { e.stopPropagation(); handleNavigate(1); }}
+					aria-label="Next photo"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<polyline points="9 18 15 12 9 6"></polyline>
+					</svg>
+				</button>
+			{/if}
 		</div>
 
 		<div class="lightbox-footer" bind:this={footerEl}>
@@ -649,6 +680,7 @@
 
 	.lightbox-image-wrapper {
 		width: calc(100vw - 160px);
+		height: 100%;
 		max-height: calc(100vh - 160px);
 		overflow: hidden;
 		display: flex;
@@ -662,12 +694,14 @@
 	.lightbox-track {
 		display: flex;
 		width: 300%;
+		height: 100%;
 		transform: translateX(-100%);
 		will-change: transform;
 	}
 
 	.lightbox-slide {
 		width: 100%;
+		height: 100%;
 		flex-shrink: 0;
 		display: flex;
 		align-items: center;
@@ -676,7 +710,7 @@
 
 	.lightbox-image {
 		max-width: 100%;
-		max-height: calc(100vh - 160px);
+		max-height: 100%;
 		object-fit: contain;
 		border-radius: var(--radius-lg);
 		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -736,11 +770,12 @@
 
 		.lightbox-image-wrapper {
 			width: 100vw;
+			height: 100%;
 			max-height: calc(100vh - 120px);
 		}
 
 		.lightbox-image {
-			max-height: calc(100vh - 120px);
+			max-height: 100%;
 			border-radius: 0;
 		}
 	}
