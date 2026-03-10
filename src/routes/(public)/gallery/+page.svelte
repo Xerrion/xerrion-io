@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import CategoryFilter from '$lib/components/gallery/CategoryFilter.svelte';
 	import PhotoGrid from '$lib/components/gallery/PhotoGrid.svelte';
@@ -7,11 +8,11 @@
 	import type { PhotoCategory, Photo } from '$lib/gallery';
 	import { fadeInDown, fadeInUp } from '$lib/utils/animate';
 
-
 	interface Props {
 		data: {
 			categories: PhotoCategory[];
-			photosByCategory: Record<string, Photo[]>;
+			initialPhotos: Photo[];
+			photoCounts: Record<string, number>;
 			totalPhotos: number;
 			error: string | null;
 		};
@@ -23,28 +24,89 @@
 	let lightboxPhoto = $state<Photo | null>(null);
 	let gridVisible = $state(true);
 
-	const displayedPhotos = $derived.by(() => {
-		if (selectedCategory === null) {
-			return Object.values(data.photosByCategory)
-				.flat()
-				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-		}
-		return data.photosByCategory[selectedCategory] || [];
-	});
+	let allPhotos = $state<Photo[]>(untrack(() => data.initialPhotos));
+	let loadingMore = $state(false);
+	let hasMore = $state(untrack(() => data.initialPhotos.length >= 20));
+	let sentinel = $state<HTMLElement | null>(null);
 
-	const photoCounts = $derived.by(() => {
-		const counts: Record<string, number> = {};
-		for (const [slug, photos] of Object.entries(data.photosByCategory)) {
-			counts[slug] = photos.length;
+	const displayedPhotos = $derived(allPhotos);
+
+	async function fetchPhotos(category: string | null, offset: number) {
+		const params = new URLSearchParams();
+		if (category) params.set('category', category);
+		params.set('offset', offset.toString());
+		params.set('limit', '20');
+
+		const res = await fetch(`/api/gallery/photos?${params.toString()}`);
+		const json = await res.json();
+		// Convert dates back to Date objects
+		return (json.photos || []).map((p: any) => ({
+			...p,
+			createdAt: new Date(p.createdAt)
+		})) as Photo[];
+	}
+
+	async function loadMore() {
+		if (loadingMore || !hasMore) return;
+		loadingMore = true;
+
+		try {
+			const newPhotos = await fetchPhotos(selectedCategory, allPhotos.length);
+			if (newPhotos.length === 0) {
+				hasMore = false;
+			} else {
+				const existingIds = new Set(allPhotos.map((p) => p.id));
+				const uniqueNew = newPhotos.filter((p) => !existingIds.has(p.id));
+				allPhotos = [...allPhotos, ...uniqueNew];
+				if (newPhotos.length < 20) {
+					hasMore = false;
+				}
+			}
+		} catch (error) {
+			console.error('Failed to load more photos:', error);
+		} finally {
+			loadingMore = false;
 		}
-		return counts;
+	}
+
+	$effect(() => {
+		if (!sentinel) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting) {
+					if (!loadingMore && hasMore) {
+						loadMore();
+					}
+				}
+			},
+			{ rootMargin: '400px' }
+		);
+
+		observer.observe(sentinel);
+		return () => observer.disconnect();
 	});
 
 	function selectCategory(slug: string | null) {
 		if (slug === selectedCategory) return;
 		gridVisible = false;
-		setTimeout(() => {
+		
+		setTimeout(async () => {
 			selectedCategory = slug;
+			allPhotos = [];
+			hasMore = true;
+			loadingMore = true;
+
+			try {
+				const photos = await fetchPhotos(slug, 0);
+				allPhotos = photos;
+				if (photos.length < 20) hasMore = false;
+			} catch (error) {
+				console.error('Failed to load category photos:', error);
+			} finally {
+				loadingMore = false;
+			}
+
 			requestAnimationFrame(() => {
 				gridVisible = true;
 			});
@@ -72,7 +134,8 @@
 		const photos = displayedPhotos;
 		const currentIndex = lightboxPhoto ? photos.findIndex((p) => p.id === lightboxPhoto!.id) : -1;
 		if (currentIndex === -1) return;
-		const nextIndex = (currentIndex + direction + photos.length) % photos.length;
+		const nextIndex = currentIndex + direction;
+		if (nextIndex < 0 || nextIndex >= photos.length) return;
 		lightboxPhoto = photos[nextIndex];
 	}
 
@@ -104,7 +167,7 @@
 		{:else}
 			<CategoryFilter
 				categories={data.categories}
-				photoCounts={photoCounts}
+				photoCounts={data.photoCounts}
 				totalPhotos={data.totalPhotos}
 				{selectedCategory}
 				onselect={selectCategory}
@@ -126,6 +189,14 @@
 				visible={gridVisible}
 				onphotoclick={openLightbox}
 			/>
+
+			{#if hasMore}
+				<div class="sentinel" bind:this={sentinel}>
+					{#if loadingMore}
+						<div class="loading-spinner"></div>
+					{/if}
+				</div>
+			{/if}
 		{/if}
 	</div>
 </div>
@@ -181,5 +252,27 @@
 		padding: var(--space-16) var(--space-4);
 		color: var(--color-text-muted);
 		font-size: var(--text-lg);
+	}
+
+	.sentinel {
+		display: flex;
+		justify-content: center;
+		padding: var(--space-8) 0;
+		min-height: 80px;
+	}
+
+	.loading-spinner {
+		width: 32px;
+		height: 32px;
+		border: 3px solid var(--color-border);
+		border-top-color: var(--color-primary);
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 </style>

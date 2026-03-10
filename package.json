@@ -2,6 +2,7 @@
   "name": "xerrion-io",
   "version": "1.0.0",
   "devDependencies": {
+    "@opencode-ai/plugin": "^1.2.24",
     "@playwright/test": "^1.58.2",
     "@sveltejs/adapter-vercel": "^6.3.1",
     "@sveltejs/kit": "^2.52.0",

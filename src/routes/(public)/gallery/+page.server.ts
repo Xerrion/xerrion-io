@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import type { PhotoCategory, Photo } from '$lib/gallery';
+import type { PhotoCategory } from '$lib/gallery';
+import { mapRowToPhoto } from '$lib/server/gallery';
 
 export const load: PageServerLoad = async () => {
 	try {
@@ -17,41 +18,37 @@ export const load: PageServerLoad = async () => {
 			order: row.sort_order as number
 		}));
 
+		// Get total photo count globally
+		const totalResult = await db.execute('SELECT COUNT(*) as count FROM photo');
+		const totalPhotos = Number(totalResult.rows[0]?.count || 0);
+
+		// Get photo count per category
+		const countResult = await db.execute(`
+			SELECT c.slug, COUNT(p.id) as count
+			FROM category c
+			LEFT JOIN photo p ON c.id = p.category_id
+			GROUP BY c.id, c.slug
+		`);
+		const photoCounts: Record<string, number> = {};
+		for (const row of countResult.rows) {
+			photoCounts[row.slug as string] = Number(row.count || 0);
+		}
+
+		// Fetch initial 20 photos
 		const photoResult = await db.execute(
 			`SELECT p.id, p.original_name, p.thumb_url, p.medium_url, p.full_url,
 					p.width, p.height, p.uploaded_at, c.slug as category_slug
 			 FROM photo p
 			 JOIN category c ON p.category_id = c.id
-			 ORDER BY p.uploaded_at DESC`
+			 ORDER BY p.uploaded_at DESC
+			 LIMIT 20`
 		);
 
-		const photosByCategory: Record<string, Photo[]> = {};
-		for (const cat of categories) {
-			photosByCategory[cat.slug] = [];
-		}
+		const initialPhotos = photoResult.rows.map(mapRowToPhoto);
 
-		for (const row of photoResult.rows) {
-			const slug = row.category_slug as string;
-			if (!photosByCategory[slug]) photosByCategory[slug] = [];
-
-			photosByCategory[slug].push({
-				id: String(row.id),
-				name: row.original_name as string,
-				url: row.full_url as string,
-				thumbUrl: row.thumb_url as string,
-				mediumUrl: row.medium_url as string,
-				fullUrl: row.full_url as string,
-				width: row.width as number | undefined,
-				height: row.height as number | undefined,
-				category: slug,
-				createdAt: new Date(row.uploaded_at as string)
-			});
-		}
-
-		const totalPhotos = photoResult.rows.length;
-		return { categories, photosByCategory, totalPhotos, error: null };
+		return { categories, photoCounts, totalPhotos, initialPhotos, error: null };
 	} catch (err) {
 		console.error('[gallery] Failed to load from Turso:', err);
-		return { categories: [], photosByCategory: {}, totalPhotos: 0, error: 'Failed to load gallery' };
+		return { categories: [], photoCounts: {}, totalPhotos: 0, initialPhotos: [], error: 'Failed to load gallery' };
 	}
 };
