@@ -1,6 +1,6 @@
 {
   "name": "xerrion-io",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "devDependencies": {
     "@opencode-ai/plugin": "^1.2.24",
     "@playwright/test": "^1.58.2",

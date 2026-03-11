@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/Xerrion/xerrion-io/compare/v1.0.0...v1.0.1) (2026-03-11)
+
+
+### Bug Fixes
+
+* replace CSS columns with JS-computed masonry to prevent layout shifts ([#36](https://github.com/Xerrion/xerrion-io/issues/36)) ([fb089c5](https://github.com/Xerrion/xerrion-io/commit/fb089c53ca21ee4ac4378c51d008e90a36aa55d5))
+
 ## 1.0.0 (2026-02-20)
 
 
