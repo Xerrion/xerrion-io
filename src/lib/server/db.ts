@@ -1,28 +1,28 @@
-import { createClient, type Client } from '@libsql/client';
-import { env } from '$env/dynamic/private';
+import { createClient, type Client } from '@libsql/client'
+import { env } from '$env/dynamic/private'
 
-let client: Client | null = null;
+let client: Client | null = null
 
 /**
  * Get a Turso database client instance (singleton).
  * Lazily initialized on first call.
  */
 export function getDb(): Client {
-	if (client) return client;
+  if (client) return client
 
-	const url = env.TURSO_DATABASE_URL;
-	const authToken = env.TURSO_AUTH_TOKEN;
+  const url = env.TURSO_DATABASE_URL
+  const authToken = env.TURSO_AUTH_TOKEN
 
-	if (!url) {
-		throw new Error('TURSO_DATABASE_URL is not set');
-	}
+  if (!url) {
+    throw new Error('TURSO_DATABASE_URL is not set')
+  }
 
-	client = createClient({
-		url,
-		authToken
-	});
+  client = createClient({
+    url,
+    authToken
+  })
 
-	return client;
+  return client
 }
 
 export const SCHEMA = `
@@ -66,19 +66,19 @@ CREATE TABLE IF NOT EXISTS photo (
 	metadata TEXT,
 	uploaded_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-`;
+`
 
 /**
  * Run the database schema migrations.
  * Safe to call multiple times (uses IF NOT EXISTS).
  */
 export async function migrate(): Promise<void> {
-	const db = getDb();
-	const statements = SCHEMA.split(';')
-		.map((s) => s.trim())
-		.filter((s) => s.length > 0);
+  const db = getDb()
+  const statements = SCHEMA.split(';')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
 
-	for (const statement of statements) {
-		await db.execute(statement);
-	}
+  for (const statement of statements) {
+    await db.execute(statement)
+  }
 }

@@ -1,36 +1,36 @@
 <script lang="ts">
-  import { upload } from '@vercel/blob/client';
-  import { motion } from '@humanspeak/svelte-motion';
+  import { upload } from "@vercel/blob/client";
+  import { motion } from "@humanspeak/svelte-motion";
 
   let { data } = $props();
 
-  type UploadStatus = 'pending' | 'uploading' | 'processing' | 'done' | 'error';
+  type UploadStatus = "pending" | "uploading" | "processing" | "done" | "error";
 
   const STEP_PROGRESS: Record<string, number> = {
     fetching: 72,
     decoding: 76,
-    'resizing:thumb': 82,
-    'resizing:medium': 88,
-    'resizing:full': 92,
-    'uploading:thumb': 94,
-    'uploading:medium': 96,
-    'uploading:full': 97,
+    "resizing:thumb": 82,
+    "resizing:medium": 88,
+    "resizing:full": 92,
+    "uploading:thumb": 94,
+    "uploading:medium": 96,
+    "uploading:full": 97,
     saving: 98,
     cleanup: 99,
-    done: 100
+    done: 100,
   };
 
   const STEP_LABELS: Record<string, string> = {
-    fetching: 'Fetching…',
-    decoding: 'Decoding HEIC…',
-    'resizing:thumb': 'Resizing thumbnail…',
-    'resizing:medium': 'Resizing medium…',
-    'resizing:full': 'Resizing full…',
-    'uploading:thumb': 'Saving thumbnail…',
-    'uploading:medium': 'Saving medium…',
-    'uploading:full': 'Saving full…',
-    saving: 'Saving to database…',
-    cleanup: 'Cleaning up…'
+    fetching: "Fetching…",
+    decoding: "Decoding HEIC…",
+    "resizing:thumb": "Resizing thumbnail…",
+    "resizing:medium": "Resizing medium…",
+    "resizing:full": "Resizing full…",
+    "uploading:thumb": "Saving thumbnail…",
+    "uploading:medium": "Saving medium…",
+    "uploading:full": "Saving full…",
+    saving: "Saving to database…",
+    cleanup: "Cleaning up…",
   };
 
   interface FileUploadItem {
@@ -43,16 +43,23 @@
 
   let fileUploads = $state<FileUploadItem[]>([]);
   let uploading = $state(false);
-  let categoryId = $state('');
+  let categoryId = $state("");
   let fileInput = $state<HTMLInputElement | null>(null);
   let dragActive = $state(false);
 
-  let doneCount = $derived(fileUploads.filter(f => f.status === 'done').length);
-  let errorCount = $derived(fileUploads.filter(f => f.status === 'error').length);
+  let doneCount = $derived(
+    fileUploads.filter((f) => f.status === "done").length,
+  );
+  let errorCount = $derived(
+    fileUploads.filter((f) => f.status === "error").length,
+  );
   let totalCount = $derived(fileUploads.length);
-  let overallDone = $derived(totalCount > 0 && fileUploads.every(f => f.status === 'done' || f.status === 'error'));
+  let overallDone = $derived(
+    totalCount > 0 &&
+      fileUploads.every((f) => f.status === "done" || f.status === "error"),
+  );
 
-  const ACCEPTED_TYPES = '.jpg,.jpeg,.png,.webp,.heic,.heif';
+  const ACCEPTED_TYPES = ".jpg,.jpeg,.png,.webp,.heic,.heif";
   const MAX_SIZE = 50 * 1024 * 1024;
 
   function handleDrop(e: DragEvent) {
@@ -67,21 +74,24 @@
     const input = e.target as HTMLInputElement;
     if (!input.files) return;
     addFiles(Array.from(input.files));
-    input.value = '';
+    input.value = "";
   }
 
   function addFiles(files: File[]) {
     if (uploading) return;
     const valid = files.filter((f) => {
-      const ext = f.name.toLowerCase().split('.').pop();
-      return ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].includes(ext ?? '') && f.size <= MAX_SIZE;
+      const ext = f.name.toLowerCase().split(".").pop();
+      return (
+        ["jpg", "jpeg", "png", "webp", "heic", "heif"].includes(ext ?? "") &&
+        f.size <= MAX_SIZE
+      );
     });
 
-    const newUploads = valid.map(f => ({
+    const newUploads = valid.map((f) => ({
       file: f,
-      status: 'pending' as UploadStatus,
+      status: "pending" as UploadStatus,
       progress: 0,
-      stepLabel: ''
+      stepLabel: "",
     }));
 
     fileUploads = [...fileUploads, ...newUploads];
@@ -98,30 +108,33 @@
   }
 
   function formatBytes(bytes: number) {
-    if (!bytes) return '0 B';
+    if (!bytes) return "0 B";
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   }
 
   function isHeic(name: string) {
-    const ext = name.toLowerCase().split('.').pop();
-    return ext === 'heic' || ext === 'heif';
+    const ext = name.toLowerCase().split(".").pop();
+    return ext === "heic" || ext === "heif";
   }
 
-  async function readProcessStream(response: Response, item: FileUploadItem): Promise<void> {
+  async function readProcessStream(
+    response: Response,
+    item: FileUploadItem,
+  ): Promise<void> {
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n\n');
-      buffer = lines.pop() ?? '';
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() ?? "";
 
       for (const line of lines) {
         const match = line.match(/^data:\s*(.+)$/m);
@@ -129,66 +142,68 @@
 
         const event = JSON.parse(match[1]);
 
-        if (event.step === 'done') {
+        if (event.step === "done") {
           if (event.error) {
             throw new Error(event.error);
           }
           item.progress = 100;
-          item.stepLabel = '';
+          item.stepLabel = "";
           return;
         }
 
         item.progress = STEP_PROGRESS[event.step] ?? item.progress;
-        item.stepLabel = STEP_LABELS[event.step] ?? '';
+        item.stepLabel = STEP_LABELS[event.step] ?? "";
       }
     }
   }
 
   async function uploadFile(index: number) {
     const item = fileUploads[index];
-    item.status = 'uploading';
+    item.status = "uploading";
     item.progress = 0;
-    item.stepLabel = 'Uploading…';
+    item.stepLabel = "Uploading…";
 
     try {
       const blob = await upload(item.file.name, item.file, {
-        access: 'public',
-        handleUploadUrl: '/admin/gallery/upload/api',
+        access: "public",
+        handleUploadUrl: "/admin/gallery/upload/api",
         multipart: item.file.size > 4 * 1024 * 1024,
         onUploadProgress: ({ percentage }) => {
           item.progress = Math.round(percentage * 0.7);
           item.stepLabel = `Uploading… ${Math.round(percentage)}%`;
-        }
+        },
       });
 
-      item.status = 'processing';
+      item.status = "processing";
       item.progress = 70;
-      item.stepLabel = 'Starting processing…';
+      item.stepLabel = "Starting processing…";
 
-      const processResponse = await fetch('/admin/gallery/upload/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const processResponse = await fetch("/admin/gallery/upload/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           blobUrl: blob.url,
           originalName: item.file.name,
-          categoryId: Number(categoryId)
-        })
+          categoryId: Number(categoryId),
+        }),
       });
 
       if (!processResponse.ok) {
         const errData = await processResponse.json().catch(() => null);
-        throw new Error(errData?.message || `Processing failed (${processResponse.status})`);
+        throw new Error(
+          errData?.message || `Processing failed (${processResponse.status})`,
+        );
       }
 
       await readProcessStream(processResponse, item);
 
-      item.status = 'done';
+      item.status = "done";
       item.progress = 100;
-      item.stepLabel = '';
+      item.stepLabel = "";
     } catch (err) {
-      item.status = 'error';
-      item.error = err instanceof Error ? err.message : 'Upload failed';
-      item.stepLabel = '';
+      item.status = "error";
+      item.error = err instanceof Error ? err.message : "Upload failed";
+      item.stepLabel = "";
     }
   }
 
@@ -201,12 +216,15 @@
     async function processNext() {
       while (index < fileUploads.length) {
         const currentIndex = index++;
-        if (fileUploads[currentIndex].status === 'done') continue;
+        if (fileUploads[currentIndex].status === "done") continue;
         await uploadFile(currentIndex);
       }
     }
 
-    const workers = Array.from({ length: Math.min(3, fileUploads.length) }, () => processNext());
+    const workers = Array.from(
+      { length: Math.min(3, fileUploads.length) },
+      () => processNext(),
+    );
     await Promise.all(workers);
   }
 
@@ -227,22 +245,27 @@
   <!-- Overall Progress Banner -->
   {#if uploading || overallDone}
     <div class="results-panel">
-      <div class="results-summary" class:all-success={doneCount === totalCount} class:has-errors={errorCount > 0} class:uploading={!overallDone}>
+      <div
+        class="results-summary"
+        class:all-success={doneCount === totalCount}
+        class:has-errors={errorCount > 0}
+        class:uploading={!overallDone}
+      >
         {#if !overallDone}
-           <span class="spinner summary-icon"></span>
-           <span>Uploading {doneCount + errorCount + 1} of {totalCount}...</span>
+          <span class="spinner summary-icon"></span>
+          <span>Uploading {doneCount + errorCount + 1} of {totalCount}...</span>
         {:else if errorCount === 0}
-           <span class="summary-icon">✓</span>
-           <span>All {totalCount} photos uploaded successfully</span>
+          <span class="summary-icon">✓</span>
+          <span>All {totalCount} photos uploaded successfully</span>
         {:else}
-           <span class="summary-icon">!</span>
-           <span>{doneCount} of {totalCount} uploaded, {errorCount} failed</span>
+          <span class="summary-icon">!</span>
+          <span>{doneCount} of {totalCount} uploaded, {errorCount} failed</span>
         {/if}
-        
+
         {#if overallDone}
-           <button class="btn secondary small reset-btn" onclick={resetUpload}>
-              Upload more
-           </button>
+          <button class="btn secondary small reset-btn" onclick={resetUpload}>
+            Upload more
+          </button>
         {/if}
       </div>
     </div>
@@ -251,9 +274,9 @@
   <div class="upload-container">
     <div class="form-section">
       <label for="categoryId" class="field-label">Category</label>
-      <select 
-        id="categoryId" 
-        bind:value={categoryId} 
+      <select
+        id="categoryId"
+        bind:value={categoryId}
         disabled={uploading}
         class:error={!categoryId && fileUploads.length > 0}
       >
@@ -263,7 +286,11 @@
         {/each}
       </select>
       {#if data.categories.length === 0}
-        <p class="hint">No categories yet. <a href="/admin/gallery/categories">Create one first</a>.</p>
+        <p class="hint">
+          No categories yet. <a href="/admin/gallery/categories"
+            >Create one first</a
+          >.
+        </p>
       {/if}
     </div>
 
@@ -274,12 +301,26 @@
       class:disabled={uploading}
       role="button"
       tabindex="0"
-      ondragenter={(e) => { e.preventDefault(); dragActive = true; }}
-      ondragover={(e) => { e.preventDefault(); dragActive = true; }}
-      ondragleave={() => { dragActive = false; }}
-      ondrop={(e) => { e.preventDefault(); handleDrop(e); }}
+      ondragenter={(e) => {
+        e.preventDefault();
+        dragActive = true;
+      }}
+      ondragover={(e) => {
+        e.preventDefault();
+        dragActive = true;
+      }}
+      ondragleave={() => {
+        dragActive = false;
+      }}
+      ondrop={(e) => {
+        e.preventDefault();
+        handleDrop(e);
+      }}
       onclick={() => !uploading && fileInput?.click()}
-      onkeydown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !uploading) fileInput?.click(); }}
+      onkeydown={(e) => {
+        if ((e.key === "Enter" || e.key === " ") && !uploading)
+          fileInput?.click();
+      }}
     >
       <input
         bind:this={fileInput}
@@ -293,7 +334,24 @@
 
       <div class="drop-content">
         <div class="drop-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="40"
+            height="40"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+            ></path><polyline points="17 8 12 3 7 8"></polyline><line
+              x1="12"
+              y1="3"
+              x2="12"
+              y2="15"
+            ></line></svg
+          >
         </div>
         <p class="drop-text">
           {#if dragActive}
@@ -309,11 +367,13 @@
     {#if fileUploads.length > 0}
       <div class="file-list">
         <div class="file-list-header">
-          <span class="file-count">{fileUploads.length} file{fileUploads.length !== 1 ? 's' : ''} selected</span>
-          <button 
-            type="button" 
-            class="btn text small" 
-            onclick={clearFiles} 
+          <span class="file-count"
+            >{fileUploads.length} file{fileUploads.length !== 1 ? "s" : ""} selected</span
+          >
+          <button
+            type="button"
+            class="btn text small"
+            onclick={clearFiles}
             disabled={uploading}
           >
             Clear all
@@ -322,53 +382,71 @@
 
         <div class="file-items">
           {#each fileUploads as item, index}
-            <div class="file-item" class:error={item.status === 'error'}>
+            <div class="file-item" class:error={item.status === "error"}>
               <div class="file-info">
                 <div class="file-header">
-                   <span class="file-name" title={item.file.name}>{item.file.name}</span>
-                   <span class="file-meta">
-                     {formatBytes(item.file.size)}
-                     {#if isHeic(item.file.name)}
-                       <span class="heic-badge">HEIC</span>
-                     {/if}
-                   </span>
+                  <span class="file-name" title={item.file.name}
+                    >{item.file.name}</span
+                  >
+                  <span class="file-meta">
+                    {formatBytes(item.file.size)}
+                    {#if isHeic(item.file.name)}
+                      <span class="heic-badge">HEIC</span>
+                    {/if}
+                  </span>
                 </div>
-                
+
                 <div class="progress-container">
-                   <motion.div
-                     class="progress-bar {item.status}"
-                     animate={{ width: `${item.progress}%` }}
-                     transition={{ type: 'spring', stiffness: 120, damping: 20 }}
-                   />
+                  <motion.div
+                    class="progress-bar {item.status}"
+                    animate={{ width: `${item.progress}%` }}
+                    transition={{ type: "spring", stiffness: 120, damping: 20 }}
+                  />
                 </div>
-                
+
                 {#if item.stepLabel}
-                   <div class="step-label">{item.stepLabel}</div>
+                  <div class="step-label">{item.stepLabel}</div>
                 {/if}
-                
-                {#if item.status === 'error' && item.error}
-                   <div class="error-message">{item.error}</div>
+
+                {#if item.status === "error" && item.error}
+                  <div class="error-message">{item.error}</div>
                 {/if}
               </div>
 
               <div class="file-actions">
-                 {#if item.status === 'pending'}
-                    <button 
-                      type="button" 
-                      class="btn icon small" 
-                      onclick={() => removeFile(index)} 
-                      disabled={uploading} 
-                      aria-label="Remove file"
+                {#if item.status === "pending"}
+                  <button
+                    type="button"
+                    class="btn icon small"
+                    onclick={() => removeFile(index)}
+                    disabled={uploading}
+                    aria-label="Remove file"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      ><line x1="18" y1="6" x2="6" y2="18"></line><line
+                        x1="6"
+                        y1="6"
+                        x2="18"
+                        y2="18"
+                      ></line></svg
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
-                 {:else if item.status === 'uploading' || item.status === 'processing'}
-                    <div class="status-spinner"></div>
-                 {:else if item.status === 'done'}
-                    <div class="status-icon success">✓</div>
-                 {:else if item.status === 'error'}
-                    <div class="status-icon error">✕</div>
-                 {/if}
+                  </button>
+                {:else if item.status === "uploading" || item.status === "processing"}
+                  <div class="status-spinner"></div>
+                {:else if item.status === "done"}
+                  <div class="status-icon success">✓</div>
+                {:else if item.status === "error"}
+                  <div class="status-icon error">✕</div>
+                {/if}
               </div>
             </div>
           {/each}
@@ -377,21 +455,24 @@
 
       <div class="submit-area">
         <p class="processing-note">
-          Each image will be converted to 3 WebP sizes (thumbnail, medium, full).
+          Each image will be converted to 3 WebP sizes (thumbnail, medium,
+          full).
           {#if fileUploads.some((f) => isHeic(f.file.name))}
             HEIC files will be converted automatically.
           {/if}
         </p>
 
         {#if !uploading && !overallDone}
-           <button 
-             type="button" 
-             class="btn primary" 
-             onclick={startUpload}
-             disabled={uploading || !categoryId || fileUploads.length === 0}
-           >
-             Upload {fileUploads.length} image{fileUploads.length !== 1 ? 's' : ''}
-           </button>
+          <button
+            type="button"
+            class="btn primary"
+            onclick={startUpload}
+            disabled={uploading || !categoryId || fileUploads.length === 0}
+          >
+            Upload {fileUploads.length} image{fileUploads.length !== 1
+              ? "s"
+              : ""}
+          </button>
         {/if}
       </div>
     {/if}
@@ -514,7 +595,7 @@
     opacity: 0.6;
     cursor: not-allowed;
   }
-  
+
   select.error {
     border-color: #ef4444;
   }
@@ -726,7 +807,7 @@
   }
 
   :global(.progress-bar.processing)::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -754,7 +835,7 @@
     color: var(--color-text-muted);
     margin-top: 2px;
   }
-  
+
   .error-message {
     color: #ef4444;
     font-size: var(--text-xs);
@@ -762,8 +843,12 @@
   }
 
   @keyframes pulse-bar {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
   }
 
   /* Status Icons & Buttons */
@@ -788,8 +873,12 @@
     font-size: var(--text-sm);
   }
 
-  .status-icon.success { color: #22c55e; }
-  .status-icon.error { color: #ef4444; }
+  .status-icon.success {
+    color: #22c55e;
+  }
+  .status-icon.error {
+    color: #ef4444;
+  }
 
   .submit-area {
     display: flex;
@@ -847,13 +936,15 @@
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
-  
+
   .summary-icon.spinner {
     border-color: rgba(0, 0, 0, 0.1);
     border-top-color: var(--color-primary);
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 </style>

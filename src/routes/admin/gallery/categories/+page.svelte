@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
-  import { toastStore } from '$lib/stores/toast.svelte';
-  import { superForm } from 'sveltekit-superforms';
-  import { zod4Client } from 'sveltekit-superforms/adapters';
-  import { Field, Control, Label, FieldErrors } from 'formsnap';
-  import { categoryCreateSchema } from '$lib/schemas/admin';
+  import { enhance } from "$app/forms";
+  import { toastStore } from "$lib/stores/toast.svelte";
+  import { superForm } from "sveltekit-superforms";
+  import { zod4Client } from "sveltekit-superforms/adapters";
+  import { Field, Control, Label, FieldErrors } from "formsnap";
+  import { categoryCreateSchema } from "$lib/schemas/admin";
 
   let { data } = $props();
   let editingId = $state<number | null>(null);
@@ -14,12 +14,16 @@
     validators: zod4Client(categoryCreateSchema),
     resetForm: true,
     onResult({ result }) {
-      if (result.type === 'success' && result.data?.createForm?.message) {
+      if (result.type === "success" && result.data?.createForm?.message) {
         toastStore.success(result.data.createForm.message);
       }
-    }
+    },
   });
-  const { form: createFormData, enhance: createEnhance, submitting: createSubmitting } = createForm;
+  const {
+    form: createFormData,
+    enhance: createEnhance,
+    submitting: createSubmitting,
+  } = createForm;
 
   function toggleEdit(id: number | null) {
     editingId = id;
@@ -39,9 +43,9 @@
           {#snippet children({ props })}
             <div class="field">
               <Label>Name</Label>
-              <input 
+              <input
                 {...props}
-                type="text" 
+                type="text"
                 placeholder="e.g. Landscapes"
                 bind:value={$createFormData.name}
                 disabled={$createSubmitting}
@@ -51,15 +55,15 @@
         </Control>
         <FieldErrors />
       </Field>
-      
+
       <Field form={createForm} name="sortOrder">
         <Control>
           {#snippet children({ props })}
             <div class="field">
               <Label>Sort Order</Label>
-              <input 
+              <input
                 {...props}
-                type="number" 
+                type="number"
                 bind:value={$createFormData.sortOrder}
                 disabled={$createSubmitting}
               />
@@ -74,7 +78,7 @@
           {#snippet children({ props })}
             <div class="field full">
               <Label>Description</Label>
-              <textarea 
+              <textarea
                 {...props}
                 rows="2"
                 bind:value={$createFormData.description}
@@ -115,27 +119,67 @@
             <tr class:editing={editingId === category.id}>
               {#if editingId === category.id}
                 <td colspan="5" class="edit-cell">
-                  <form method="POST" action="?/update" use:enhance={() => { return async ({ result, update }) => { if (result.type === 'success') { toastStore.success('Category updated'); } else if (result.type === 'failure') { toastStore.error(result.data?.error as string || 'Failed to update category'); } await update(); editingId = null; }; }} class="edit-form">
+                  <form
+                    method="POST"
+                    action="?/update"
+                    use:enhance={() => {
+                      return async ({ result, update }) => {
+                        if (result.type === "success") {
+                          toastStore.success("Category updated");
+                        } else if (result.type === "failure") {
+                          toastStore.error(
+                            (result.data?.error as string) ||
+                              "Failed to update category",
+                          );
+                        }
+                        await update();
+                        editingId = null;
+                      };
+                    }}
+                    class="edit-form"
+                  >
                     <input type="hidden" name="id" value={category.id} />
-                    
+
                     <div class="edit-fields">
                       <div class="field-mini">
                         <label for="edit-sort-{category.id}">Sort</label>
-                        <input type="number" id="edit-sort-{category.id}" name="sortOrder" value={category.sortOrder} />
+                        <input
+                          type="number"
+                          id="edit-sort-{category.id}"
+                          name="sortOrder"
+                          value={category.sortOrder}
+                        />
                       </div>
                       <div class="field-mini">
                         <label for="edit-name-{category.id}">Name</label>
-                        <input type="text" id="edit-name-{category.id}" name="name" value={category.name} required />
+                        <input
+                          type="text"
+                          id="edit-name-{category.id}"
+                          name="name"
+                          value={category.name}
+                          required
+                        />
                       </div>
                       <div class="field-mini grow">
                         <label for="edit-desc-{category.id}">Description</label>
-                        <input type="text" id="edit-desc-{category.id}" name="description" value={category.description || ''} />
+                        <input
+                          type="text"
+                          id="edit-desc-{category.id}"
+                          name="description"
+                          value={category.description || ""}
+                        />
                       </div>
                     </div>
 
                     <div class="edit-actions">
-                      <button type="submit" class="btn primary small">Save</button>
-                      <button type="button" class="btn secondary small" onclick={() => toggleEdit(null)}>Cancel</button>
+                      <button type="submit" class="btn primary small"
+                        >Save</button
+                      >
+                      <button
+                        type="button"
+                        class="btn secondary small"
+                        onclick={() => toggleEdit(null)}>Cancel</button
+                      >
                     </div>
                   </form>
                 </td>
@@ -147,16 +191,73 @@
                     <span class="slug">{category.slug}</span>
                   </div>
                 </td>
-                <td class="desc-col" title={category.description}>{category.description || '-'}</td>
-                <td class="date">{new Date(category.createdAt).toLocaleDateString()}</td>
+                <td class="desc-col" title={category.description}
+                  >{category.description || "-"}</td
+                >
+                <td class="date"
+                  >{new Date(category.createdAt).toLocaleDateString()}</td
+                >
                 <td class="actions-col">
-                  <button class="btn icon" onclick={() => toggleEdit(category.id)} aria-label="Edit">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 1 22l1.5-6.5L17 3z"></path></svg>
+                  <button
+                    class="btn icon"
+                    onclick={() => toggleEdit(category.id)}
+                    aria-label="Edit"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      ><path
+                        d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 1 22l1.5-6.5L17 3z"
+                      ></path></svg
+                    >
                   </button>
-                  <form method="POST" action="?/delete" use:enhance={() => { return async ({ result, update }) => { if (result.type === 'success') { toastStore.success('Category deleted'); } else if (result.type === 'failure') { toastStore.error(result.data?.error as string || 'Failed to delete category'); } await update(); }; }} class="inline-form" onsubmit={(e) => !confirm('Delete this category?') && e.preventDefault()}>
+                  <form
+                    method="POST"
+                    action="?/delete"
+                    use:enhance={() => {
+                      return async ({ result, update }) => {
+                        if (result.type === "success") {
+                          toastStore.success("Category deleted");
+                        } else if (result.type === "failure") {
+                          toastStore.error(
+                            (result.data?.error as string) ||
+                              "Failed to delete category",
+                          );
+                        }
+                        await update();
+                      };
+                    }}
+                    class="inline-form"
+                    onsubmit={(e) =>
+                      !confirm("Delete this category?") && e.preventDefault()}
+                  >
                     <input type="hidden" name="id" value={category.id} />
-                    <button type="submit" class="btn icon danger" aria-label="Delete">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    <button
+                      type="submit"
+                      class="btn icon danger"
+                      aria-label="Delete"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><polyline points="3 6 5 6 21 6"></polyline><path
+                          d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                        ></path></svg
+                      >
                     </button>
                   </form>
                 </td>
@@ -238,7 +339,8 @@
     color: var(--color-text-secondary);
   }
 
-  input, textarea {
+  input,
+  textarea {
     background: var(--color-bg);
     border: 1px solid var(--color-border);
     color: var(--color-text);
@@ -249,7 +351,8 @@
     transition: border-color var(--transition-fast);
   }
 
-  input:focus, textarea:focus {
+  input:focus,
+  textarea:focus {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 2px var(--color-primary-light);
@@ -370,7 +473,8 @@
     justify-content: flex-end;
   }
 
-  input:disabled, textarea:disabled {
+  input:disabled,
+  textarea:disabled {
     opacity: 0.7;
     cursor: not-allowed;
   }

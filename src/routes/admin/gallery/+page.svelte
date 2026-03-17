@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
-  import { toastStore } from '$lib/stores/toast.svelte';
-  import type { ImageMetadata } from '$lib/server/image';
-  import { scaleIn, slideUp, animateOut } from '$lib/utils/animate';
+  import { enhance } from "$app/forms";
+  import { toastStore } from "$lib/stores/toast.svelte";
+  import type { ImageMetadata } from "$lib/server/image";
+  import { scaleIn, slideUp, animateOut } from "$lib/utils/animate";
 
   let { data } = $props();
 
-  let selectedCategoryId = $state<string>('all');
+  let selectedCategoryId = $state<string>("all");
   let selectedIds = $state<Set<number>>(new Set());
   let isDeleting = $state(false);
 
@@ -14,13 +14,16 @@
   let detailPhoto = $state<Photo | null>(null);
 
   let filteredPhotos = $derived(
-    selectedCategoryId === 'all'
+    selectedCategoryId === "all"
       ? data.photos
-      : data.photos.filter((p) => p.categoryId.toString() === selectedCategoryId)
+      : data.photos.filter(
+          (p) => p.categoryId.toString() === selectedCategoryId,
+        ),
   );
 
   let allSelected = $derived(
-    filteredPhotos.length > 0 && filteredPhotos.every((p) => selectedIds.has(p.id))
+    filteredPhotos.length > 0 &&
+      filteredPhotos.every((p) => selectedIds.has(p.id)),
   );
 
   let selectionCount = $derived(selectedIds.size);
@@ -56,46 +59,49 @@
   }
 
   function handleModalKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') closeDetail();
+    if (e.key === "Escape") closeDetail();
   }
 
   function formatBytes(bytes: number | null | undefined) {
-    if (bytes == null) return '—';
-    if (bytes === 0) return '0 B';
+    if (bytes == null) return "—";
+    if (bytes === 0) return "0 B";
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   }
 
   function formatAperture(f: number | null | undefined) {
-    if (f == null) return '—';
+    if (f == null) return "—";
     return `f/${f}`;
   }
 
   function formatFocalLength(fl: number | null | undefined) {
-    if (fl == null) return '—';
+    if (fl == null) return "—";
     return `${fl}mm`;
   }
 
-  function formatDimensions(w: number | null | undefined, h: number | null | undefined) {
-    if (w == null || h == null) return '—';
+  function formatDimensions(
+    w: number | null | undefined,
+    h: number | null | undefined,
+  ) {
+    if (w == null || h == null) return "—";
     return `${w} × ${h}`;
   }
 
   function formatDateTaken(d: string | null | undefined) {
-    if (!d) return '—';
+    if (!d) return "—";
     return new Date(d).toLocaleString();
   }
 
   function formatCamera(meta: ImageMetadata | null | undefined) {
-    if (!meta) return '—';
+    if (!meta) return "—";
     const parts = [meta.cameraMake, meta.cameraModel].filter(Boolean);
-    return parts.length > 0 ? parts.join(' ') : '—';
+    return parts.length > 0 ? parts.join(" ") : "—";
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'a' && (e.metaKey || e.ctrlKey)) {
+    if (e.key === "a" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       if (!allSelected) {
         selectedIds = new Set(filteredPhotos.map((p) => p.id));
@@ -116,13 +122,17 @@
     <div class="header-controls">
       {#if filteredPhotos.length > 0}
         <button class="btn text small" onclick={toggleSelectAll}>
-          {allSelected ? 'Deselect All' : 'Select All'}
+          {allSelected ? "Deselect All" : "Select All"}
         </button>
       {/if}
 
       <div class="filter-group">
         <label for="category-filter">Filter by Category:</label>
-        <select id="category-filter" bind:value={selectedCategoryId} onchange={clearSelection}>
+        <select
+          id="category-filter"
+          bind:value={selectedCategoryId}
+          onchange={clearSelection}
+        >
           <option value="all">All Categories</option>
           {#each data.categories as category}
             <option value={category.id.toString()}>{category.name}</option>
@@ -135,10 +145,14 @@
   {#if filteredPhotos.length === 0}
     <div class="empty-state">
       <p>No photos found.</p>
-      {#if selectedCategoryId !== 'all'}
-        <button class="btn link" onclick={() => (selectedCategoryId = 'all')}>Clear filter</button>
+      {#if selectedCategoryId !== "all"}
+        <button class="btn link" onclick={() => (selectedCategoryId = "all")}
+          >Clear filter</button
+        >
       {:else}
-        <a href="/admin/gallery/upload" class="btn primary">Upload your first photo</a>
+        <a href="/admin/gallery/upload" class="btn primary"
+          >Upload your first photo</a
+        >
       {/if}
     </div>
   {:else}
@@ -146,42 +160,141 @@
       {#each filteredPhotos as photo (photo.id)}
         <div class="photo-card" class:selected={selectedIds.has(photo.id)}>
           <div class="thumbnail-wrapper">
-            <button class="select-overlay" onclick={() => toggleSelect(photo.id)} aria-label="Select {photo.originalName}">
+            <button
+              class="select-overlay"
+              onclick={() => toggleSelect(photo.id)}
+              aria-label="Select {photo.originalName}"
+            >
               <span class="checkbox" class:checked={selectedIds.has(photo.id)}>
                 {#if selectedIds.has(photo.id)}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><polyline points="20 6 9 17 4 12"></polyline></svg
+                  >
                 {/if}
               </span>
             </button>
             <img src={photo.thumbUrl} alt={photo.originalName} loading="lazy" />
           </div>
-          
+
           <div class="details">
-            <h3 class="filename" title={photo.originalName}>{photo.originalName}</h3>
-            
+            <h3 class="filename" title={photo.originalName}>
+              {photo.originalName}
+            </h3>
+
             <div class="meta-row">
               <span class="badge">{photo.categoryName}</span>
               <span class="sizes">
                 {formatBytes(photo.fullSize)}
               </span>
             </div>
-            
+
             <div class="meta-row">
-               <span class="date">{new Date(photo.uploadedAt).toLocaleDateString()}</span>
+              <span class="date"
+                >{new Date(photo.uploadedAt).toLocaleDateString()}</span
+              >
             </div>
 
             <div class="actions">
-              <button class="btn icon" title="Photo details" onclick={() => openDetail(photo)}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+              <button
+                class="btn icon"
+                title="Photo details"
+                onclick={() => openDetail(photo)}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><circle cx="12" cy="12" r="10"></circle><line
+                    x1="12"
+                    y1="16"
+                    x2="12"
+                    y2="12"
+                  ></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg
+                >
               </button>
-              <a href={photo.fullUrl} target="_blank" rel="noopener noreferrer" class="btn icon" title="View full size">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              <a
+                href={photo.fullUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn icon"
+                title="View full size"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path
+                    d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                  ></path><polyline points="15 3 21 3 21 9"></polyline><line
+                    x1="10"
+                    y1="14"
+                    x2="21"
+                    y2="3"
+                  ></line></svg
+                >
               </a>
-              
-              <form method="POST" action="?/delete" use:enhance={() => { return async ({ result, update }) => { if (result.type === 'success') { toastStore.success('Photo deleted successfully'); } else if (result.type === 'failure') { toastStore.error(result.data?.error as string || 'Failed to delete photo'); } await update(); }; }} onsubmit={(e) => !confirm('Delete this photo permanently?') && e.preventDefault()}>
+
+              <form
+                method="POST"
+                action="?/delete"
+                use:enhance={() => {
+                  return async ({ result, update }) => {
+                    if (result.type === "success") {
+                      toastStore.success("Photo deleted successfully");
+                    } else if (result.type === "failure") {
+                      toastStore.error(
+                        (result.data?.error as string) ||
+                          "Failed to delete photo",
+                      );
+                    }
+                    await update();
+                  };
+                }}
+                onsubmit={(e) =>
+                  !confirm("Delete this photo permanently?") &&
+                  e.preventDefault()}
+              >
                 <input type="hidden" name="photoId" value={photo.id} />
-                <button type="submit" class="btn icon danger" title="Delete photo">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <button
+                  type="submit"
+                  class="btn icon danger"
+                  title="Delete photo"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><polyline points="3 6 5 6 21 6"></polyline><path
+                      d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                    ></path></svg
+                  >
                 </button>
               </form>
             </div>
@@ -192,25 +305,48 @@
 
     {#if selectionCount > 0}
       <div class="bulk-bar" use:slideUp={{ duration: 200 }}>
-        <span class="bulk-count">{selectionCount} photo{selectionCount !== 1 ? 's' : ''} selected</span>
+        <span class="bulk-count"
+          >{selectionCount} photo{selectionCount !== 1 ? "s" : ""} selected</span
+        >
         <div class="bulk-actions">
-          <button class="btn text small" onclick={clearSelection}>Cancel</button>
-          <form method="POST" action="?/deleteMany" use:enhance={() => {
-            isDeleting = true;
-            return async ({ result, update }) => {
-              isDeleting = false;
-              if (result.type === 'success') {
-                const count = selectedIds.size;
-                selectedIds = new Set();
-                toastStore.success(`Deleted ${count} photo${count !== 1 ? 's' : ''}`);
-              } else if (result.type === 'failure') {
-                toastStore.error(result.data?.error as string || 'Failed to delete photos');
-              }
-              await update();
-            };
-          }} onsubmit={(e) => !confirm(`Delete ${selectionCount} photo${selectionCount !== 1 ? 's' : ''} permanently?`) && e.preventDefault()}>
-            <input type="hidden" name="photoIds" value={[...selectedIds].join(',')} />
-            <button type="submit" class="btn danger small" disabled={isDeleting}>
+          <button class="btn text small" onclick={clearSelection}>Cancel</button
+          >
+          <form
+            method="POST"
+            action="?/deleteMany"
+            use:enhance={() => {
+              isDeleting = true;
+              return async ({ result, update }) => {
+                isDeleting = false;
+                if (result.type === "success") {
+                  const count = selectedIds.size;
+                  selectedIds = new Set();
+                  toastStore.success(
+                    `Deleted ${count} photo${count !== 1 ? "s" : ""}`,
+                  );
+                } else if (result.type === "failure") {
+                  toastStore.error(
+                    (result.data?.error as string) || "Failed to delete photos",
+                  );
+                }
+                await update();
+              };
+            }}
+            onsubmit={(e) =>
+              !confirm(
+                `Delete ${selectionCount} photo${selectionCount !== 1 ? "s" : ""} permanently?`,
+              ) && e.preventDefault()}
+          >
+            <input
+              type="hidden"
+              name="photoIds"
+              value={[...selectedIds].join(",")}
+            />
+            <button
+              type="submit"
+              class="btn danger small"
+              disabled={isDeleting}
+            >
               {#if isDeleting}
                 Deleting…
               {:else}
@@ -226,13 +362,40 @@
 
 {#if detailPhoto}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_interactive_supports_focus -->
-  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Photo details" onkeydown={handleModalKeydown}>
-    <button class="modal-backdrop-close" onclick={closeDetail} aria-label="Close"></button>
+  <div
+    class="modal-backdrop"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Photo details"
+    onkeydown={handleModalKeydown}
+    tabindex="-1"
+  >
+    <button
+      class="modal-backdrop-close"
+      onclick={closeDetail}
+      aria-label="Close"
+    ></button>
     <div class="modal" use:scaleIn={{ duration: 200 }}>
       <div class="modal-header">
         <h2>{detailPhoto.originalName}</h2>
         <button class="btn icon" onclick={closeDetail} aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><line x1="18" y1="6" x2="6" y2="18"></line><line
+              x1="6"
+              y1="6"
+              x2="18"
+              y2="18"
+            ></line></svg
+          >
         </button>
       </div>
 
@@ -273,7 +436,7 @@
                 <dt>Camera</dt>
                 <dd>{formatCamera(detailPhoto.metadata)}</dd>
                 <dt>Lens</dt>
-                <dd>{detailPhoto.metadata.lensModel || '—'}</dd>
+                <dd>{detailPhoto.metadata.lensModel || "—"}</dd>
                 <dt>Date Taken</dt>
                 <dd>{formatDateTaken(detailPhoto.metadata.dateTaken)}</dd>
               </dl>
@@ -283,11 +446,11 @@
               <h3>Exposure</h3>
               <dl class="meta-grid">
                 <dt>ISO</dt>
-                <dd>{detailPhoto.metadata.iso ?? '—'}</dd>
+                <dd>{detailPhoto.metadata.iso ?? "—"}</dd>
                 <dt>Aperture</dt>
                 <dd>{formatAperture(detailPhoto.metadata.aperture)}</dd>
                 <dt>Shutter Speed</dt>
-                <dd>{detailPhoto.metadata.shutterSpeed || '—'}</dd>
+                <dd>{detailPhoto.metadata.shutterSpeed || "—"}</dd>
                 <dt>Focal Length</dt>
                 <dd>{formatFocalLength(detailPhoto.metadata.focalLength)}</dd>
               </dl>
@@ -297,12 +460,14 @@
               <h3>Color</h3>
               <dl class="meta-grid">
                 <dt>Color Space</dt>
-                <dd>{detailPhoto.metadata.colorSpace || '—'}</dd>
+                <dd>{detailPhoto.metadata.colorSpace || "—"}</dd>
               </dl>
             </div>
           {:else}
             <div class="meta-section">
-              <p class="no-metadata">No EXIF metadata available for this photo.</p>
+              <p class="no-metadata">
+                No EXIF metadata available for this photo.
+              </p>
             </div>
           {/if}
         </div>
@@ -396,7 +561,9 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    transition:
+      transform var(--transition-fast),
+      box-shadow var(--transition-fast);
     display: flex;
     flex-direction: column;
   }
@@ -524,7 +691,7 @@
   }
 
   .photo-card.selected .thumbnail-wrapper::after {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     background: rgba(var(--color-primary-rgb, 99, 102, 241), 0.1);
@@ -717,5 +884,4 @@
       min-height: 200px;
     }
   }
-
 </style>
