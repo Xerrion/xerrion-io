@@ -2,7 +2,6 @@
 
 ## 1.0.0 (2026-02-20)
 
-
 ### Features
 
 * add admin authentication with Argon2 and session management ([8080f5e](https://github.com/Xerrion/xerrion-io/commit/8080f5e865c16d14420d134b9b02e0405bf8a964))
@@ -39,7 +38,6 @@
 * toast notifications and client-side upload pipeline ([ba7c24d](https://github.com/Xerrion/xerrion-io/commit/ba7c24d0ea908dbfe2106df778250e7ff5ebebbf))
 * wire public gallery to Turso with blob fallback ([d342e8e](https://github.com/Xerrion/xerrion-io/commit/d342e8e1ff30dab57e35505cdf28b32c500d5264))
 
-
 ### Bug Fixes
 
 * add sveltekit-superforms to ssr.noExternal for dev compatibility ([87a47d5](https://github.com/Xerrion/xerrion-io/commit/87a47d584f8fd22490d01299b6180dc9590cc9bf))
@@ -61,7 +59,6 @@
 * replace beatlabs/delete-old-branches-action with gh CLI script ([#34](https://github.com/Xerrion/xerrion-io/issues/34)) ([1cbd9c1](https://github.com/Xerrion/xerrion-io/commit/1cbd9c184fc893b099ed5cddcdf2452755ba3893))
 * update wrangler config for Cloudflare Pages deployment ([#3](https://github.com/Xerrion/xerrion-io/issues/3)) ([b8a1221](https://github.com/Xerrion/xerrion-io/commit/b8a1221de6c1167735e9bc6c86c39b1fb7748b36))
 * update wrangler config for Workers Static Assets deployment ([60a4996](https://github.com/Xerrion/xerrion-io/commit/60a499648c4c399523aa2102b4dcdb08a85e86f4))
-
 
 ### Performance Improvements
 

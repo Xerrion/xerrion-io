@@ -1,11 +1,11 @@
 export interface NavItem {
-	label: string;
-	href: string;
-	external?: boolean;
+  label: string
+  href: string
+  external?: boolean
 }
 
 export interface SocialLink {
-	name: string;
-	url: string;
-	icon: 'github' | 'linkedin' | 'email';
+  name: string
+  url: string
+  icon: 'github' | 'linkedin' | 'email'
 }

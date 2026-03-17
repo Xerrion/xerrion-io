@@ -1,47 +1,55 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test'
 
 test.describe('Footer', () => {
-	test.beforeEach(async ({ page }) => {
-		await page.goto('/');
-	});
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+  })
 
-	test('should display footer with correct content on home page', async ({ page }) => {
-		const footer = page.locator('.footer');
-		await footer.scrollIntoViewIfNeeded();
-		await expect(footer).toBeVisible();
+  test('should display footer with correct content on home page', async ({
+    page
+  }) => {
+    const footer = page.locator('.footer')
+    await footer.scrollIntoViewIfNeeded()
+    await expect(footer).toBeVisible()
 
-		const footerText = page.locator('.footer-text');
-		await expect(footerText).toContainText('Built with Svelte by Lasse. Say hi sometime.');
+    const footerText = page.locator('.footer-text')
+    await expect(footerText).toContainText(
+      'Built with Svelte by Lasse. Say hi sometime.'
+    )
 
-		const socialLinksContainer = page.locator('.social-links.sm');
-		await expect(socialLinksContainer).toBeVisible();
-		
-		const socialLinks = socialLinksContainer.locator('.social-link');
-		await expect(socialLinks).toHaveCount(3);
+    const socialLinksContainer = page.locator('.social-links.sm')
+    await expect(socialLinksContainer).toBeVisible()
 
-		const expectedHrefs = [
-			'https://github.com/Xerrion',
-			'https://www.linkedin.com/in/lasse-skovgaard-nielsen/',
-			'mailto:lasse@xerrion.dk'
-		];
+    const socialLinks = socialLinksContainer.locator('.social-link')
+    await expect(socialLinks).toHaveCount(3)
 
-		for (const href of expectedHrefs) {
-			await expect(page.locator(`.footer .social-link[href="${href}"]`)).toBeVisible();
-		}
+    const expectedHrefs = [
+      'https://github.com/Xerrion',
+      'https://www.linkedin.com/in/lasse-skovgaard-nielsen/',
+      'mailto:lasse@xerrion.dk'
+    ]
 
-		const currentYear = new Date().getFullYear().toString();
-		const copyright = page.locator('.copyright');
-		await expect(copyright).toContainText('©');
-		await expect(copyright).toContainText(currentYear);
-		await expect(copyright).toContainText('Odense, Denmark');
-	});
+    for (const href of expectedHrefs) {
+      await expect(
+        page.locator(`.footer .social-link[href="${href}"]`)
+      ).toBeVisible()
+    }
 
-	test('should be present on the about page', async ({ page }) => {
-		await page.goto('/about');
-		const footer = page.locator('.footer');
-		await footer.scrollIntoViewIfNeeded();
-		await expect(footer).toBeVisible();
-		
-		await expect(page.locator('.footer-text')).toContainText('Built with Svelte by Lasse');
-	});
-});
+    const currentYear = new Date().getFullYear().toString()
+    const copyright = page.locator('.copyright')
+    await expect(copyright).toContainText('©')
+    await expect(copyright).toContainText(currentYear)
+    await expect(copyright).toContainText('Odense, Denmark')
+  })
+
+  test('should be present on the about page', async ({ page }) => {
+    await page.goto('/about')
+    const footer = page.locator('.footer')
+    await footer.scrollIntoViewIfNeeded()
+    await expect(footer).toBeVisible()
+
+    await expect(page.locator('.footer-text')).toContainText(
+      'Built with Svelte by Lasse'
+    )
+  })
+})

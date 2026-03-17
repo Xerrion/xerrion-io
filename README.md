@@ -19,7 +19,7 @@ bun install
 # Start development server
 bun run dev
 
-# Type check
+# Type check 
 bun run check
 
 # Build for production
@@ -42,7 +42,7 @@ npx wrangler pages deploy .svelte-kit/cloudflare
 
 ## Project Structure
 
-```
+```text
 src/
 ├── routes/           # SvelteKit routes
 │   ├── +layout.svelte
@@ -62,6 +62,7 @@ src/
 ## Gallery Setup
 
 Photos are stored in Supabase Storage. Create a public bucket named `gallery` with folders:
+
 - `charlie/` - Dog photos
 - `life/` - Random moments
 - `food/` - Food pics

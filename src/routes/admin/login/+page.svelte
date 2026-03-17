@@ -1,22 +1,22 @@
 <script lang="ts">
-  import { superForm } from 'sveltekit-superforms';
-  import { zod4Client } from 'sveltekit-superforms/adapters';
-  import { Field, Control, Label, FieldErrors } from 'formsnap';
-  import { loginSchema } from '$lib/schemas/admin';
-  import { motion, AnimatePresence } from '@humanspeak/svelte-motion';
+  import { superForm } from "sveltekit-superforms";
+  import { zod4Client } from "sveltekit-superforms/adapters";
+  import { Field, Control, Label, FieldErrors } from "formsnap";
+  import { loginSchema } from "$lib/schemas/admin";
+  import { motion, AnimatePresence } from "@humanspeak/svelte-motion";
 
   let { data } = $props();
 
   // svelte-ignore state_referenced_locally — superForm captures the initial value intentionally
   const form = superForm(data.form, {
-    validators: zod4Client(loginSchema)
+    validators: zod4Client(loginSchema),
   });
   const { form: formData, enhance, submitting, errors } = form;
 </script>
 
 <div class="login-container">
   <div class="login-background"></div>
-  
+
   <motion.div
     class="login-card"
     initial={{ opacity: 0, y: 20, scale: 0.96 }}
@@ -39,7 +39,7 @@
           key="error"
           class="error-message"
           initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
+          animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
           transition={{ duration: 0.2 }}
         >
@@ -48,11 +48,7 @@
       {/if}
     </AnimatePresence>
 
-    <form 
-      method="POST" 
-      action="?/login" 
-      use:enhance
-    >
+    <form method="POST" action="?/login" use:enhance>
       <Field {form} name="username">
         <Control>
           {#snippet children({ props })}
@@ -63,9 +59,9 @@
               transition={{ duration: 0.35, delay: 0.45 }}
             >
               <Label>Username</Label>
-              <input 
+              <input
                 {...props}
-                type="text" 
+                type="text"
                 autocomplete="username"
                 bind:value={$formData.username}
                 required
@@ -87,9 +83,9 @@
               transition={{ duration: 0.35, delay: 0.55 }}
             >
               <Label>Password</Label>
-              <input 
+              <input
                 {...props}
-                type="password" 
+                type="password"
                 autocomplete="current-password"
                 bind:value={$formData.password}
                 required
@@ -148,9 +144,16 @@
     z-index: 0;
     opacity: 0.4;
     pointer-events: none;
-    background: 
-      radial-gradient(circle at 15% 50%, var(--color-primary-light) 0%, transparent 25%),
-      radial-gradient(circle at 85% 30%, var(--color-accent) 0%, transparent 25%);
+    background: radial-gradient(
+        circle at 15% 50%,
+        var(--color-primary-light) 0%,
+        transparent 25%
+      ),
+      radial-gradient(
+        circle at 85% 30%,
+        var(--color-accent) 0%,
+        transparent 25%
+      );
     filter: blur(60px);
   }
 
@@ -312,6 +315,8 @@
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 </style>

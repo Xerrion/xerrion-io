@@ -1,49 +1,82 @@
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta name="author" content="Lasse Skovgaard Nielsen" />
-		<meta name="theme-color" content="#0a0a0f" media="(prefers-color-scheme: dark)" />
-		<meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)" />
-		<meta name="color-scheme" content="dark light" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="author" content="Lasse Skovgaard Nielsen" />
+    <meta
+      name="theme-color"
+      content="#0a0a0f"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="theme-color"
+      content="#fafaf9"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta name="color-scheme" content="dark light" />
 
-		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
-		<link rel="apple-touch-icon" href="%sveltekit.assets%/favicon.svg" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+    <link rel="apple-touch-icon" href="%sveltekit.assets%/favicon.svg" />
 
-		<!-- Google Fonts: preconnect + async loading to avoid render blocking -->
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
-		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'" />
-		<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" /></noscript>
+    <!-- Google Fonts: preconnect + async loading to avoid render blocking -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      media="print"
+      onload="this.media = 'all'"
+    />
+    <noscript
+      ><link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    /></noscript>
 
-		<!-- FOUC prevention: apply theme before first paint -->
-		<script>
-			(function() {
-				const stored = localStorage.getItem('theme');
-				const theme = stored === 'light' || stored === 'dark'
-					? stored
-					: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-				document.documentElement.setAttribute('data-theme', theme);
-			})();
-		</script>
+    <!-- FOUC prevention: apply theme before first paint -->
+    <script>
+      ;(function () {
+        const stored = localStorage.getItem('theme')
+        const prefersDark = globalThis.matchMedia(
+          '(prefers-color-scheme: dark)'
+        ).matches
+        const defaultTheme = prefersDark ? 'dark' : 'light'
+        const theme =
+          stored === 'light' || stored === 'dark' ? stored : defaultTheme
+        document.documentElement.dataset.theme = theme
+      })()
+    </script>
 
-		<!-- Umami Analytics (Umami Cloud) -->
-		<script async src="https://cloud.umami.is/script.js" data-website-id="%sveltekit.env.PUBLIC_UMAMI_WEBSITE_ID%"></script>
+    <!-- Umami Analytics (Umami Cloud) -->
+    <script
+      async
+      src="https://cloud.umami.is/script.js"
+      data-website-id="%sveltekit.env.PUBLIC_UMAMI_WEBSITE_ID%"
+    ></script>
 
-		<!-- Google Analytics 4 -->
-		<script async src="https://www.googletagmanager.com/gtag/js?id=%sveltekit.env.PUBLIC_GA_MEASUREMENT_ID%"></script>
-		<script>
-			window.dataLayer = window.dataLayer || [];
-			function gtag(){dataLayer.push(arguments);}
-			gtag('js', new Date());
-			gtag('config', '%sveltekit.env.PUBLIC_GA_MEASUREMENT_ID%');
-		</script>
+    <!-- Google Analytics 4 -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=%sveltekit.env.PUBLIC_GA_MEASUREMENT_ID%"
+    ></script>
+    <script>
+      globalThis.dataLayer = globalThis.dataLayer || []
+      function gtag() {
+        dataLayer.push(arguments)
+      }
+      gtag('js', new Date())
+      gtag('config', '%sveltekit.env.PUBLIC_GA_MEASUREMENT_ID%')
+    </script>
 
-		%sveltekit.head%
-	</head>
-	<body data-sveltekit-preload-data="hover">
-		<div style="display: contents">%sveltekit.body%</div>
-	</body>
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
 </html>

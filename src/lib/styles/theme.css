@@ -1,107 +1,111 @@
 /* Theme CSS Variables */
 :root {
-	/* Color Palette */
-	--color-primary: oklch(0.5532 0.1936 277.02);
-	--color-primary-hover: oklch(0.5106 0.2301 276.97);
-	--color-primary-light: oklch(0.6801 0.1584 276.94);
-	
-	--color-accent: oklch(0.8155 0.1164 209.92);
-	--color-accent-hover: oklch(0.72 0.1164 209.92);
-	
-	/* Light Theme */
-	--color-bg: oklch(0.9943 0.0028 84.60);
-	--color-bg-secondary: oklch(0.9798 0.0044 78.21);
-	--color-bg-tertiary: oklch(0.9596 0.0090 78.24);
-	--color-surface: oklch(1.0000 0.0000 0);
-	--color-surface-hover: oklch(0.9798 0.0044 78.21);
-	
-	--color-text: oklch(0.2393 0.0000 0);
-	--color-text-secondary: oklch(0.4386 0.0000 0);
-	--color-text-muted: oklch(0.5313 0.0164 268.35);
-	
-	--color-border: oklch(0.9135 0.0086 84.59);
-	--color-border-hover: oklch(0.8493 0.0117 84.59);
+  /* Color Palette */
+  --color-primary: oklch(0.5532 0.1936 277.02);
+  --color-primary-hover: oklch(0.5106 0.2301 276.97);
+  --color-primary-light: oklch(0.6801 0.1584 276.94);
 
-	--color-overlay: oklch(0 0 0 / 0.4);
-	--color-overlay-heavy: oklch(0 0 0 / 0.6);
-	--color-overlay-light: oklch(0 0 0 / 0.3);
-	--color-on-overlay: oklch(1 0 0);
-	
-	/* Shadows - Softer */
-	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
-	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-	--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
-	
-	/* Typography */
-	--font-sans: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
-	--font-mono: 'JetBrains Mono', 'JetBrains Mono Fallback', ui-monospace, monospace;
-	
-	--text-xs: 0.75rem;
-	--text-sm: 0.875rem;
-	--text-base: 1rem;
-	--text-lg: 1.125rem;
-	--text-xl: 1.25rem;
-	--text-2xl: 1.5rem;
-	--text-3xl: 1.875rem;
-	--text-4xl: 2.25rem;
-	--text-5xl: 3rem;
-	
-	/* Spacing */
-	--space-1: 0.25rem;
-	--space-2: 0.5rem;
-	--space-3: 0.75rem;
-	--space-4: 1rem;
-	--space-5: 1.25rem;
-	--space-6: 1.5rem;
-	--space-8: 2rem;
-	--space-10: 2.5rem;
-	--space-12: 3rem;
-	--space-16: 4rem;
-	--space-20: 5rem;
-	--space-24: 6rem;
-	
-	/* Border Radius */
-	--radius-sm: 0.25rem;
-	--radius-md: 0.5rem;
-	--radius-lg: 0.75rem;
-	--radius-xl: 1rem;
-	--radius-2xl: 1.5rem;
-	--radius-full: 9999px;
-	
-	/* Transitions */
-	--transition-fast: 150ms ease;
-	--transition-base: 200ms ease;
-	--transition-slow: 300ms ease;
-	
-	/* Layout */
-	--max-width: 1000px;
-	--header-height: 4rem;
+  --color-accent: oklch(0.8155 0.1164 209.92);
+  --color-accent-hover: oklch(0.72 0.1164 209.92);
+
+  /* Light Theme */
+  --color-bg: oklch(0.9943 0.0028 84.6);
+  --color-bg-secondary: oklch(0.9798 0.0044 78.21);
+  --color-bg-tertiary: oklch(0.9596 0.009 78.24);
+  --color-surface: oklch(1 0 0);
+  --color-surface-hover: oklch(0.9798 0.0044 78.21);
+
+  --color-text: oklch(0.2393 0 0);
+  --color-text-secondary: oklch(0.4386 0 0);
+  --color-text-muted: oklch(0.5313 0.0164 268.35);
+
+  --color-border: oklch(0.9135 0.0086 84.59);
+  --color-border-hover: oklch(0.8493 0.0117 84.59);
+
+  --color-overlay: oklch(0 0 0 / 0.4);
+  --color-overlay-heavy: oklch(0 0 0 / 0.6);
+  --color-overlay-light: oklch(0 0 0 / 0.3);
+  --color-on-overlay: oklch(1 0 0);
+
+  /* Shadows - Softer */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-md:
+    0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+
+  /* Typography */
+  --font-sans: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
+  --font-mono:
+    'JetBrains Mono', 'JetBrains Mono Fallback', ui-monospace, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* Layout */
+  --max-width: 1000px;
+  --header-height: 4rem;
 }
 
 /* Dark Theme */
-[data-theme="dark"] {
-	--color-primary: oklch(0.6801 0.1584 276.94);
-	--color-primary-hover: oklch(0.5854 0.2041 277.12);
+[data-theme='dark'] {
+  --color-primary: oklch(0.6801 0.1584 276.94);
+  --color-primary-hover: oklch(0.5854 0.2041 277.12);
 
-	--color-bg: oklch(0.2103 0.0059 285.82);
-	--color-bg-secondary: oklch(0.2410 0.0076 285.76);
-	--color-bg-tertiary: oklch(0.2739 0.0055 285.94);
-	--color-surface: oklch(0.2410 0.0076 285.76);
-	--color-surface-hover: oklch(0.2739 0.0055 285.94);
-	
-	--color-text: oklch(0.9851 0.0000 0);
-	--color-text-secondary: oklch(0.7118 0.0130 285.96);
-	--color-text-muted: oklch(0.6704 0.0176 285.85);
-	
-	--color-border: oklch(0.3032 0.0089 285.79);
-	--color-border-hover: oklch(0.3703 0.0119 285.75);
+  --color-bg: oklch(0.2103 0.0059 285.82);
+  --color-bg-secondary: oklch(0.241 0.0076 285.76);
+  --color-bg-tertiary: oklch(0.2739 0.0055 285.94);
+  --color-surface: oklch(0.241 0.0076 285.76);
+  --color-surface-hover: oklch(0.2739 0.0055 285.94);
 
-	--color-overlay: oklch(0 0 0 / 0.5);
-	--color-overlay-heavy: oklch(0 0 0 / 0.7);
-	--color-overlay-light: oklch(0 0 0 / 0.4);
-	--color-on-overlay: oklch(1 0 0);
+  --color-text: oklch(0.9851 0 0);
+  --color-text-secondary: oklch(0.7118 0.013 285.96);
+  --color-text-muted: oklch(0.6704 0.0176 285.85);
 
-	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
-	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
-	--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+  --color-border: oklch(0.3032 0.0089 285.79);
+  --color-border-hover: oklch(0.3703 0.0119 285.75);
+
+  --color-overlay: oklch(0 0 0 / 0.5);
+  --color-overlay-heavy: oklch(0 0 0 / 0.7);
+  --color-overlay-light: oklch(0 0 0 / 0.4);
+  --color-on-overlay: oklch(1 0 0);
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
 }

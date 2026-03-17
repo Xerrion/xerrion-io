@@ -21,7 +21,7 @@ No linter or formatter is configured. CI runs `bun run check` and `bun run build
 
 ## Project Structure
 
-```
+```text
 src/
 ├── routes/
 │   ├── (public)/         # Public pages (home, about, projects, gallery)
