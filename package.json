@@ -29,7 +29,7 @@
   "type": "module",
   "dependencies": {
     "@humanspeak/svelte-motion": "^0.1.21",
-    "@libsql/client": "^0.17.0",
+    "@libsql/client": "^0.17.2",
     "@node-rs/argon2": "^2.0.2",
     "@valibot/to-json-schema": "^1.5.0",
     "@vercel/blob": "^2.2.0",
