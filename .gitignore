@@ -35,3 +35,7 @@ coverage/
 .vercel
 *.HEIC
 *.heic
+
+# Test artifacts
+playwright-report/
+test-results/

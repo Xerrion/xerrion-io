@@ -10,11 +10,12 @@ bun run build            # Production build (Vercel adapter, nodejs22.x)
 bun run preview          # Preview production build locally
 bun run check            # Svelte type checking (svelte-kit sync + svelte-check)
 bun run check:watch      # Type checking in watch mode
-bun run test             # Run all Playwright tests
-bunx playwright test tests/home.spec.ts        # Run single test file
-bunx playwright test tests/home.spec.ts -g "hero"  # Run tests matching pattern
-bunx playwright test --ui                     # Run tests with UI mode
-bunx playwright test --headed                 # Run tests with browser visible
+bun run test             # Run unit tests (bun:test, tests/unit/)
+bun run test:e2e         # Run all Playwright E2E tests (tests/e2e/)
+bunx playwright test tests/e2e/home.spec.ts        # Run single E2E test file
+bunx playwright test tests/e2e/home.spec.ts -g "hero"  # Run E2E tests matching pattern
+bunx playwright test --ui                     # Run E2E tests with UI mode
+bunx playwright test --headed                 # Run E2E tests with browser visible
 ```
 
 No linter or formatter is configured. CI runs `bun run check` and `bun run build`.
@@ -50,21 +51,23 @@ Always use runes. Never use `export let` (Svelte 4 syntax).
 
 ```svelte
 <script lang="ts">
-  import type { SomeType } from '$lib/types';
+  import type { SomeType } from '$lib/types'
 
   // Props: always define interface, then destructure from $props()
   interface Props {
-    repo: ProjectRepo;
-    optional?: string;
+    repo: ProjectRepo
+    optional?: string
   }
-  let { repo, optional = 'default' }: Props = $props();
+  let { repo, optional = 'default' }: Props = $props()
 
   // Reactive state
-  let count = $state(0);
-  let doubled = $derived(count * 2);
+  let count = $state(0)
+  let doubled = $derived(count * 2)
 
   // Side effects
-  $effect(() => { /* runs when dependencies change */ });
+  $effect(() => {
+    /* runs when dependencies change */
+  })
 </script>
 
 {@render children()}
@@ -77,27 +80,27 @@ Stores use `.svelte.ts` extension with factory functions and getter properties:
 ```typescript
 // toast.svelte.ts
 export interface Toast {
-  id: number;
-  type: 'success' | 'error' | 'info';
-  message: string;
+  id: number
+  type: 'success' | 'error' | 'info'
+  message: string
 }
 
-let toasts = $state<Toast[]>([]);
+let toasts = $state<Toast[]>([])
 
 export const toastStore = {
   get items() {
-    return toasts;
+    return toasts
   },
   add(type: ToastType, message: string, duration = 4000) {
-    const id = nextId++;
-    toasts.push({ id, type, message });
-    if (duration > 0) setTimeout(() => toastStore.dismiss(id), duration);
-    return id;
+    const id = nextId++
+    toasts.push({ id, type, message })
+    if (duration > 0) setTimeout(() => toastStore.dismiss(id), duration)
+    return id
   },
   dismiss(id: number) {
-    toasts = toasts.filter((t) => t.id !== id);
+    toasts = toasts.filter((t) => t.id !== id)
   }
-};
+}
 ```
 
 ### Imports
@@ -106,16 +109,16 @@ Order: SvelteKit/framework → `$lib/` → relative imports. Group with blank li
 
 ```typescript
 // 1. SvelteKit
-import type { Actions, PageServerLoad } from './$types';
-import { fail, redirect } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import type { Actions, PageServerLoad } from './$types'
+import { fail, redirect } from '@sveltejs/kit'
+import { env } from '$env/dynamic/private'
 
 // 2. $lib
-import { getDb } from '$lib/server/db';
-import { loginSchema } from '$lib/schemas/admin';
+import { getDb } from '$lib/server/db'
+import { loginSchema } from '$lib/schemas/admin'
 
 // 3. Relative
-import { helper } from './utils';
+import { helper } from './utils'
 ```
 
 ### TypeScript
@@ -153,15 +156,15 @@ All external API calls and database queries go in `+page.server.ts` or `+server.
 ```typescript
 export const load: PageServerLoad = async ({ fetch }) => {
   try {
-    const response = await fetch('https://api.example.com/data');
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
-    const data = await response.json();
-    return { data, error: null };
+    const response = await fetch('https://api.example.com/data')
+    if (!response.ok) throw new Error(`API error: ${response.status}`)
+    const data = await response.json()
+    return { data, error: null }
   } catch (error) {
-    console.error('Failed to fetch:', error);
-    return { data: [], error: 'Failed to load data' };
+    console.error('Failed to fetch:', error)
+    return { data: [], error: 'Failed to load data' }
   }
-};
+}
 ```
 
 ### Forms
@@ -172,19 +175,19 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
 ```typescript
 // schema
-import { z } from 'zod/v4';
+import { z } from 'zod/v4'
 export const loginSchema = z.object({
   username: z.string().min(1, 'Username is required').trim(),
   password: z.string().min(1, 'Password is required')
-});
+})
 
 // +page.server.ts
-import { superValidate, setError } from 'sveltekit-superforms';
-import { zod4 } from 'sveltekit-superforms/adapters';
+import { superValidate, setError } from 'sveltekit-superforms'
+import { zod4 } from 'sveltekit-superforms/adapters'
 
 export const load: PageServerLoad = async () => {
-  return { form: await superValidate(zod4(loginSchema)) };
-};
+  return { form: await superValidate(zod4(loginSchema)) }
+}
 ```
 
 ### Error Handling
@@ -226,18 +229,18 @@ PUBLIC_UMAMI_WEBSITE_ID=
 PUBLIC_GA_MEASUREMENT_ID=
 ```
 
-Use `$env/dynamic/private` for server-side env vars, `$env/dynamic/public` for client-side (PUBLIC_ prefix).
+Use `$env/dynamic/private` for server-side env vars, `$env/dynamic/public` for client-side (PUBLIC\_ prefix).
 
 ## External Services
 
-| Service     | Purpose           | Config                                    |
-| ----------- | ----------------- | ----------------------------------------- |
-| Vercel      | Hosting + deploy  | `@sveltejs/adapter-vercel`, nodejs22.x    |
-| Turso       | Database (libsql) | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`  |
-| Vercel Blob | Image storage     | `BLOB_READ_WRITE_TOKEN`                   |
-| GitHub API  | Projects page     | `GITHUB_TOKEN` (fine-grained PAT)         |
-| Umami       | Analytics         | `PUBLIC_UMAMI_WEBSITE_ID` (Umami Cloud)   |
-| Google      | Analytics         | `PUBLIC_GA_MEASUREMENT_ID` (GA4)          |
+| Service     | Purpose           | Config                                   |
+| ----------- | ----------------- | ---------------------------------------- |
+| Vercel      | Hosting + deploy  | `@sveltejs/adapter-vercel`, nodejs22.x   |
+| Turso       | Database (libsql) | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` |
+| Vercel Blob | Image storage     | `BLOB_READ_WRITE_TOKEN`                  |
+| GitHub API  | Projects page     | `GITHUB_TOKEN` (fine-grained PAT)        |
+| Umami       | Analytics         | `PUBLIC_UMAMI_WEBSITE_ID` (Umami Cloud)  |
+| Google      | Analytics         | `PUBLIC_GA_MEASUREMENT_ID` (GA4)         |
 
 ## Git Workflow
 
@@ -248,8 +251,8 @@ Use `$env/dynamic/private` for server-side env vars, `$env/dynamic/public` for c
 
 ## Testing
 
-- **ALWAYS test changes with Playwright** before considering a task complete.
+- **ALWAYS test changes** before considering a task complete - unit tests via `bun run test`, E2E via `bun run test:e2e`.
 - **ALWAYS check browser console output** during Playwright runs and fix any errors/warnings.
 - When testing animations, capture and validate intermediate keyframes/state transitions.
 - Run `bunx playwright test <file>` to run a single test file.
-- Test files are in `tests/` directory with `.spec.ts` extension.
+- Unit test files are in `tests/unit/` with `.test.ts` extension. E2E test files are in `tests/e2e/` with `.spec.ts` extension.
