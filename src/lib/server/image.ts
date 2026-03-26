@@ -19,7 +19,7 @@ const SIZES = {
   full: { width: 2400, label: 'full' }
 } as const
 
-type SizeKey = keyof typeof SIZES
+export type SizeKey = keyof typeof SIZES
 
 export type ProcessingStep =
   | 'decoding'
