@@ -1,12 +1,12 @@
 # AGENTS.md - Coding Agent Instructions
 
-Personal website for Lasse Skovgaard Nielsen (Xerrion). Built with SvelteKit 2 + Svelte 5 (runes) + TypeScript, deployed to Vercel with Turso (libsql) for database and Vercel Blob for image storage.
+Personal website for Lasse Skovgaard Nielsen (Xerrion). Built with SvelteKit 2 + Svelte 5 (runes) + TypeScript, deployed with Bun runtime using Turso (libsql) for database and Vercel Blob for image storage.
 
 ## Commands
 
 ```bash
 bun run dev              # Start dev server (Vite, port 5173)
-bun run build            # Production build (Vercel adapter, nodejs22.x)
+bun run build            # Production build (Bun adapter)
 bun run preview          # Preview production build locally
 bun run check            # Svelte type checking (svelte-kit sync + svelte-check)
 bun run check:watch      # Type checking in watch mode
@@ -235,7 +235,7 @@ Use `$env/dynamic/private` for server-side env vars, `$env/dynamic/public` for c
 
 | Service     | Purpose           | Config                                   |
 | ----------- | ----------------- | ---------------------------------------- |
-| Vercel      | Hosting + deploy  | `@sveltejs/adapter-vercel`, nodejs22.x   |
+| Bun         | Runtime + deploy  | `svelte-adapter-bun`                     |
 | Turso       | Database (libsql) | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` |
 | Vercel Blob | Image storage     | `BLOB_READ_WRITE_TOKEN`                  |
 | GitHub API  | Projects page     | `GITHUB_TOKEN` (fine-grained PAT)        |
