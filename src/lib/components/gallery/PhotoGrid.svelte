@@ -188,7 +188,7 @@
       class="photo-masonry"
       class:grid-hidden={!visible}
       bind:this={containerEl}
-      style="column-count: {cols}"
+      style:column-count={cols}
       style:height="{layout.totalHeight}px"
       inert={!visible}
       aria-hidden={!visible}
@@ -216,7 +216,7 @@
             >
               <div class="photo-shimmer"></div>
               <img
-                src={photo.thumbUrl || photo.url}
+                src={photo.thumbUrl ?? ''}
                 srcset={srcset || undefined}
                 sizes="(max-width: 480px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 alt={photo.name}

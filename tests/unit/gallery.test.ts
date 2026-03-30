@@ -1,7 +1,14 @@
-import { describe, test, expect } from 'bun:test'
-
-import { mapRowToPhoto } from '$lib/server/gallery'
+import { describe, test, expect, mock } from 'bun:test'
 import type { PhotoWithSizes } from '$lib/server/gallery'
+
+// Mock R2_PUBLIC_URL for getR2Url derivation
+const R2_PUBLIC_URL = 'https://pub-371d85115c2944799b7b432c262540fb.r2.dev'
+
+mock.module('$env/dynamic/private', () => ({
+  env: { R2_PUBLIC_URL }
+}))
+
+const { mapRowToPhoto } = await import('$lib/server/gallery')
 
 describe('mapRowToPhoto', () => {
   const fullRow: PhotoWithSizes = {
@@ -17,7 +24,6 @@ describe('mapRowToPhoto', () => {
           photoId: 42,
           size: 'thumb',
           r2Key: 'gallery/nature/sunset-abc-thumb.webp',
-          url: 'https://cdn.example.com/gallery/nature/sunset-abc-thumb.webp',
           width: 400,
           height: 225,
           byteSize: 12000
@@ -27,7 +33,6 @@ describe('mapRowToPhoto', () => {
           photoId: 42,
           size: 'medium',
           r2Key: 'gallery/nature/sunset-abc-medium.webp',
-          url: 'https://cdn.example.com/gallery/nature/sunset-abc-medium.webp',
           width: 1200,
           height: 675,
           byteSize: 85000
@@ -37,7 +42,6 @@ describe('mapRowToPhoto', () => {
           photoId: 42,
           size: 'full',
           r2Key: 'gallery/nature/sunset-abc-full.webp',
-          url: 'https://cdn.example.com/gallery/nature/sunset-abc-full.webp',
           width: 1920,
           height: 1080,
           byteSize: 250000
@@ -52,17 +56,14 @@ describe('mapRowToPhoto', () => {
 
     expect(photo.id).toBe('42')
     expect(photo.name).toBe('sunset.jpg')
-    expect(photo.url).toBe(
-      'https://cdn.example.com/gallery/nature/sunset-abc-full.webp'
-    )
     expect(photo.thumbUrl).toBe(
-      'https://cdn.example.com/gallery/nature/sunset-abc-thumb.webp'
+      `${R2_PUBLIC_URL}/gallery/nature/sunset-abc-thumb.webp`
     )
     expect(photo.mediumUrl).toBe(
-      'https://cdn.example.com/gallery/nature/sunset-abc-medium.webp'
+      `${R2_PUBLIC_URL}/gallery/nature/sunset-abc-medium.webp`
     )
     expect(photo.fullUrl).toBe(
-      'https://cdn.example.com/gallery/nature/sunset-abc-full.webp'
+      `${R2_PUBLIC_URL}/gallery/nature/sunset-abc-full.webp`
     )
     expect(photo.width).toBe(1920)
     expect(photo.height).toBe(1080)
@@ -81,9 +82,11 @@ describe('mapRowToPhoto', () => {
     expect(photo.createdAt.toISOString()).toBe('2024-06-15T12:00:00.000Z')
   })
 
-  test('url and fullUrl both map to full size URL', () => {
+  test('fullUrl derives from full-size r2Key', () => {
     const photo = mapRowToPhoto(fullRow)
-    expect(photo.url).toBe(photo.fullUrl as string)
+    expect(photo.fullUrl).toBe(
+      `${R2_PUBLIC_URL}/gallery/nature/sunset-abc-full.webp`
+    )
   })
 
   test('width and height come from full size', () => {
@@ -106,7 +109,6 @@ describe('mapRowToPhoto', () => {
     }
 
     const photo = mapRowToPhoto(minimalRow)
-    expect(photo.url).toBe('')
     expect(photo.thumbUrl).toBeUndefined()
     expect(photo.mediumUrl).toBeUndefined()
     expect(photo.fullUrl).toBeUndefined()
@@ -114,13 +116,13 @@ describe('mapRowToPhoto', () => {
     expect(photo.height).toBeUndefined()
   })
 
-  test('optional size fields pass through when present', () => {
+  test('optional size fields derive URLs when present', () => {
     const photo = mapRowToPhoto(fullRow)
     expect(photo.thumbUrl).toBe(
-      'https://cdn.example.com/gallery/nature/sunset-abc-thumb.webp'
+      `${R2_PUBLIC_URL}/gallery/nature/sunset-abc-thumb.webp`
     )
     expect(photo.mediumUrl).toBe(
-      'https://cdn.example.com/gallery/nature/sunset-abc-medium.webp'
+      `${R2_PUBLIC_URL}/gallery/nature/sunset-abc-medium.webp`
     )
     expect(photo.width).toBe(1920)
     expect(photo.height).toBe(1080)

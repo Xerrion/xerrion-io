@@ -83,27 +83,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         )
 
         send('uploading:thumb')
-        const thumbUrl = await uploadToR2(
-          thumbPath,
-          processed.thumb.buffer,
-          'image/webp'
-        )
+        await uploadToR2(thumbPath, processed.thumb.buffer, 'image/webp')
         uploadedR2Keys.push(thumbPath)
 
         send('uploading:medium')
-        const mediumUrl = await uploadToR2(
-          mediumPath,
-          processed.medium.buffer,
-          'image/webp'
-        )
+        await uploadToR2(mediumPath, processed.medium.buffer, 'image/webp')
         uploadedR2Keys.push(mediumPath)
 
         send('uploading:full')
-        const fullUrl = await uploadToR2(
-          fullPath,
-          processed.full.buffer,
-          'image/webp'
-        )
+        await uploadToR2(fullPath, processed.full.buffer, 'image/webp')
         uploadedR2Keys.push(fullPath)
 
         send('saving')
@@ -126,7 +114,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                 photoId: newPhoto.id,
                 size: 'thumb',
                 r2Key: thumbPath,
-                url: thumbUrl,
                 width: processed.thumb.width,
                 height: processed.thumb.height,
                 byteSize: processed.thumb.byteLength
@@ -135,7 +122,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                 photoId: newPhoto.id,
                 size: 'medium',
                 r2Key: mediumPath,
-                url: mediumUrl,
                 width: processed.medium.width,
                 height: processed.medium.height,
                 byteSize: processed.medium.byteLength
@@ -144,7 +130,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                 photoId: newPhoto.id,
                 size: 'full',
                 r2Key: fullPath,
-                url: fullUrl,
                 width: processed.full.width,
                 height: processed.full.height,
                 byteSize: processed.full.byteLength

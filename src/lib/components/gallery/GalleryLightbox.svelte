@@ -579,12 +579,10 @@
               {#if prevPhoto}
                 <img
                   class="lightbox-image"
-                  src={prevPhoto.fullUrl || prevPhoto.url}
+                  src={prevPhoto.fullUrl ?? ''}
                   srcset={[
                     prevPhoto.mediumUrl ? `${prevPhoto.mediumUrl} 1200w` : '',
-                    prevPhoto.fullUrl || prevPhoto.url
-                      ? `${prevPhoto.fullUrl || prevPhoto.url} 2400w`
-                      : ''
+                    prevPhoto.fullUrl ? `${prevPhoto.fullUrl} 2400w` : ''
                   ]
                     .filter(Boolean)
                     .join(', ') || undefined}
@@ -598,14 +596,12 @@
             <div class="lightbox-slide">
               <img
                 class="lightbox-image"
-                src={currentPhoto.fullUrl || currentPhoto.url}
+                src={currentPhoto.fullUrl ?? ''}
                 srcset={[
                   currentPhoto.mediumUrl
                     ? `${currentPhoto.mediumUrl} 1200w`
                     : '',
-                  currentPhoto.fullUrl || currentPhoto.url
-                    ? `${currentPhoto.fullUrl || currentPhoto.url} 2400w`
-                    : ''
+                  currentPhoto.fullUrl ? `${currentPhoto.fullUrl} 2400w` : ''
                 ]
                   .filter(Boolean)
                   .join(', ') || undefined}
@@ -619,12 +615,10 @@
               {#if nextPhoto}
                 <img
                   class="lightbox-image"
-                  src={nextPhoto.fullUrl || nextPhoto.url}
+                  src={nextPhoto.fullUrl ?? ''}
                   srcset={[
                     nextPhoto.mediumUrl ? `${nextPhoto.mediumUrl} 1200w` : '',
-                    nextPhoto.fullUrl || nextPhoto.url
-                      ? `${nextPhoto.fullUrl || nextPhoto.url} 2400w`
-                      : ''
+                    nextPhoto.fullUrl ? `${nextPhoto.fullUrl} 2400w` : ''
                   ]
                     .filter(Boolean)
                     .join(', ') || undefined}

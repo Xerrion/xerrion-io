@@ -30,19 +30,24 @@ function getS3(): S3Client {
 }
 
 /**
+ * Derive the public URL for an R2 object from its key.
+ */
+export function getR2Url(key: string): string {
+  const publicUrl = env.R2_PUBLIC_URL
+  if (!publicUrl) throw new Error('R2_PUBLIC_URL is not set')
+  return `${publicUrl.replace(/\/$/, '')}/${key}`
+}
+
+/**
  * Upload a buffer to R2 at the given object key.
- * Returns the public URL of the uploaded object.
  */
 export async function uploadToR2(
   key: string,
   buffer: Buffer | Uint8Array,
   contentType: string
-): Promise<string> {
+): Promise<void> {
   const bucket = env.R2_BUCKET_NAME
-  const publicUrl = env.R2_PUBLIC_URL
-
   if (!bucket) throw new Error('R2_BUCKET_NAME is not set')
-  if (!publicUrl) throw new Error('R2_PUBLIC_URL is not set')
 
   await getS3().send(
     new PutObjectCommand({
@@ -52,8 +57,6 @@ export async function uploadToR2(
       ContentType: contentType
     })
   )
-
-  return `${publicUrl.replace(/\/$/, '')}/${key}`
 }
 
 /**

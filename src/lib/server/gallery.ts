@@ -4,6 +4,7 @@ import type {
   PhotoSize as DbPhotoSize,
   Category as DbCategory
 } from '@prisma/client'
+import { getR2Url } from '$lib/server/r2'
 
 export interface PhotoWithSizes {
   photo: DbPhoto & { sizes: DbPhotoSize[] }
@@ -33,13 +34,14 @@ export function mapRowToPhoto(row: PhotoWithSizes): Photo {
     )
   }
 
+  const fullUrl = full ? getR2Url(full.r2Key) : undefined
+
   return {
     id: String(row.photo.id),
     name: row.photo.originalName,
-    url: full?.url ?? '',
-    thumbUrl: thumb?.url,
-    mediumUrl: medium?.url,
-    fullUrl: full?.url,
+    thumbUrl: thumb ? getR2Url(thumb.r2Key) : undefined,
+    mediumUrl: medium ? getR2Url(medium.r2Key) : undefined,
+    fullUrl,
     width: full?.width ?? undefined,
     height: full?.height ?? undefined,
     category: row.category.slug,

@@ -15,7 +15,6 @@ function makePhoto(overrides: Partial<Photo> = {}): Photo {
   return {
     id: '1',
     name: 'test.jpg',
-    url: 'https://example.com/test.jpg',
     category: 'test',
     createdAt: new Date(),
     ...overrides

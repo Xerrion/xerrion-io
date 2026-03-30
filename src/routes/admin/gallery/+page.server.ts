@@ -1,7 +1,7 @@
 import type { PageServerLoad, Actions } from './$types'
 import { error, fail } from '@sveltejs/kit'
 import { getPrisma } from '$lib/server/db'
-import { deleteFromR2 } from '$lib/server/r2'
+import { deleteFromR2, getR2Url } from '$lib/server/r2'
 import { extractSizes } from '$lib/server/gallery'
 import type { ImageMetadata } from '$lib/server/image'
 
@@ -29,9 +29,9 @@ export const load: PageServerLoad = async () => {
           categoryName: row.category.name,
           categorySlug: row.category.slug,
           originalName: row.originalName,
-          thumbUrl: thumb?.url ?? null,
-          mediumUrl: medium?.url ?? null,
-          fullUrl: full?.url ?? null,
+          thumbUrl: thumb ? getR2Url(thumb.r2Key) : null,
+          mediumUrl: medium ? getR2Url(medium.r2Key) : null,
+          fullUrl: full ? getR2Url(full.r2Key) : null,
           width: full?.width ?? null,
           height: full?.height ?? null,
           thumbSize: thumb?.byteSize ?? null,
@@ -70,25 +70,27 @@ export const actions: Actions = {
     try {
       const prisma = getPrisma()
 
+      const photo = await prisma.photo.findUnique({
+        where: { id: photoIdNum },
+        select: { id: true }
+      })
+      if (!photo) return fail(404, { error: 'Photo not found' })
+
       const sizeRows = await prisma.photoSize.findMany({
         where: { photoId: photoIdNum },
         select: { r2Key: true }
       })
 
-      if (sizeRows.length === 0) {
-        return fail(404, { error: 'Photo not found' })
-      }
-
-      const keysToDelete = sizeRows.map((r) => r.r2Key)
-
       await prisma.photo.delete({ where: { id: photoIdNum } })
 
-      await deleteFromR2(keysToDelete).catch((err) => {
-        console.error(
-          '[admin/gallery] R2 delete failed, objects may be orphaned:',
-          err
-        )
-      })
+      if (sizeRows.length > 0) {
+        await deleteFromR2(sizeRows.map((r) => r.r2Key)).catch((err) => {
+          console.error(
+            '[admin/gallery] R2 cleanup failed, objects may be orphaned:',
+            err
+          )
+        })
+      }
 
       return { success: true }
     } catch (err) {

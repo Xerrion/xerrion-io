@@ -2,7 +2,8 @@ import { PrismaClient, PhotoSizeKey } from '@prisma/client'
 import {
   S3Client,
   PutObjectCommand,
-  DeleteObjectsCommand
+  DeleteObjectsCommand,
+  ListObjectsV2Command
 } from '@aws-sdk/client-s3'
 
 // ---------------------------------------------------------------------------
@@ -155,6 +156,33 @@ async function deleteKeysFromR2(
   }
 }
 
+async function listR2Objects(
+  s3: S3Client,
+  bucket: string,
+  prefix?: string
+): Promise<{ key: string; size: number }[]> {
+  const results: { key: string; size: number }[] = []
+  let continuationToken: string | undefined
+
+  do {
+    const resp = await s3.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+        ContinuationToken: continuationToken
+      })
+    )
+    for (const obj of resp.Contents ?? []) {
+      if (obj.Key) results.push({ key: obj.Key, size: obj.Size ?? 0 })
+    }
+    continuationToken = resp.IsTruncated
+      ? resp.NextContinuationToken
+      : undefined
+  } while (continuationToken)
+
+  return results
+}
+
 // ---------------------------------------------------------------------------
 // Fetch helpers
 // ---------------------------------------------------------------------------
@@ -253,6 +281,36 @@ async function main() {
     console.log('Database connection verified.')
 
     const s3 = createR2Client(env)
+
+    // --- R2 pre-flight check ---
+    console.log('\nChecking R2 bucket connectivity...')
+    console.log(`  Bucket: ${env.r2BucketName}`)
+    console.log(
+      `  Endpoint: https://${env.r2AccountId}.r2.cloudflarestorage.com`
+    )
+    try {
+      const existingObjects = await listR2Objects(
+        s3,
+        env.r2BucketName,
+        'gallery/'
+      )
+      console.log(
+        `  Objects in bucket (gallery/ prefix): ${existingObjects.length}`
+      )
+      if (existingObjects.length > 0) {
+        console.log('  First 5 keys:')
+        existingObjects
+          .slice(0, 5)
+          .forEach((o) => console.log(`    ${o.key} (${o.size} bytes)`))
+      }
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err)
+      console.error(`  [R2] Pre-flight check FAILED: ${reason}`)
+      throw new Error(
+        'R2 bucket connectivity check failed - aborting migration'
+      )
+    }
+    console.log('  R2 connectivity OK\n')
 
     // 1. List all blobs under gallery/
     console.log('Listing blobs from Vercel Blob...')
@@ -365,7 +423,6 @@ async function main() {
       const sizeInserts: Array<{
         size: PhotoSizeKey
         r2Key: string
-        url: string
         width: number | null
         height: number | null
         byteSize: number
@@ -382,7 +439,7 @@ async function main() {
           // R2 key mirrors the original Vercel Blob pathname (no random suffix)
           // intentionally, to preserve the original path structure during migration
           const r2Key = `gallery/${categorySlug}/${baseName}-${size}.webp`
-          const r2Url = await uploadToR2(
+          await uploadToR2(
             s3,
             env.r2BucketName,
             env.r2PublicUrl,
@@ -397,7 +454,6 @@ async function main() {
           sizeInserts.push({
             size,
             r2Key,
-            url: r2Url,
             width: null,
             height: null,
             byteSize: buffer.byteLength
@@ -444,7 +500,6 @@ async function main() {
               photoId: inserted.id,
               size: s.size,
               r2Key: s.r2Key,
-              url: s.url,
               width: s.width,
               height: s.height,
               byteSize: s.byteSize

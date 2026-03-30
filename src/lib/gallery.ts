@@ -8,7 +8,6 @@ export interface PhotoCategory {
 export interface Photo {
   id: string
   name: string
-  url: string
   thumbUrl?: string
   mediumUrl?: string
   fullUrl?: string
