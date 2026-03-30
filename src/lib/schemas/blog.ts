@@ -12,15 +12,15 @@ export const postCreateSchema = z.object({
     ),
   description: z.string().optional(),
   content: z.string().min(1, 'Content is required'),
-  editorMode: z.enum(['markdown', 'tiptap']).default('markdown'),
+
   status: z.enum(['draft', 'published']).default('draft'),
-  tagIds: z.array(z.coerce.number().int().positive()).default([])
+  tagIds: z.array(z.coerce.number().int().positive()).default([]),
+  coverR2Key: z.string().optional(),
+  coverR2KeyFull: z.string().optional()
 })
 
 export const postUpdateSchema = postCreateSchema.extend({
   id: z.coerce.number().int().positive(),
-  coverR2Key: z.string().optional(),
-  coverR2KeyFull: z.string().optional(),
   existingCoverR2Key: z.string().optional(),
   existingCoverR2KeyFull: z.string().optional()
 })

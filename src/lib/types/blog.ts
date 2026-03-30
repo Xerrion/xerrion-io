@@ -25,7 +25,7 @@ export interface BlogPost extends BlogPostCard {
   content: string
   /** Server-rendered HTML from renderMarkdown() */
   renderedContent: string
-  editorMode: 'markdown' | 'tiptap'
+
   updatedAt: string
   nextPost: BlogPostNavLink | null
   prevPost: BlogPostNavLink | null

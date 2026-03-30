@@ -215,7 +215,7 @@
     margin: 0 auto;
   }
 
-  :global(.page-header) {
+  .page-header {
     display: flex;
     align-items: center;
     justify-content: space-between;

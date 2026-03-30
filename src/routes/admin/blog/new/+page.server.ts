@@ -28,9 +28,18 @@ export const actions: Actions = {
     const form = await superValidate(request, zod4(postCreateSchema))
     if (!form.valid) return fail(400, { form })
 
-    const { title, slug, description, content, editorMode, status, tagIds } =
-      form.data
+    const {
+      title,
+      slug,
+      description,
+      content,
+      status,
+      tagIds,
+      coverR2Key,
+      coverR2KeyFull
+    } = form.data
 
+    let postId: number
     try {
       const prisma = getPrisma()
       const existing = await prisma.post.findUnique({ where: { slug } })
@@ -48,9 +57,11 @@ export const actions: Actions = {
           slug,
           description: description || null,
           content,
-          editorMode,
+          editorMode: 'markdown',
           status,
           readingTime,
+          coverR2Key: coverR2Key ?? null,
+          coverR2KeyFull: coverR2KeyFull ?? null,
           publishedAt,
           tags: {
             create: tagIds.map((tagId) => ({ tagId }))
@@ -58,11 +69,12 @@ export const actions: Actions = {
         }
       })
 
-      redirect(303, `/admin/blog/${post.id}`)
+      postId = post.id
     } catch (err) {
-      if (err instanceof Error && 'status' in err) throw err
       console.error('[admin/blog/new] create failed:', err)
-      return fail(500, { error: 'Failed to create post' })
+      return fail(500, { form })
     }
+
+    redirect(303, `/admin/blog/${postId}`)
   }
 }

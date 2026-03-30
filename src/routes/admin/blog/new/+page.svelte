@@ -1,16 +1,28 @@
 <script lang="ts">
-  import { browser } from '$app/environment'
   import { superForm } from 'sveltekit-superforms'
   import { zod4Client } from 'sveltekit-superforms/adapters'
   import { toastStore } from '$lib/stores/toast.svelte'
   import { postCreateSchema } from '$lib/schemas/blog'
   import { toSlug } from '$lib/utils/slug'
+  import MarkdownEditor from '$lib/components/blog/MarkdownEditor.svelte'
+  import TagSelector from '$lib/components/blog/TagSelector.svelte'
+  import CoverUpload from '$lib/components/blog/CoverUpload.svelte'
 
   let { data } = $props()
 
   // svelte-ignore state_referenced_locally
   const { form, enhance, submitting, errors } = superForm(data.form, {
+    dataType: 'json',
     validators: zod4Client(postCreateSchema),
+    resetForm: false,
+    onChange(event) {
+      if (!event.target) return
+      if (!event.paths.includes('title')) return
+      if (isSlugManuallyEdited) return
+
+      const title = event.get('title')
+      event.set('slug', title ? toSlug(title as string) : '', { taint: false })
+    },
     onResult({ result }) {
       if (result.type === 'failure') {
         toastStore.error('Please fix the errors and try again')
@@ -21,12 +33,6 @@
   // Slug auto-gen: track if user has manually edited the slug
   let isSlugManuallyEdited = $state(false)
 
-  $effect(() => {
-    if (!isSlugManuallyEdited && $form.title) {
-      $form.slug = toSlug($form.title)
-    }
-  })
-
   // Reading time estimate (client-side for live feedback)
   let readingTimeMinutes = $derived.by(() => {
     const trimmed = $form.content.trim()
@@ -36,143 +42,33 @@
 
   // Tag selection
   let selectedTagIds = $state<Set<number>>(new Set())
-  let tagSuggestions = $state<string[]>([])
-  let isSuggestionsLoading = $state(false)
 
-  function toggleTag(id: number) {
-    const next = new Set(selectedTagIds)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    selectedTagIds = next
-    $form.tagIds = [...selectedTagIds]
-  }
+  // AI description suggestion
+  let isDescriptionLoading = $state(false)
 
-  async function getAiSuggestions() {
-    isSuggestionsLoading = true
+  async function getAiDescription() {
+    if (!$form.title) return
+    isDescriptionLoading = true
     try {
-      const res = await fetch('/api/blog/suggest-tags', {
+      const res = await fetch('/api/blog/suggest-description', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: $form.title,
-          content: $form.content,
-          existingTags: data.tags.map((t) => t.name)
-        })
+        body: JSON.stringify({ title: $form.title, content: $form.content })
       })
+      if (!res.ok) throw new Error(`Server error: ${res.status}`)
       const json = await res.json()
-      tagSuggestions = json.suggestions ?? []
-    } catch {
-      toastStore.error('Failed to get tag suggestions')
-    } finally {
-      isSuggestionsLoading = false
-    }
-  }
-
-  function acceptSuggestion(suggestion: string) {
-    const existing = data.tags.find(
-      (t) => t.name.toLowerCase() === suggestion.toLowerCase()
-    )
-    if (existing) {
-      toggleTag(existing.id)
-    }
-    tagSuggestions = tagSuggestions.filter((s) => s !== suggestion)
-  }
-
-  function dismissSuggestion(suggestion: string) {
-    tagSuggestions = tagSuggestions.filter((s) => s !== suggestion)
-  }
-
-  // Cover image upload
-  let coverPreviewUrl = $state<string | null>(null)
-  let isCoverUploading = $state(false)
-  let coverR2Key = $state<string | null>(null)
-  let coverR2KeyFull = $state<string | null>(null)
-
-  async function handleCoverUpload(e: Event) {
-    const input = e.target as HTMLInputElement
-    const file = input.files?.[0]
-    if (!file) return
-    if (!$form.slug) {
-      toastStore.error('Please enter a slug before uploading a cover image')
-      return
-    }
-
-    isCoverUploading = true
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('postSlug', $form.slug)
-      const res = await fetch('/admin/blog/upload-cover', {
-        method: 'POST',
-        body: fd
-      })
-      if (!res.ok) throw new Error('Upload failed')
-      const result = await res.json()
-      coverPreviewUrl = result.mediumUrl
-      coverR2Key = result.mediumKey
-      coverR2KeyFull = result.fullKey
-      toastStore.success('Cover image uploaded')
-    } catch {
-      toastStore.error('Failed to upload cover image')
-    } finally {
-      isCoverUploading = false
-    }
-  }
-
-  function removeCoverImage() {
-    coverPreviewUrl = null
-    coverR2Key = null
-    coverR2KeyFull = null
-  }
-
-  // TipTap editor
-  let editorEl = $state<HTMLElement | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let tiptapEditor = $state<any>(null)
-
-  $effect(() => {
-    if (!browser || $form.editorMode !== 'tiptap' || !editorEl || tiptapEditor)
-      return
-
-    let isDestroyed = false
-
-    import('@tiptap/core').then(({ Editor }) =>
-      Promise.all([
-        import('@tiptap/starter-kit'),
-        import('@tiptap/extension-link'),
-        import('tiptap-markdown')
-      ]).then(([{ default: StarterKit }, { default: Link }, { Markdown }]) => {
-        if (isDestroyed || !editorEl) return
-        tiptapEditor = new Editor({
-          element: editorEl,
-          extensions: [StarterKit, Link, Markdown],
-          content: $form.content || '',
-          onUpdate({ editor }) {
-            // @ts-ignore - tiptap-markdown storage access
-            $form.content = editor.storage.markdown.getMarkdown()
-          }
-        })
-      })
-    )
-
-    return () => {
-      isDestroyed = true
-      if (tiptapEditor) {
-        tiptapEditor.destroy()
-        tiptapEditor = null
+      if (json.description) {
+        $form.description = json.description
       }
+    } catch {
+      toastStore.error('Failed to generate description')
+    } finally {
+      isDescriptionLoading = false
     }
-  })
-
-  function setEditorMode(mode: 'markdown' | 'tiptap') {
-    if (tiptapEditor && mode === 'markdown') {
-      // @ts-ignore - tiptap-markdown storage access
-      $form.content = tiptapEditor.storage.markdown.getMarkdown()
-      tiptapEditor.destroy()
-      tiptapEditor = null
-    }
-    $form.editorMode = mode
   }
+
+  // Cover image preview URL (UI-only, not submitted)
+  let coverPreviewUrl = $state<string | null>(null)
 </script>
 
 <svelte:head>
@@ -199,41 +95,8 @@
   </header>
 
   <form method="POST" use:enhance class="post-form">
-    <!-- Hidden fields for data not directly in form inputs -->
-    <input type="hidden" name="editorMode" value={$form.editorMode} />
-    <input type="hidden" name="content" value={$form.content} />
-    {#each $form.tagIds as tagId}
-      <input type="hidden" name="tagIds" value={tagId} />
-    {/each}
-    {#if coverR2Key}<input
-        type="hidden"
-        name="coverR2Key"
-        value={coverR2Key}
-      />{/if}
-    {#if coverR2KeyFull}<input
-        type="hidden"
-        name="coverR2KeyFull"
-        value={coverR2KeyFull}
-      />{/if}
-
     <div class="form-layout">
       <div class="form-main">
-        <!-- Editor mode toggle -->
-        <div class="editor-mode-toggle">
-          <button
-            type="button"
-            class="mode-btn"
-            class:active={$form.editorMode === 'markdown'}
-            onclick={() => setEditorMode('markdown')}>Markdown</button
-          >
-          <button
-            type="button"
-            class="mode-btn"
-            class:active={$form.editorMode === 'tiptap'}
-            onclick={() => setEditorMode('tiptap')}>Rich Text</button
-          >
-        </div>
-
         <!-- Title -->
         <div class="field">
           <label for="title">Title</label>
@@ -252,26 +115,83 @@
 
         <!-- Slug -->
         <div class="field">
-          <label for="slug">Slug</label>
-          <input
-            id="slug"
-            type="text"
-            name="slug"
-            placeholder="post-slug"
-            bind:value={$form.slug}
-            oninput={() => (isSlugManuallyEdited = true)}
-            disabled={$submitting}
-            class:error={$errors.slug}
-          />
+          <div class="slug-label-row">
+            <label for="slug">Slug</label>
+            <span
+              class="slug-mode-badge"
+              class:auto={!isSlugManuallyEdited}
+              class:manual={isSlugManuallyEdited}
+            >
+              {isSlugManuallyEdited ? 'Manual' : 'Auto'}
+            </span>
+          </div>
+          <div class="slug-input-row">
+            <input
+              id="slug"
+              type="text"
+              name="slug"
+              placeholder={$form.title ? toSlug($form.title) : 'post-slug'}
+              bind:value={$form.slug}
+              oninput={() => {
+                isSlugManuallyEdited = true
+                $errors.slug = undefined
+              }}
+              disabled={$submitting}
+              class:error={$errors.slug}
+            />
+            <button
+              type="button"
+              class="slug-regenerate-btn"
+              title="Regenerate slug from title"
+              disabled={$submitting || !$form.title}
+              onclick={() => {
+                isSlugManuallyEdited = false
+                $form.slug = toSlug($form.title)
+                $errors.slug = undefined
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><polyline points="23 4 23 10 17 10" /><polyline
+                  points="1 20 1 14 7 14"
+                /><path
+                  d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                /></svg
+              >
+              Regenerate
+            </button>
+          </div>
           {#if $errors.slug}<span class="field-error">{$errors.slug}</span>{/if}
           <span class="field-hint">URL: /blog/{$form.slug || 'your-slug'}</span>
         </div>
 
         <!-- Description -->
         <div class="field">
-          <label for="description"
-            >Description <span class="optional">(optional)</span></label
-          >
+          <div class="description-label-row">
+            <label for="description"
+              >Description <span class="optional">(optional)</span></label
+            >
+            <button
+              type="button"
+              class="ai-suggest-btn"
+              disabled={$submitting || isDescriptionLoading || !$form.title}
+              onclick={getAiDescription}
+            >
+              {#if isDescriptionLoading}
+                <span class="ai-spinner"></span> Generating...
+              {:else}
+                ✨ AI Suggest
+              {/if}
+            </button>
+          </div>
           <textarea
             id="description"
             name="description"
@@ -285,7 +205,7 @@
         <!-- Content editor -->
         <div class="field editor-field">
           <div class="editor-label-row">
-            <label for="content-editor">Content</label>
+            <span class="field-label">Content</span>
             {#if readingTimeMinutes > 0}
               <span class="reading-time-badge"
                 >{readingTimeMinutes} min read</span
@@ -293,20 +213,12 @@
             {/if}
           </div>
 
-          {#if $form.editorMode === 'markdown'}
-            <div class="markdown-editor">
-              <textarea
-                id="content-editor"
-                class="markdown-textarea"
-                rows="20"
-                placeholder="Write your post in Markdown..."
-                bind:value={$form.content}
-                disabled={$submitting}
-              ></textarea>
-            </div>
-          {:else}
-            <div class="tiptap-wrapper" bind:this={editorEl}></div>
-          {/if}
+          <MarkdownEditor
+            content={$form.content}
+            onchange={(v) => ($form.content = v)}
+            disabled={$submitting}
+            ariaLabel="Blog post content editor"
+          />
           {#if $errors.content}<span class="field-error">{$errors.content}</span
             >{/if}
         </div>
@@ -339,131 +251,32 @@
         </div>
 
         <!-- Cover image -->
-        <div class="sidebar-card">
-          <h3>Cover Image</h3>
-          {#if coverPreviewUrl}
-            <img
-              src={coverPreviewUrl}
-              alt="Cover preview"
-              class="cover-preview"
-            />
-            <button
-              type="button"
-              class="btn text small"
-              onclick={removeCoverImage}>Remove</button
-            >
-          {:else}
-            <label class="upload-area" class:uploading={isCoverUploading}>
-              <input
-                type="file"
-                accept="image/*"
-                class="sr-only"
-                onchange={handleCoverUpload}
-                disabled={isCoverUploading}
-              />
-              {#if isCoverUploading}
-                <span>Uploading...</span>
-              {:else}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path
-                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
-                  /><polyline points="17 8 12 3 7 8" /><line
-                    x1="12"
-                    y1="3"
-                    x2="12"
-                    y2="15"
-                  /></svg
-                >
-                <span>Upload cover image</span>
-              {/if}
-            </label>
-          {/if}
-        </div>
+        <CoverUpload
+          slug={$form.slug}
+          previewUrl={coverPreviewUrl}
+          onupload={(result) => {
+            coverPreviewUrl = result.previewUrl
+            $form.coverR2Key = result.r2Key
+            $form.coverR2KeyFull = result.r2KeyFull
+          }}
+          onremove={() => {
+            coverPreviewUrl = null
+            $form.coverR2Key = ''
+            $form.coverR2KeyFull = ''
+          }}
+        />
 
         <!-- Tags -->
-        <div class="sidebar-card">
-          <div class="sidebar-card-header">
-            <h3>Tags</h3>
-            <button
-              type="button"
-              class="btn text small"
-              onclick={getAiSuggestions}
-              disabled={isSuggestionsLoading || !$form.title}
-            >
-              {isSuggestionsLoading ? 'Loading...' : 'AI Suggest'}
-            </button>
-          </div>
-
-          {#if tagSuggestions.length > 0}
-            <div class="suggestions">
-              <p class="suggestions-label">Suggestions:</p>
-              <div class="chip-group">
-                {#each tagSuggestions as suggestion}
-                  <div class="suggestion-chip">
-                    <button
-                      type="button"
-                      class="chip accept"
-                      onclick={() => acceptSuggestion(suggestion)}
-                    >
-                      {suggestion}
-                    </button>
-                    <button
-                      type="button"
-                      class="chip-dismiss"
-                      onclick={() => dismissSuggestion(suggestion)}
-                      aria-label="Dismiss {suggestion}"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="10"
-                        height="10"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="3"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><line x1="18" y1="6" x2="6" y2="18" /><line
-                          x1="6"
-                          y1="6"
-                          x2="18"
-                          y2="18"
-                        /></svg
-                      >
-                    </button>
-                  </div>
-                {/each}
-              </div>
-            </div>
-          {/if}
-
-          <div class="chip-group tags-group">
-            {#each data.tags as tag}
-              <button
-                type="button"
-                class="chip tag-chip"
-                class:selected={selectedTagIds.has(tag.id)}
-                onclick={() => toggleTag(tag.id)}
-              >
-                {tag.name}
-              </button>
-            {/each}
-            {#if data.tags.length === 0}
-              <p class="no-tags">
-                No tags yet. <a href="/admin/blog/tags">Create some</a>
-              </p>
-            {/if}
-          </div>
-        </div>
+        <TagSelector
+          tags={data.tags}
+          selectedIds={selectedTagIds}
+          onchange={(ids) => {
+            selectedTagIds = ids
+            $form.tagIds = [...ids]
+          }}
+          formTitle={$form.title}
+          formContent={$form.content}
+        />
 
         <!-- Submit -->
         <button
@@ -471,7 +284,11 @@
           class="btn primary full-width"
           disabled={$submitting}
         >
-          {$submitting ? 'Saving...' : 'Create Post'}
+          {$submitting
+            ? 'Saving...'
+            : $form.status === 'published'
+              ? 'Publish Post'
+              : 'Save Draft'}
         </button>
       </aside>
     </div>
@@ -529,34 +346,6 @@
     gap: var(--space-5);
   }
 
-  /* Editor mode toggle */
-  .editor-mode-toggle {
-    display: inline-flex;
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: 2px;
-    gap: 2px;
-  }
-
-  .mode-btn {
-    padding: var(--space-2) var(--space-4);
-    border: none;
-    background: none;
-    border-radius: var(--radius-sm);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-  }
-
-  .mode-btn.active {
-    background: var(--color-surface);
-    color: var(--color-text);
-    box-shadow: var(--shadow-sm);
-  }
-
   /* Form fields */
   .field {
     display: flex;
@@ -612,6 +401,132 @@
     font-family: var(--font-mono);
   }
 
+  /* Slug field */
+  .slug-label-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .slug-mode-badge {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    padding: 1px var(--space-2);
+    border-radius: var(--radius-full);
+    line-height: 1.4;
+  }
+
+  .slug-mode-badge.auto {
+    background: color-mix(in oklch, var(--color-primary) 15%, transparent);
+    color: var(--color-primary);
+  }
+
+  .slug-mode-badge.manual {
+    background: color-mix(in oklch, var(--color-warning) 15%, transparent);
+    color: var(--color-warning-muted);
+  }
+
+  .slug-input-row {
+    display: flex;
+    gap: var(--space-2);
+    align-items: stretch;
+  }
+
+  .slug-input-row input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .slug-regenerate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all var(--transition-fast);
+  }
+
+  .slug-regenerate-btn:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: color-mix(
+      in oklch,
+      var(--color-primary) 8%,
+      var(--color-bg-secondary)
+    );
+  }
+
+  .slug-regenerate-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Description AI suggest */
+  .description-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .ai-suggest-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .ai-suggest-btn:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: color-mix(
+      in oklch,
+      var(--color-primary) 8%,
+      var(--color-bg-secondary)
+    );
+  }
+
+  .ai-suggest-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .ai-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ai-spinner {
+      animation: none;
+      border-top-color: var(--color-text-muted);
+    }
+  }
+
   /* Editor area */
   .editor-label-row {
     display: flex;
@@ -619,7 +534,7 @@
     justify-content: space-between;
   }
 
-  .editor-label-row label {
+  .field-label {
     font-size: var(--text-sm);
     font-weight: 500;
     color: var(--color-text-secondary);
@@ -631,59 +546,6 @@
     background: var(--color-bg-secondary);
     padding: 2px var(--space-2);
     border-radius: var(--radius-full);
-  }
-
-  .markdown-textarea {
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    line-height: 1.6;
-    resize: vertical;
-    min-height: 400px;
-    padding: var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
-    color: var(--color-text);
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .markdown-textarea:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px
-      color-mix(in oklch, var(--color-primary) 20%, transparent);
-  }
-
-  :global(.tiptap-wrapper) {
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    min-height: 400px;
-    padding: var(--space-4);
-    background: var(--color-bg);
-    cursor: text;
-  }
-
-  :global(.tiptap-wrapper:focus-within) {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px
-      color-mix(in oklch, var(--color-primary) 20%, transparent);
-  }
-
-  :global(.tiptap-wrapper .ProseMirror) {
-    outline: none;
-    min-height: 360px;
-    color: var(--color-text);
-    font-size: var(--text-sm);
-    line-height: 1.7;
-  }
-
-  :global(.tiptap-wrapper .ProseMirror p.is-editor-empty:first-child::before) {
-    content: 'Write your post...';
-    color: var(--color-text-muted);
-    pointer-events: none;
-    float: left;
-    height: 0;
   }
 
   /* Sidebar */
@@ -712,12 +574,6 @@
     margin: 0;
   }
 
-  .sidebar-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
   /* Status toggle */
   .status-toggle {
     display: flex;
@@ -732,124 +588,6 @@
     font-size: var(--text-sm);
     color: var(--color-text);
     cursor: pointer;
-  }
-
-  /* Cover image */
-  .cover-preview {
-    width: 100%;
-    border-radius: var(--radius-md);
-    aspect-ratio: 16/9;
-    object-fit: cover;
-  }
-
-  .upload-area {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    padding: var(--space-6);
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-    transition: all var(--transition-fast);
-  }
-
-  .upload-area:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-  }
-
-  .upload-area.uploading {
-    opacity: 0.6;
-    pointer-events: none;
-  }
-
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  /* Tags and suggestions */
-  .suggestions-label {
-    font-size: var(--text-xs);
-    color: var(--color-text-secondary);
-    margin: 0;
-  }
-
-  .chip-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .chip {
-    padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius-full);
-    border: 1px solid var(--color-border);
-    background: var(--color-bg-secondary);
-    color: var(--color-text-secondary);
-    font-size: var(--text-xs);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-  }
-
-  .chip:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-  }
-
-  .chip.tag-chip.selected {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-    color: var(--color-text-inverse);
-  }
-
-  .chip.accept {
-    background: color-mix(in oklch, var(--color-primary) 10%, transparent);
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-  }
-
-  .suggestion-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-  }
-
-  .chip-dismiss {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--color-text-muted);
-    padding: 2px;
-    display: flex;
-    align-items: center;
-    border-radius: var(--radius-sm);
-    transition: color var(--transition-fast);
-  }
-
-  .chip-dismiss:hover {
-    color: var(--color-text);
-  }
-
-  .no-tags {
-    font-size: var(--text-xs);
-    color: var(--color-text-muted);
-    margin: 0;
-  }
-
-  .no-tags a {
-    color: var(--color-primary);
   }
 
   .full-width {

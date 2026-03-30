@@ -30,7 +30,6 @@ export const load: PageServerLoad = async ({ params }) => {
         title: post.title,
         description: post.description,
         content: post.content,
-        editorMode: post.editorMode,
         status: post.status,
         coverR2Key: post.coverR2Key,
         coverR2KeyFull: post.coverR2KeyFull,
@@ -49,9 +48,12 @@ export const load: PageServerLoad = async ({ params }) => {
           slug: post.slug,
           description: post.description ?? undefined,
           content: post.content,
-          editorMode: post.editorMode,
           status: post.status,
-          tagIds: post.tags.map((pt) => pt.tagId)
+          tagIds: post.tags.map((pt) => pt.tagId),
+          coverR2Key: post.coverR2Key ?? '',
+          coverR2KeyFull: post.coverR2KeyFull ?? '',
+          existingCoverR2Key: post.coverR2Key ?? '',
+          existingCoverR2KeyFull: post.coverR2KeyFull ?? ''
         },
         zod4(postUpdateSchema)
       )
@@ -78,7 +80,6 @@ export const actions: Actions = {
       slug,
       description,
       content,
-      editorMode,
       status,
       tagIds,
       coverR2Key: newCoverKey,
@@ -102,7 +103,7 @@ export const actions: Actions = {
         where: { id },
         select: { publishedAt: true, status: true }
       })
-      if (!currentPost) return fail(404, { error: 'Post not found' })
+      if (!currentPost) return fail(404, { form })
 
       // Clean up old cover R2 objects if cover was replaced
       if (oldCoverKey && oldCoverKey !== newCoverKey) {
@@ -131,7 +132,7 @@ export const actions: Actions = {
             slug,
             description: description || null,
             content,
-            editorMode,
+            editorMode: 'markdown',
             status,
             readingTime,
             coverR2Key: newCoverKey ?? null,
@@ -150,7 +151,7 @@ export const actions: Actions = {
       return { form }
     } catch (err) {
       console.error('[admin/blog/[id]] update failed:', err)
-      return fail(500, { error: 'Failed to update post' })
+      return fail(500, { form })
     }
   },
 
@@ -178,11 +179,11 @@ export const actions: Actions = {
       }
 
       await prisma.post.delete({ where: { id } })
-      redirect(303, '/admin/blog')
     } catch (err) {
-      if (err instanceof Error && 'status' in err) throw err
       console.error('[admin/blog/[id]] delete failed:', err)
       return fail(500, { error: 'Failed to delete post' })
     }
+
+    redirect(303, '/admin/blog')
   }
 }

@@ -19,7 +19,6 @@ export const load: PageServerLoad = async () => {
         slug: post.slug,
         title: post.title,
         status: post.status,
-        editorMode: post.editorMode,
         readingTime: post.readingTime,
         publishedAt: post.publishedAt?.toISOString() ?? null,
         createdAt: post.createdAt.toISOString(),

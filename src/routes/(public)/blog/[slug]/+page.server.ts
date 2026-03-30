@@ -27,13 +27,10 @@ export const load: PageServerLoad = async ({ params }) => {
     error(404, 'Post not found')
   }
 
-  // TipTap content is already HTML; only Markdown needs rendering
+  // Render markdown content to HTML
   let renderedContent = ''
   try {
-    renderedContent =
-      post.editorMode === 'tiptap'
-        ? post.content
-        : await renderMarkdown(post.content)
+    renderedContent = await renderMarkdown(post.content)
   } catch (err) {
     console.error('[blog/slug] Failed to render content:', err)
     renderedContent = '<p>Content rendering failed.</p>'
@@ -84,7 +81,6 @@ export const load: PageServerLoad = async ({ params }) => {
     })),
     content: post.content,
     renderedContent,
-    editorMode: post.editorMode,
     updatedAt: post.updatedAt.toISOString(),
     nextPost: nextRow ? { slug: nextRow.slug, title: nextRow.title } : null,
     prevPost: prevRow ? { slug: prevRow.slug, title: prevRow.title } : null

@@ -64,7 +64,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     const openai = new OpenAI({ apiKey })
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4.1-mini',
+      model: 'gpt-5.4-mini',
       response_format: { type: 'json_object' },
       messages: [
         {
