@@ -1,8 +1,11 @@
 <script lang="ts">
-  import SocialLinks from "$lib/components/SocialLinks.svelte";
-  import SEOHead from "$lib/components/SEOHead.svelte";
-  import { websiteSchema, personSchema } from "$lib/seo";
-  import { fadeInUp, fadeIn, stagger, staggerReveal } from "$lib/utils/animate";
+  import SocialLinks from '$lib/components/SocialLinks.svelte'
+  import PostCard from '$lib/components/blog/PostCard.svelte'
+  import SEOHead from '$lib/components/SEOHead.svelte'
+  import { websiteSchema, personSchema } from '$lib/seo'
+  import { fadeInUp, fadeIn, stagger, staggerReveal } from '$lib/utils/animate'
+
+  let { data } = $props()
 </script>
 
 <SEOHead
@@ -55,12 +58,31 @@
   </div>
 </section>
 
+{#if data.latestPosts.length > 0}
+  <section class="latest-posts section">
+    <div class="container">
+      <div class="latest-posts-header" use:fadeInUp={{ duration: 450 }}>
+        <h2>Latest Posts</h2>
+        <a href="/blog" class="view-all-link">View all posts &rarr;</a>
+      </div>
+      <div
+        class="latest-posts-grid"
+        use:stagger={{ staggerDelay: 100, duration: 500 }}
+      >
+        {#each data.latestPosts as post (post.id)}
+          <PostCard {post} />
+        {/each}
+      </div>
+    </div>
+  </section>
+{/if}
+
 <section class="currently section">
   <div class="container">
     <h2 use:fadeInUp={{ duration: 450 }}>What I'm up to</h2>
     <ul
       class="status-list"
-      use:staggerReveal={{ staggerDelay: 80, duration: 400, type: "fadeInUp" }}
+      use:staggerReveal={{ staggerDelay: 80, duration: 400, type: 'fadeInUp' }}
     >
       <li>
         <span class="status-icon">💼</span>
@@ -198,6 +220,42 @@
     margin: 0;
   }
 
+  /* Latest Posts Section */
+  .latest-posts {
+    background-color: var(--color-bg-secondary);
+  }
+
+  .latest-posts-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-8);
+  }
+
+  .latest-posts h2 {
+    font-size: var(--text-2xl);
+    margin: 0;
+  }
+
+  .view-all-link {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: opacity var(--transition-fast);
+  }
+
+  .view-all-link:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+  }
+
+  .latest-posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-6);
+  }
+
   /* Currently Section */
   .currently h2 {
     font-size: var(--text-2xl);
@@ -234,6 +292,16 @@
 
     .intro {
       font-size: var(--text-base);
+    }
+
+    .latest-posts-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .latest-posts-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-2);
     }
   }
 </style>
