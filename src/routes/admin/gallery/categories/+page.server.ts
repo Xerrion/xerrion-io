@@ -1,31 +1,9 @@
 import type { PageServerLoad, Actions } from './$types'
-
-import { getDb } from '$lib/server/db'
-import { category, photo } from '$lib/server/schema'
-import { eq, asc, count } from 'drizzle-orm'
-import { fail } from '@sveltejs/kit'
+import { error, fail } from '@sveltejs/kit'
 import { superValidate, setError, message } from 'sveltekit-superforms'
 import { zod4 } from 'sveltekit-superforms/adapters'
 import { categoryCreateSchema, categoryUpdateSchema } from '$lib/schemas/admin'
-
-export const load: PageServerLoad = async () => {
-  const db = getDb()
-
-  const rows = await db.select().from(category).orderBy(asc(category.sortOrder))
-
-  return {
-    categories: rows.map((row) => ({
-      id: row.id,
-      slug: row.slug,
-      name: row.name,
-      description: row.description,
-      sortOrder: row.sortOrder,
-      createdAt: row.createdAt
-    })),
-    createForm: await superValidate(zod4(categoryCreateSchema)),
-    updateForm: await superValidate(zod4(categoryUpdateSchema))
-  }
-}
+import { getPrisma } from '$lib/server/db'
 
 function toSlug(name: string): string {
   return name
@@ -34,93 +12,97 @@ function toSlug(name: string): string {
     .replaceAll(/^-|-$/g, '')
 }
 
-export const actions: Actions = {
-  create: async ({ request }) => {
-    const form = await superValidate(request, zod4(categoryCreateSchema))
+export const load: PageServerLoad = async () => {
+  try {
+    const prisma = getPrisma()
+    const rows = await prisma.category.findMany({
+      orderBy: { sortOrder: 'asc' }
+    })
 
-    if (!form.valid) {
-      return fail(400, { createForm: form })
+    return {
+      categories: rows.map((row) => ({
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        description: row.description,
+        sortOrder: row.sortOrder,
+        createdAt: row.createdAt.toISOString()
+      })),
+      createForm: await superValidate(zod4(categoryCreateSchema)),
+      updateForm: await superValidate(zod4(categoryUpdateSchema))
     }
+  } catch (err) {
+    console.error('[admin/categories] Failed to load categories:', err)
+    error(500, 'Failed to load categories')
+  }
+}
+
+export const actions: Actions = {
+  create: async ({ request, locals }) => {
+    if (!locals.user) return fail(401, { error: 'Unauthorized' })
+
+    const form = await superValidate(request, zod4(categoryCreateSchema))
+    if (!form.valid) return fail(400, { createForm: form })
 
     const { name, description, sortOrder } = form.data
-
     const slug = toSlug(name)
-    if (!slug) {
+    if (!slug)
       return setError(
         form,
         'name',
         'Name must contain at least one letter or number'
       )
-    }
 
-    const db = getDb()
-
-    const existing = await db
-      .select({ id: category.id })
-      .from(category)
-      .where(eq(category.slug, slug))
-
-    if (existing.length > 0) {
+    const prisma = getPrisma()
+    const existing = await prisma.category.findUnique({ where: { slug } })
+    if (existing)
       return setError(form, 'name', `Category "${slug}" already exists`)
-    }
 
-    await db.insert(category).values({
-      slug,
-      name,
-      description: description || null,
-      sortOrder
+    await prisma.category.create({
+      data: { slug, name, description: description || null, sortOrder }
     })
 
     return message(form, 'Category created successfully')
   },
 
-  update: async ({ request }) => {
-    const form = await superValidate(request, zod4(categoryUpdateSchema))
+  update: async ({ request, locals }) => {
+    if (!locals.user) return fail(401, { error: 'Unauthorized' })
 
-    if (!form.valid) {
-      return fail(400, { updateForm: form })
-    }
+    const form = await superValidate(request, zod4(categoryUpdateSchema))
+    if (!form.valid) return fail(400, { updateForm: form })
 
     const { id, name, description, sortOrder } = form.data
+    const prisma = getPrisma()
 
-    const db = getDb()
-
-    await db
-      .update(category)
-      .set({
-        name,
-        description: description || null,
-        sortOrder
-      })
-      .where(eq(category.id, id))
+    await prisma.category.update({
+      where: { id },
+      data: { name, description: description || null, sortOrder }
+    })
 
     return message(form, 'Category updated successfully')
   },
 
-  delete: async ({ request }) => {
+  delete: async ({ request, locals }) => {
+    if (!locals.user) return fail(401, { error: 'Unauthorized' })
+
     const data = await request.formData()
     const id = Number(data.get('id'))
+    if (!id) return fail(400, { error: 'Category ID is required' })
 
-    if (!id) {
-      return fail(400, { error: 'Category ID is required' })
-    }
+    const prisma = getPrisma()
+    // The DB schema has ON DELETE CASCADE on photo->category, but we guard here
+    // at the application level to prevent accidental bulk photo deletion.
+    // Admins must remove photos manually first, which also triggers R2 cleanup.
+    // If we let the cascade run, R2 objects would be orphaned (no cleanup hook).
+    const photoCount = await prisma.photo.count({ where: { categoryId: id } })
 
-    const db = getDb()
-
-    const photoCountResult = await db
-      .select({ count: count() })
-      .from(photo)
-      .where(eq(photo.categoryId, id))
-
-    const photoCount = photoCountResult[0]?.count ?? 0
     if (photoCount > 0) {
       return fail(409, {
         error: `Cannot delete: category has ${photoCount} photo(s). Delete photos first.`
       })
     }
 
-    await db.delete(category).where(eq(category.id, id))
-
+    await prisma.category.delete({ where: { id } })
     return { success: true }
   }
 }

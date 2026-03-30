@@ -1,33 +1,28 @@
 import type { PageServerLoad, Actions } from './$types'
-
-import { getDb } from '$lib/server/db'
-import { photo, photoSize } from '$lib/server/schema'
-import { eq, inArray } from 'drizzle-orm'
 import { error, fail } from '@sveltejs/kit'
+import { getPrisma } from '$lib/server/db'
 import { deleteFromR2 } from '$lib/server/r2'
 import { extractSizes } from '$lib/server/gallery'
+import type { ImageMetadata } from '$lib/server/image'
 
 export const load: PageServerLoad = async () => {
   try {
-    const db = getDb()
+    const prisma = getPrisma()
 
     const [photoRows, categoryRows] = await Promise.all([
-      db.query.photo.findMany({
-        with: {
+      prisma.photo.findMany({
+        orderBy: { uploadedAt: 'desc' },
+        include: {
           sizes: true,
-          category: { columns: { slug: true, name: true } }
-        },
-        orderBy: (p, { desc: d }) => [d(p.uploadedAt)]
+          category: { select: { slug: true, name: true } }
+        }
       }),
-      db.query.category.findMany({
-        orderBy: (c, { asc: a }) => [a(c.sortOrder)]
-      })
+      prisma.category.findMany({ orderBy: { sortOrder: 'asc' } })
     ])
 
     return {
       photos: photoRows.map((row) => {
         const { thumb, medium, full } = extractSizes(row.sizes)
-
         return {
           id: row.id,
           categoryId: row.categoryId,
@@ -42,8 +37,8 @@ export const load: PageServerLoad = async () => {
           thumbSize: thumb?.byteSize ?? null,
           mediumSize: medium?.byteSize ?? null,
           fullSize: full?.byteSize ?? null,
-          metadata: row.metadata ?? null,
-          uploadedAt: row.uploadedAt
+          metadata: row.metadata as ImageMetadata | null,
+          uploadedAt: row.uploadedAt.toISOString()
         }
       }),
       categories: categoryRows.map((row) => ({
@@ -61,7 +56,9 @@ export const load: PageServerLoad = async () => {
 }
 
 export const actions: Actions = {
-  delete: async ({ request }) => {
+  delete: async ({ request, locals }) => {
+    if (!locals.user) return fail(401, { error: 'Unauthorized' })
+
     const data = await request.formData()
     const photoId = data.get('photoId')?.toString()
     const photoIdNum = Number(photoId)
@@ -71,23 +68,21 @@ export const actions: Actions = {
     }
 
     try {
-      const db = getDb()
+      const prisma = getPrisma()
 
-      const sizeRows = await db
-        .select({ r2Key: photoSize.r2Key })
-        .from(photoSize)
-        .where(eq(photoSize.photoId, photoIdNum))
+      const sizeRows = await prisma.photoSize.findMany({
+        where: { photoId: photoIdNum },
+        select: { r2Key: true }
+      })
 
       if (sizeRows.length === 0) {
         return fail(404, { error: 'Photo not found' })
       }
 
-      const keysToDelete = sizeRows.map((row) => row.r2Key)
+      const keysToDelete = sizeRows.map((r) => r.r2Key)
 
-      // Delete from DB first (cascade removes photo_size rows)
-      await db.delete(photo).where(eq(photo.id, photoIdNum))
+      await prisma.photo.delete({ where: { id: photoIdNum } })
 
-      // Then clean up R2 objects (best-effort)
       await deleteFromR2(keysToDelete).catch((err) => {
         console.error(
           '[admin/gallery] R2 delete failed, objects may be orphaned:',
@@ -102,49 +97,43 @@ export const actions: Actions = {
     }
   },
 
-  deleteMany: async ({ request }) => {
+  deleteMany: async ({ request, locals }) => {
+    if (!locals.user) return fail(401, { error: 'Unauthorized' })
+
     const data = await request.formData()
     const idsRaw = data.get('photoIds')?.toString()
 
-    if (!idsRaw) {
-      return fail(400, { error: 'No photos selected' })
-    }
+    if (!idsRaw) return fail(400, { error: 'No photos selected' })
 
     const ids = idsRaw
       .split(',')
       .map((id) => Number(id.trim()))
       .filter((id) => !Number.isNaN(id) && id > 0)
-
-    if (ids.length === 0) {
+    if (ids.length === 0)
       return fail(400, { error: 'No valid photo IDs provided' })
-    }
 
     try {
-      const db = getDb()
+      const prisma = getPrisma()
 
-      const sizeRows = await db
-        .select({ r2Key: photoSize.r2Key, photoId: photoSize.photoId })
-        .from(photoSize)
-        .where(inArray(photoSize.photoId, ids))
+      const sizeRows = await prisma.photoSize.findMany({
+        where: { photoId: { in: ids } },
+        select: { r2Key: true, photoId: true }
+      })
 
-      if (sizeRows.length === 0) {
-        return fail(404, { error: 'No photos found' })
-      }
+      if (sizeRows.length === 0) return fail(404, { error: 'No photos found' })
 
-      const allR2Keys = sizeRows.map((row) => row.r2Key)
-      const foundIds = [...new Set(sizeRows.map((row) => row.photoId))]
-
+      const allR2Keys = sizeRows.map((r) => r.r2Key)
+      const foundIds = [...new Set(sizeRows.map((r) => r.photoId))]
       const missingIds = ids.filter((id) => !foundIds.includes(id))
+
       if (missingIds.length > 0) {
         console.warn(
-          `[admin/gallery] deleteMany: ${missingIds.length} requested ID(s) had no size rows: [${missingIds.join(', ')}]`
+          `[admin/gallery] deleteMany: ${missingIds.length} ID(s) had no size rows: [${missingIds.join(', ')}]`
         )
       }
 
-      // Delete from DB first (cascade removes photo_size rows)
-      await db.delete(photo).where(inArray(photo.id, foundIds))
+      await prisma.photo.deleteMany({ where: { id: { in: foundIds } } })
 
-      // Then clean up R2 objects (best-effort)
       await deleteFromR2(allR2Keys).catch((err) => {
         console.error(
           '[admin/gallery] R2 bulk delete failed, objects may be orphaned:',
@@ -155,7 +144,7 @@ export const actions: Actions = {
       return { success: true, deletedCount: foundIds.length }
     } catch (err) {
       console.error('[admin/gallery] deleteMany failed:', err)
-      return fail(500, { error: 'Failed to delete photo' })
+      return fail(500, { error: 'Failed to delete photos' })
     }
   }
 }
