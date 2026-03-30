@@ -26,7 +26,7 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "test": "bun test tests/unit",
+    "test": "svelte-kit sync && bun test tests/unit",
     "test:e2e": "playwright test"
   },
   "type": "module",
