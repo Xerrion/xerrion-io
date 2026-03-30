@@ -1,8 +1,27 @@
 import { hash, verify } from '@node-rs/argon2'
-import { getDb } from './db'
+import { eq } from 'drizzle-orm'
 import crypto from 'node:crypto'
 
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+import { getDb } from './db'
+import { getRedis } from './redis'
+import { adminUser } from './schema'
+
+export const SESSION_COOKIE = 'session'
+
+const SESSION_TTL_SECONDS = 604800 // 7 days
+
+// ---------------------------------------------------------------------------
+// SessionData - the shape stored in Redis and returned to callers
+// ---------------------------------------------------------------------------
+
+export interface SessionData {
+  userId: number
+  username: string
+}
+
+// ---------------------------------------------------------------------------
+// Password helpers
+// ---------------------------------------------------------------------------
 
 export async function hashPassword(password: string): Promise<string> {
   return hash(password)
@@ -15,80 +34,88 @@ export async function verifyPassword(
   return verify(hashedPassword, password)
 }
 
-function generateSessionId(): string {
-  return crypto.randomBytes(32).toString('hex')
-}
-
-export interface SessionUser {
-  id: number
-  username: string
-}
+// ---------------------------------------------------------------------------
+// Session management (Redis-backed)
+// ---------------------------------------------------------------------------
 
 /**
- * Create a new session for a user. Returns the session ID (used as cookie value).
- * This is the core auth primitive — callers set the cookie themselves.
+ * Create a new session for the given user and store it in Redis.
+ * Returns the session ID (to be stored in the cookie).
  */
-export async function createSession(userId: number): Promise<string> {
-  const db = getDb()
-  const sessionId = generateSessionId()
-  const expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString()
+export async function createSession(
+  userId: number,
+  username: string
+): Promise<string> {
+  const redis = getRedis()
+  const sessionId = crypto.randomBytes(32).toString('hex')
 
-  await db.execute({
-    sql: 'INSERT INTO session (id, user_id, expires_at) VALUES (?, ?, ?)',
-    args: [sessionId, userId, expiresAt]
-  })
+  await redis.setex(
+    `session:${sessionId}`,
+    SESSION_TTL_SECONDS,
+    JSON.stringify({ userId, username })
+  )
 
   return sessionId
 }
 
 /**
- * Validate a session ID and return the associated user, or null if invalid/expired.
- * Automatically cleans up expired sessions.
+ * Validate a session ID. Returns the session data if valid, null if not found
+ * or expired. Redis TTL handles expiry automatically.
  */
 export async function validateSession(
   sessionId: string
-): Promise<SessionUser | null> {
-  const db = getDb()
+): Promise<SessionData | null> {
+  if (!sessionId) return null
 
-  const result = await db.execute({
-    sql: `SELECT s.id as session_id, s.expires_at, u.id as user_id, u.username
-			  FROM session s
-			  JOIN admin_user u ON s.user_id = u.id
-			  WHERE s.id = ?`,
-    args: [sessionId]
-  })
+  const redis = getRedis()
+  const value = await redis.get(`session:${sessionId}`)
 
-  if (result.rows.length === 0) return null
+  if (!value) return null
 
-  const row = result.rows[0]
-  const expiresAt = new Date(row.expires_at as string)
-
-  if (expiresAt < new Date()) {
-    await db.execute({
-      sql: 'DELETE FROM session WHERE id = ?',
-      args: [sessionId]
-    })
+  try {
+    return JSON.parse(value) as SessionData
+  } catch {
+    // Corrupt session data - evict and treat as invalid
+    await redis.del(`session:${sessionId}`)
     return null
   }
-
-  return {
-    id: row.user_id as number,
-    username: row.username as string
-  }
 }
 
+/**
+ * Delete a session from Redis (logout).
+ */
 export async function deleteSession(sessionId: string): Promise<void> {
-  const db = getDb()
-  await db.execute({
-    sql: 'DELETE FROM session WHERE id = ?',
-    args: [sessionId]
-  })
+  if (!sessionId) return
+
+  const redis = getRedis()
+  await redis.del(`session:${sessionId}`)
 }
 
-export async function deleteExpiredSessions(): Promise<void> {
+// ---------------------------------------------------------------------------
+// User lookup (Drizzle)
+// ---------------------------------------------------------------------------
+
+/**
+ * Look up an admin user by username.
+ * Returns the user row or null if not found.
+ */
+export async function getUserByUsername(
+  username: string
+): Promise<{ id: number; username: string; passwordHash: string } | null> {
+  if (!username) return null
+
   const db = getDb()
-  await db.execute({
-    sql: "DELETE FROM session WHERE expires_at < datetime('now')",
-    args: []
-  })
+  const rows = await db
+    .select({
+      id: adminUser.id,
+      username: adminUser.username,
+      passwordHash: adminUser.passwordHash
+    })
+    .from(adminUser)
+    .where(eq(adminUser.username, username))
+    .limit(1)
+
+  if (rows.length === 0) return null
+
+  return rows[0]
 }

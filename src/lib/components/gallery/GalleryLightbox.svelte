@@ -543,30 +543,30 @@
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div class="lightbox-body" onclick={handleClose}>
-        {#if currentIndex > 0}
-          <button
-            class="lightbox-btn lightbox-nav lightbox-prev"
-            onclick={(e) => {
-              e.stopPropagation()
-              handleNavigate(-1)
-            }}
-            aria-label="Previous photo"
+        <button
+          class="lightbox-btn lightbox-nav lightbox-prev"
+          onclick={(e) => {
+            e.stopPropagation()
+            handleNavigate(-1)
+          }}
+          disabled={currentIndex === 0}
+          aria-disabled={currentIndex === 0}
+          aria-label="Previous photo"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-          </button>
-        {/if}
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
 
         <div
           class="lightbox-image-wrapper"
@@ -637,30 +637,30 @@
           </div>
         </div>
 
-        {#if currentIndex < photos.length - 1}
-          <button
-            class="lightbox-btn lightbox-nav lightbox-next"
-            onclick={(e) => {
-              e.stopPropagation()
-              handleNavigate(1)
-            }}
-            aria-label="Next photo"
+        <button
+          class="lightbox-btn lightbox-nav lightbox-next"
+          onclick={(e) => {
+            e.stopPropagation()
+            handleNavigate(1)
+          }}
+          disabled={currentIndex === photos.length - 1}
+          aria-disabled={currentIndex === photos.length - 1}
+          aria-label="Next photo"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-          </button>
-        {/if}
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
       </div>
 
       <div class="lightbox-footer" bind:this={footerEl}>
@@ -770,6 +770,11 @@
 
   .lightbox-nav:hover {
     transform: translateY(-50%) scale(1.05);
+  }
+
+  .lightbox-nav:disabled {
+    opacity: 0;
+    pointer-events: none;
   }
 
   .lightbox-prev {

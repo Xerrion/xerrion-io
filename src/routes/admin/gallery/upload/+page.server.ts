@@ -1,17 +1,20 @@
-import type { PageServerLoad } from "./$types";
-import { getDb } from "$lib/server/db";
+import type { PageServerLoad } from './$types'
+
+import { getDb } from '$lib/server/db'
+import { category } from '$lib/server/schema'
+import { asc } from 'drizzle-orm'
 
 export const load: PageServerLoad = async () => {
-  const db = getDb();
-  const result = await db.execute(
-    "SELECT id, slug, name FROM category ORDER BY sort_order ASC",
-  );
+  const db = getDb()
 
-  return {
-    categories: result.rows.map((row) => ({
-      id: row.id as number,
-      slug: row.slug as string,
-      name: row.name as string,
-    })),
-  };
-};
+  const rows = await db
+    .select({
+      id: category.id,
+      slug: category.slug,
+      name: category.name
+    })
+    .from(category)
+    .orderBy(asc(category.sortOrder))
+
+  return { categories: rows }
+}

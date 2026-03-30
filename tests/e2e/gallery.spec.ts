@@ -104,9 +104,9 @@ test.describe('Gallery', () => {
     const counter = page.locator('.lightbox-counter')
     await expect(counter).toContainText('1 /')
 
-    // Previous button should be hidden on the first photo
+    // Previous button should be disabled on the first photo
     const prevBtn = page.locator('.lightbox-prev')
-    await expect(prevBtn).toBeHidden()
+    await expect(prevBtn).toBeDisabled()
 
     // Click Next button
     const nextBtn = page.locator('.lightbox-next')
@@ -116,13 +116,13 @@ test.describe('Gallery', () => {
     // The counter should update
     await expect(counter).toContainText('2 /')
 
-    // Now Previous button should be visible
-    await expect(prevBtn).toBeAttached()
+    // Now Previous button should be enabled
+    await expect(prevBtn).toBeEnabled()
 
     // Navigate back to the first photo
     await prevBtn.click()
     await expect(counter).toContainText('1 /')
-    await expect(prevBtn).toBeHidden()
+    await expect(prevBtn).toBeDisabled()
 
     // Close via Close Button
     const closeBtn = page.locator('.lightbox-close')
@@ -196,7 +196,7 @@ test.describe('Gallery', () => {
     // Counter shows 2/2
     await expect(page.locator('.lightbox-counter')).toContainText('2 / 2')
 
-    // Next button should be hidden
-    await expect(nextBtn).toBeHidden()
+    // Next button should be disabled
+    await expect(nextBtn).toBeDisabled()
   })
 })

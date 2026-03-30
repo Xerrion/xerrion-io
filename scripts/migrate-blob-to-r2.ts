@@ -1,5 +1,5 @@
-import { eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/postgres-js'
+import { and, eq } from 'drizzle-orm'
 import postgres from 'postgres'
 import {
   S3Client,
@@ -7,8 +7,9 @@ import {
   DeleteObjectsCommand
 } from '@aws-sdk/client-s3'
 
-import { photo, category } from '../src/lib/server/schema'
-import { generateBlobPath, type SizeKey } from '../src/lib/server/image'
+import { photo, photoSize, category } from '../src/lib/server/schema'
+import type { PhotoSizeKey } from '../src/lib/server/schema'
+import * as schema from '../src/lib/server/schema'
 
 // ---------------------------------------------------------------------------
 // Environment validation
@@ -16,6 +17,7 @@ import { generateBlobPath, type SizeKey } from '../src/lib/server/image'
 
 interface MigrationEnv {
   databaseUrl: string
+  blobToken: string
   r2AccountId: string
   r2AccessKeyId: string
   r2SecretAccessKey: string
@@ -26,6 +28,7 @@ interface MigrationEnv {
 function parseEnvironment(): MigrationEnv {
   const required = [
     'DATABASE_URL',
+    'BLOB_READ_WRITE_TOKEN',
     'R2_ACCOUNT_ID',
     'R2_ACCESS_KEY_ID',
     'R2_SECRET_ACCESS_KEY',
@@ -42,12 +45,59 @@ function parseEnvironment(): MigrationEnv {
 
   return {
     databaseUrl: process.env.DATABASE_URL!,
+    blobToken: process.env.BLOB_READ_WRITE_TOKEN!,
     r2AccountId: process.env.R2_ACCOUNT_ID!,
     r2AccessKeyId: process.env.R2_ACCESS_KEY_ID!,
     r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
     r2BucketName: process.env.R2_BUCKET_NAME!,
     r2PublicUrl: process.env.R2_PUBLIC_URL!.replace(/\/$/, '')
   }
+}
+
+// ---------------------------------------------------------------------------
+// Vercel Blob list API
+// ---------------------------------------------------------------------------
+
+interface VercelBlob {
+  url: string
+  pathname: string
+  size: number
+}
+
+interface VercelBlobListResponse {
+  blobs: VercelBlob[]
+  cursor?: string
+  hasMore: boolean
+}
+
+async function listVercelBlobs(
+  token: string,
+  prefix: string
+): Promise<VercelBlob[]> {
+  const allBlobs: VercelBlob[] = []
+  let cursor: string | undefined
+
+  do {
+    const params = new URLSearchParams({ prefix })
+    if (cursor) params.set('cursor', cursor)
+
+    const response = await fetch(
+      `https://blob.vercel-storage.com?${params.toString()}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    if (!response.ok) {
+      throw new Error(
+        `Vercel Blob list failed: HTTP ${response.status} - ${await response.text()}`
+      )
+    }
+
+    const data = (await response.json()) as VercelBlobListResponse
+    allBlobs.push(...data.blobs)
+    cursor = data.hasMore ? data.cursor : undefined
+  } while (cursor)
+
+  return allBlobs
 }
 
 // ---------------------------------------------------------------------------
@@ -85,10 +135,6 @@ async function uploadToR2(
   return `${publicUrl}/${key}`
 }
 
-// ---------------------------------------------------------------------------
-// R2 cleanup (for rollback on partial failure)
-// ---------------------------------------------------------------------------
-
 async function deleteKeysFromR2(
   s3: S3Client,
   bucket: string,
@@ -96,12 +142,23 @@ async function deleteKeysFromR2(
 ): Promise<void> {
   if (keys.length === 0) return
 
-  await s3.send(
+  const result = await s3.send(
     new DeleteObjectsCommand({
       Bucket: bucket,
-      Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true }
+      Delete: { Objects: keys.map((Key) => ({ Key })) }
     })
   )
+
+  if (result.Errors && result.Errors.length > 0) {
+    for (const err of result.Errors) {
+      console.error(
+        `  [R2] Failed to delete key="${err.Key}": ${err.Code} - ${err.Message}`
+      )
+    }
+    throw new Error(
+      `R2 DeleteObjects failed for ${result.Errors.length} key(s)`
+    )
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -127,105 +184,288 @@ async function fetchImageBuffer(
 }
 
 // ---------------------------------------------------------------------------
-// Size mapping
+// Blob path parsing
 // ---------------------------------------------------------------------------
 
-const SIZE_FIELDS = {
-  thumb: 'thumbUrl',
-  medium: 'mediumUrl',
-  full: 'fullUrl'
-} as const satisfies Record<SizeKey, keyof typeof photo.$inferSelect>
+const VALID_SIZES = new Set<string>(['thumb', 'medium', 'full'])
+
+interface ParsedBlob {
+  categorySlug: string
+  baseName: string
+  size: PhotoSizeKey
+  blob: VercelBlob
+}
+
+function parseBlobPathname(blob: VercelBlob): ParsedBlob | null {
+  // Expected: gallery/{categorySlug}/{baseName}-{size}.webp
+  const parts = blob.pathname.split('/')
+  if (parts.length !== 3 || parts[0] !== 'gallery') return null
+
+  const categorySlug = parts[1]
+  const filename = parts[2]
+
+  if (!filename.endsWith('.webp')) return null
+
+  const nameWithoutExt = filename.slice(0, -5) // strip .webp
+  const lastDash = nameWithoutExt.lastIndexOf('-')
+  if (lastDash === -1) return null
+
+  const size = nameWithoutExt.slice(lastDash + 1)
+  if (!VALID_SIZES.has(size)) return null
+
+  const baseName = nameWithoutExt.slice(0, lastDash)
+
+  return {
+    categorySlug,
+    baseName,
+    size: size as PhotoSizeKey,
+    blob
+  }
+}
+
+/** Group parsed blobs by category+baseName into photo groups. */
+function groupByPhoto(
+  parsed: ParsedBlob[]
+): Map<string, Map<PhotoSizeKey, ParsedBlob>> {
+  const groups = new Map<string, Map<PhotoSizeKey, ParsedBlob>>()
+
+  for (const entry of parsed) {
+    const key = `${entry.categorySlug}/${entry.baseName}`
+    let sizeMap = groups.get(key)
+    if (!sizeMap) {
+      sizeMap = new Map()
+      groups.set(key, sizeMap)
+    }
+    sizeMap.set(entry.size, entry)
+  }
+
+  return groups
+}
 
 // ---------------------------------------------------------------------------
-// Main migration
+// Main migration / seed
 // ---------------------------------------------------------------------------
 
 async function main() {
   const env = parseEnvironment()
 
   const sql = postgres(env.databaseUrl, { max: 1 })
-  const db = drizzle(sql, { casing: 'snake_case' })
+  const db = drizzle(sql, { schema, casing: 'snake_case' })
 
-  const s3 = createR2Client(env)
+  try {
+    const s3 = createR2Client(env)
 
-  // Fetch all photos with their category slug
-  const rows = await db
-    .select({
-      id: photo.id,
-      originalName: photo.originalName,
-      blobPath: photo.blobPath,
-      thumbUrl: photo.thumbUrl,
-      mediumUrl: photo.mediumUrl,
-      fullUrl: photo.fullUrl,
-      categorySlug: category.slug
-    })
-    .from(photo)
-    .innerJoin(category, eq(photo.categoryId, category.id))
+    // 1. List all blobs under gallery/
+    console.log('Listing blobs from Vercel Blob...')
+    const blobs = await listVercelBlobs(env.blobToken, 'gallery/')
+    console.log(`Found ${blobs.length} blob(s) under gallery/\n`)
 
-  const totalPhotos = rows.length
-  console.log(`Found ${totalPhotos} photo(s) to process.\n`)
-
-  let migratedCount = 0
-  let skippedCount = 0
-  let failedCount = 0
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i]
-    const progress = `[${i + 1}/${totalPhotos}]`
-
-    // Skip already-migrated rows - all three URLs must point to R2
-    const isAlreadyMigrated =
-      row.thumbUrl.startsWith(env.r2PublicUrl) &&
-      row.mediumUrl.startsWith(env.r2PublicUrl) &&
-      row.fullUrl.startsWith(env.r2PublicUrl)
-    if (isAlreadyMigrated) {
-      console.log(
-        `${progress} [SKIP] Photo ID=${row.id} "${row.originalName}" - already migrated`
-      )
-      skippedCount++
-      continue
+    if (blobs.length === 0) {
+      console.log('No blobs to migrate. Done.')
+      return
     }
 
+    // 2. Parse and group
+    const parsed: ParsedBlob[] = []
+    let skippedBlobs = 0
+    for (const blob of blobs) {
+      const result = parseBlobPathname(blob)
+      if (result) {
+        parsed.push(result)
+      } else {
+        console.log(`  [SKIP] Unparseable blob path: ${blob.pathname}`)
+        skippedBlobs++
+      }
+    }
+
+    const photoGroups = groupByPhoto(parsed)
+    const uniqueSlugs = new Set(parsed.map((p) => p.categorySlug))
+
     console.log(
-      `${progress} Migrating photo ID=${row.id} "${row.originalName}"...`
+      `Parsed ${parsed.length} blob(s) into ${photoGroups.size} photo group(s) across ${uniqueSlugs.size} categor${uniqueSlugs.size === 1 ? 'y' : 'ies'}.`
     )
+    if (skippedBlobs > 0) {
+      console.log(`Skipped ${skippedBlobs} unparseable blob(s).\n`)
+    }
 
-    // Deterministic suffix so retries overwrite the same keys (no orphans)
-    const suffix = row.id.toString().padStart(8, '0')
-    const newUrls: Record<SizeKey, string> = { thumb: '', medium: '', full: '' }
-    const newKeys: Record<SizeKey, string> = { thumb: '', medium: '', full: '' }
-    const uploadedKeys: string[] = []
-    let hasUploadFailure = false
+    // 3. Ensure category rows exist
+    console.log('\nEnsuring categories...')
+    const categoryIdMap = new Map<string, number>()
 
-    for (const size of ['thumb', 'medium', 'full'] as const) {
-      const fieldName = SIZE_FIELDS[size]
-      const sourceUrl = row[fieldName]
+    for (const slug of uniqueSlugs) {
+      // Check if category exists
+      const [existing] = await db
+        .select({ id: category.id })
+        .from(category)
+        .where(eq(category.slug, slug))
+        .limit(1)
 
+      if (existing) {
+        categoryIdMap.set(slug, existing.id)
+        console.log(`  Category "${slug}" exists (id=${existing.id})`)
+      } else {
+        const [inserted] = await db
+          .insert(category)
+          .values({ slug, name: slug })
+          .returning({ id: category.id })
+        categoryIdMap.set(slug, inserted.id)
+        console.log(`  Created category "${slug}" (id=${inserted.id})`)
+      }
+    }
+
+    // 4. Process each photo group
+    console.log(`\nMigrating ${photoGroups.size} photo(s)...\n`)
+
+    let migratedCount = 0
+    let failedCount = 0
+    let skippedCount = 0
+    let photoIndex = 0
+    const totalPhotos = photoGroups.size
+
+    for (const [groupKey, sizeMap] of photoGroups) {
+      photoIndex++
+      const progress = `[${photoIndex}/${totalPhotos}]`
+      const [categorySlug, ...baseNameParts] = groupKey.split('/')
+      const baseName = baseNameParts.join('/')
+
+      const categoryId = categoryIdMap.get(categorySlug)
+      if (!categoryId) {
+        console.log(
+          `${progress} [FAIL] No category id for "${categorySlug}" - skipping`
+        )
+        failedCount++
+        continue
+      }
+
+      // We need at least a full-size image
+      const hasFull = sizeMap.has('full')
+      if (!hasFull) {
+        console.log(
+          `${progress} [SKIP] Photo "${groupKey}" has no full-size variant - skipping`
+        )
+        failedCount++
+        continue
+      }
+
+      console.log(`${progress} Migrating "${groupKey}"...`)
+
+      // Idempotency: skip if a photo with this categoryId + originalName already exists
+      const [existingPhoto] = await db
+        .select({ id: photo.id })
+        .from(photo)
+        .where(
+          and(
+            eq(photo.categoryId, categoryId),
+            eq(photo.originalName, baseName)
+          )
+        )
+        .limit(1)
+
+      if (existingPhoto) {
+        console.log(`  [SKIP] Already exists (id=${existingPhoto.id})`)
+        skippedCount++
+        continue
+      }
+
+      const uploadedKeys: string[] = []
+      const sizeInserts: Array<{
+        size: PhotoSizeKey
+        r2Key: string
+        url: string
+        width: number | null
+        height: number | null
+        byteSize: number
+      }> = []
+      let hasUploadFailure = false
+
+      for (const size of ['thumb', 'medium', 'full'] as const) {
+        const entry = sizeMap.get(size)
+        if (!entry) continue
+
+        try {
+          const buffer = await fetchImageBuffer(entry.blob.url)
+
+          // R2 key mirrors the original Vercel Blob pathname (no random suffix)
+          // intentionally, to preserve the original path structure during migration
+          const r2Key = `gallery/${categorySlug}/${baseName}-${size}.webp`
+          const r2Url = await uploadToR2(
+            s3,
+            env.r2BucketName,
+            env.r2PublicUrl,
+            r2Key,
+            buffer,
+            'image/webp'
+          )
+
+          uploadedKeys.push(r2Key)
+          // width/height are null for migrated photos — blobs are reused as-is
+          // without re-decoding. Dimensions would require re-processing each image.
+          sizeInserts.push({
+            size,
+            r2Key,
+            url: r2Url,
+            width: null,
+            height: null,
+            byteSize: buffer.byteLength
+          })
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : String(err)
+          console.log(`  \u2717 [WARN] Failed to upload ${size}: ${reason}`)
+
+          // Clean up partial uploads
+          try {
+            await deleteKeysFromR2(s3, env.r2BucketName, uploadedKeys)
+          } catch (cleanupErr) {
+            const cleanupReason =
+              cleanupErr instanceof Error
+                ? cleanupErr.message
+                : String(cleanupErr)
+            console.log(
+              `  \u2717 [WARN] R2 cleanup failed (orphans may exist): ${cleanupReason}`
+            )
+          }
+          hasUploadFailure = true
+          break
+        }
+      }
+
+      if (hasUploadFailure) {
+        failedCount++
+        continue
+      }
+
+      // Insert photo + photo_size rows in a transaction
       try {
-        const buffer = await fetchImageBuffer(sourceUrl)
-        const key = generateBlobPath(
-          row.categorySlug,
-          row.originalName,
-          size,
-          suffix
-        )
-        const r2Url = await uploadToR2(
-          s3,
-          env.r2BucketName,
-          env.r2PublicUrl,
-          key,
-          buffer,
-          'image/webp'
-        )
+        await db.transaction(async (tx) => {
+          const [inserted] = await tx
+            .insert(photo)
+            .values({
+              categoryId,
+              originalName: baseName
+            })
+            .returning({ id: photo.id })
 
-        uploadedKeys.push(key)
-        newUrls[size] = r2Url
-        newKeys[size] = key
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error)
-        console.log(`  \u2717 [WARN] Failed to migrate ${size}: ${reason}`)
+          await tx.insert(photoSize).values(
+            sizeInserts.map((s) => ({
+              photoId: inserted.id,
+              size: s.size,
+              r2Key: s.r2Key,
+              url: s.url,
+              width: s.width,
+              height: s.height,
+              byteSize: s.byteSize
+            }))
+          )
+        })
 
-        // Clean up any R2 objects already uploaded for this photo
+        const sizeSummary = sizeInserts.map((s) => s.size).join(' | ')
+        console.log(`  \u2713 ${sizeSummary}`)
+        migratedCount++
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err)
+        console.log(`  \u2717 [WARN] DB insert failed: ${reason}`)
+
+        // Best-effort cleanup of orphaned R2 objects
         try {
           await deleteKeysFromR2(s3, env.r2BucketName, uploadedKeys)
         } catch (cleanupErr) {
@@ -237,63 +477,24 @@ async function main() {
             `  \u2717 [WARN] R2 cleanup failed (orphans may exist): ${cleanupReason}`
           )
         }
-        hasUploadFailure = true
-        break
+        failedCount++
       }
     }
 
-    if (hasUploadFailure) {
-      failedCount++
-      continue
-    }
-
-    // Update the database row - use the full-size key as canonical blob_path
-    try {
-      await db
-        .update(photo)
-        .set({
-          thumbUrl: newUrls.thumb,
-          mediumUrl: newUrls.medium,
-          fullUrl: newUrls.full,
-          blobPath: newKeys.full
-        })
-        .where(eq(photo.id, row.id))
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error)
-      console.log(`  \u2717 [WARN] DB update failed: ${reason}`)
-
-      // Best-effort cleanup of R2 objects that are now untracked
-      try {
-        await deleteKeysFromR2(s3, env.r2BucketName, uploadedKeys)
-      } catch (cleanupErr) {
-        const cleanupReason =
-          cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)
-        console.log(
-          `  \u2717 [WARN] R2 cleanup failed (orphans may exist): ${cleanupReason}`
-        )
-      }
-      failedCount++
-      continue
-    }
-
-    console.log(`  \u2713 thumb | medium | full`)
-    migratedCount++
+    // Summary
+    console.log('\n--- Migration Summary ---')
+    console.log(`  Migrated: ${migratedCount}`)
+    console.log(`  Skipped:  ${skippedCount}`)
+    console.log(`  Failed:   ${failedCount}`)
+    console.log(`  Total:    ${totalPhotos}`)
+  } finally {
+    await sql.end()
   }
-
-  // Summary
-  console.log('\n--- Migration Summary ---')
-  console.log(`  Migrated: ${migratedCount}`)
-  console.log(`  Skipped:  ${skippedCount}`)
-  console.log(`  Failed:   ${failedCount}`)
-  console.log(`  Total:    ${totalPhotos}`)
-
-  await sql.end()
-  process.exit(0)
 }
 
 try {
   await main()
 } catch (err) {
-  console.error('Migration failed:', err)
+  console.error('Migration failed:', err instanceof Error ? err.message : err)
   process.exit(1)
 }

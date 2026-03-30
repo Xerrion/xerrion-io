@@ -1,3 +1,5 @@
+import crypto from 'node:crypto'
+
 import sharp from 'sharp'
 import exifr from 'exifr'
 
@@ -262,5 +264,5 @@ export function generateBlobPath(
 }
 
 export function randomSuffix(): string {
-  return Math.random().toString(36).slice(2, 8)
+  return crypto.randomBytes(6).toString('hex') // 12 hex chars, CSPRNG
 }

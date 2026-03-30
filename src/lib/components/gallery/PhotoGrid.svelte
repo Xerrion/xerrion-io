@@ -34,6 +34,10 @@
     return computeLayout(photos, containerWidth, cols, gap)
   })
 
+  let cols = $derived(
+    containerWidth > 0 ? computeColumnCount(containerWidth) : 1
+  )
+
   // Observe container width changes via ResizeObserver
   $effect(() => {
     const target = containerEl ?? skeletonEl
@@ -184,6 +188,7 @@
       class="photo-masonry"
       class:grid-hidden={!visible}
       bind:this={containerEl}
+      style="column-count: {cols}"
       style:height="{layout.totalHeight}px"
       inert={!visible}
       aria-hidden={!visible}

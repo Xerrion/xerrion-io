@@ -39,7 +39,7 @@
           <span class="topic">{topic}</span>
         {/each}
         {#if repo.topics.length > 4}
-          <span class="topic more">+{repo.topics.length - 4}</span>
+          <span class="topic-more">+{repo.topics.length - 4}</span>
         {/if}
       </div>
     {/if}
@@ -192,7 +192,7 @@
     border-radius: var(--radius-full);
   }
 
-  .topic.more {
+  .topic-more {
     color: var(--color-text-muted);
     background-color: var(--color-bg-tertiary);
   }
