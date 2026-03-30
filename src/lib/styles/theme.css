@@ -8,6 +8,15 @@
   --color-accent: oklch(0.8155 0.1164 209.92);
   --color-accent-hover: oklch(0.72 0.1164 209.92);
 
+  --color-success: oklch(0.7 0.17 145);
+  --color-success-muted: oklch(0.55 0.15 145);
+  --color-danger: oklch(0.6 0.22 27);
+  --color-danger-hover: oklch(0.5 0.22 27);
+  --color-warning: oklch(0.75 0.14 55);
+  --color-warning-muted: oklch(0.6 0.14 55);
+  --color-info: oklch(0.6957 0.1522 163.29);
+  --color-text-inverse: oklch(1 0 0);
+
   /* Light Theme */
   --color-bg: oklch(0.9943 0.0028 84.6);
   --color-bg-secondary: oklch(0.9798 0.0044 78.21);

@@ -4,13 +4,7 @@ import { superValidate, setError, message } from 'sveltekit-superforms'
 import { zod4 } from 'sveltekit-superforms/adapters'
 import { categoryCreateSchema, categoryUpdateSchema } from '$lib/schemas/admin'
 import { getPrisma } from '$lib/server/db'
-
-function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, '-')
-    .replaceAll(/^-|-$/g, '')
-}
+import { toSlug } from '$lib/utils/slug'
 
 export const load: PageServerLoad = async () => {
   try {
