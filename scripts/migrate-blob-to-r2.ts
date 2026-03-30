@@ -253,6 +253,10 @@ async function main() {
   const db = drizzle(sql, { schema, casing: 'snake_case' })
 
   try {
+    // Verify DB connection before proceeding
+    await sql`SELECT 1`
+    console.log('Database connection verified.')
+
     const s3 = createR2Client(env)
 
     // 1. List all blobs under gallery/
@@ -462,8 +466,20 @@ async function main() {
         console.log(`  \u2713 ${sizeSummary}`)
         migratedCount++
       } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err)
-        console.log(`  \u2717 [WARN] DB insert failed: ${reason}`)
+        if (err && typeof err === 'object' && 'code' in err) {
+          const pgErr = err as {
+            code: string
+            message: string
+            detail?: string
+            hint?: string
+          }
+          console.log(
+            `  ✗ [WARN] DB insert failed: [${pgErr.code}] ${pgErr.message}${pgErr.detail ? ' — ' + pgErr.detail : ''}${pgErr.hint ? ' (hint: ' + pgErr.hint + ')' : ''}`
+          )
+        } else {
+          const reason = err instanceof Error ? err.message : String(err)
+          console.log(`  ✗ [WARN] DB insert failed: ${reason}`)
+        }
 
         // Best-effort cleanup of orphaned R2 objects
         try {
@@ -495,6 +511,18 @@ async function main() {
 try {
   await main()
 } catch (err) {
-  console.error('Migration failed:', err instanceof Error ? err.message : err)
+  if (err && typeof err === 'object' && 'code' in err) {
+    const pgErr = err as {
+      code: string
+      message: string
+      detail?: string
+      hint?: string
+    }
+    console.error(
+      `Migration failed: [${pgErr.code}] ${pgErr.message}${pgErr.detail ? ' — ' + pgErr.detail : ''}${pgErr.hint ? ' (hint: ' + pgErr.hint + ')' : ''}`
+    )
+  } else {
+    console.error('Migration failed:', err instanceof Error ? err.message : err)
+  }
   process.exit(1)
 }
