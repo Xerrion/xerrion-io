@@ -1,46 +1,39 @@
-import { json } from "@sveltejs/kit";
-import type { RequestHandler } from "./$types";
-import { getDb } from "$lib/server/db";
-import { mapRowToPhoto } from "$lib/server/gallery";
+import { json } from '@sveltejs/kit'
+import type { RequestHandler } from './$types'
+import { getPrisma } from '$lib/server/db'
+import { mapRowToPhoto } from '$lib/server/gallery'
 
 export const GET: RequestHandler = async ({ url }) => {
   try {
-    const category = url.searchParams.get("category");
-    let offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
-    let limit = Number(url.searchParams.get("limit"));
+    const categorySlug = url.searchParams.get('category') ?? undefined
+    const rawOffset = Number(url.searchParams.get('offset'))
+    const offset = Number.isNaN(rawOffset) ? 0 : Math.max(0, rawOffset)
+    let limit = Number(url.searchParams.get('limit'))
+    if (Number.isNaN(limit) || limit < 1) limit = 20
+    limit = Math.min(limit, 50)
 
-    if (Number.isNaN(limit) || limit < 1) limit = 20;
-    limit = Math.min(limit, 50); // Hard maximum
+    const prisma = getPrisma()
 
-    const db = getDb();
+    const rows = await prisma.photo.findMany({
+      where: categorySlug ? { category: { slug: categorySlug } } : undefined,
+      orderBy: { uploadedAt: 'desc' },
+      take: limit,
+      skip: offset,
+      include: {
+        sizes: true,
+        category: { select: { slug: true } }
+      }
+    })
 
-    let query = `
-			SELECT p.id, p.original_name, p.thumb_url, p.medium_url, p.full_url,
-					p.width, p.height, p.uploaded_at, c.slug as category_slug
-			FROM photo p
-			JOIN category c ON p.category_id = c.id
-		`;
-
-    const params: (string | number)[] = [];
-
-    if (category) {
-      query += ` WHERE c.slug = ?`;
-      params.push(category);
-    }
-
-    query += ` ORDER BY p.uploaded_at DESC LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
-
-    const result = await db.execute({ sql: query, args: params });
-
-    const photos = result.rows.map(mapRowToPhoto);
-
-    return json({ photos });
+    const photos = rows.map((row) =>
+      mapRowToPhoto({ photo: row, category: row.category })
+    )
+    return json({ photos })
   } catch (err) {
-    console.error("[api/gallery/photos] Failed to fetch photos:", err);
+    console.error('[api/gallery/photos] Failed to fetch photos:', err)
     return json(
-      { error: "Failed to fetch photos", photos: [] },
-      { status: 500 },
-    );
+      { error: 'Failed to fetch photos', photos: [] },
+      { status: 500 }
+    )
   }
-};
+}

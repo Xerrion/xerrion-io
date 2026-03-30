@@ -1,6 +1,6 @@
 # AGENTS.md - Coding Agent Instructions
 
-Personal website for Lasse Skovgaard Nielsen (Xerrion). Built with SvelteKit 2 + Svelte 5 (runes) + TypeScript, deployed with Bun runtime using Turso (libsql) for database and Vercel Blob for image storage.
+Personal website for Lasse Skovgaard Nielsen (Xerrion). Built with SvelteKit 2 + Svelte 5 (runes) + TypeScript, deployed with Bun runtime using PostgreSQL for database, Redis for session cache, and Cloudflare R2 for image storage.
 
 ## Commands
 
@@ -214,12 +214,18 @@ export const load: PageServerLoad = async () => {
 ## Environment Variables
 
 ```bash
-# Database (Turso)
-TURSO_DATABASE_URL=
-TURSO_AUTH_TOKEN=
+# Database (PostgreSQL)
+DATABASE_URL=
 
-# Blob Storage (Vercel)
-BLOB_READ_WRITE_TOKEN=
+# Cache (Redis)
+REDIS_URL=
+
+# Cloudflare R2 Storage
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET_NAME=
+R2_PUBLIC_URL=
 
 # GitHub API (for projects page)
 GITHUB_TOKEN=
@@ -233,14 +239,15 @@ Use `$env/dynamic/private` for server-side env vars, `$env/dynamic/public` for c
 
 ## External Services
 
-| Service     | Purpose           | Config                                   |
-| ----------- | ----------------- | ---------------------------------------- |
-| Bun         | Runtime + deploy  | `svelte-adapter-bun`                     |
-| Turso       | Database (libsql) | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` |
-| Vercel Blob | Image storage     | `BLOB_READ_WRITE_TOKEN`                  |
-| GitHub API  | Projects page     | `GITHUB_TOKEN` (fine-grained PAT)        |
-| Umami       | Analytics         | `PUBLIC_UMAMI_WEBSITE_ID` (Umami Cloud)  |
-| Google      | Analytics         | `PUBLIC_GA_MEASUREMENT_ID` (GA4)         |
+| Service       | Purpose          | Config                                                                                         |
+| ------------- | ---------------- | ---------------------------------------------------------------------------------------------- |
+| Bun           | Runtime + deploy | `svelte-adapter-bun`                                                                           |
+| PostgreSQL    | Primary database | `DATABASE_URL`                                                                                 |
+| Redis         | Session cache    | `REDIS_URL`                                                                                    |
+| Cloudflare R2 | Image storage    | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL` |
+| GitHub API    | Projects page    | `GITHUB_TOKEN` (fine-grained PAT)                                                              |
+| Umami         | Analytics        | `PUBLIC_UMAMI_WEBSITE_ID` (Umami Cloud)                                                        |
+| Google        | Analytics        | `PUBLIC_GA_MEASUREMENT_ID` (GA4)                                                               |
 
 ## Git Workflow
 

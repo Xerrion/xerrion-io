@@ -1,236 +1,221 @@
 <script lang="ts">
-  import { upload } from "@vercel/blob/client";
-  import { motion } from "@humanspeak/svelte-motion";
+  import { motion } from '@humanspeak/svelte-motion'
 
-  let { data } = $props();
+  let { data } = $props()
 
-  type UploadStatus = "pending" | "uploading" | "processing" | "done" | "error";
+  type UploadStatus = 'pending' | 'uploading' | 'processing' | 'done' | 'error'
 
   const STEP_PROGRESS: Record<string, number> = {
-    fetching: 72,
-    decoding: 76,
-    "resizing:thumb": 82,
-    "resizing:medium": 88,
-    "resizing:full": 92,
-    "uploading:thumb": 94,
-    "uploading:medium": 96,
-    "uploading:full": 97,
-    saving: 98,
-    cleanup: 99,
-    done: 100,
-  };
-
-  const STEP_LABELS: Record<string, string> = {
-    fetching: "Fetching…",
-    decoding: "Decoding HEIC…",
-    "resizing:thumb": "Resizing thumbnail…",
-    "resizing:medium": "Resizing medium…",
-    "resizing:full": "Resizing full…",
-    "uploading:thumb": "Saving thumbnail…",
-    "uploading:medium": "Saving medium…",
-    "uploading:full": "Saving full…",
-    saving: "Saving to database…",
-    cleanup: "Cleaning up…",
-  };
-
-  interface FileUploadItem {
-    file: File;
-    status: UploadStatus;
-    progress: number;
-    stepLabel: string;
-    error?: string;
+    decoding: 10,
+    'resizing:thumb': 30,
+    'resizing:medium': 50,
+    'resizing:full': 70,
+    'uploading:thumb': 82,
+    'uploading:medium': 88,
+    'uploading:full': 93,
+    saving: 97,
+    done: 100
   }
 
-  let fileUploads = $state<FileUploadItem[]>([]);
-  let uploading = $state(false);
-  let categoryId = $state("");
-  let fileInput = $state<HTMLInputElement | null>(null);
-  let dragActive = $state(false);
+  const STEP_LABELS: Record<string, string> = {
+    decoding: 'Decoding HEIC…',
+    'resizing:thumb': 'Resizing thumbnail…',
+    'resizing:medium': 'Resizing medium…',
+    'resizing:full': 'Resizing full…',
+    'uploading:thumb': 'Saving thumbnail…',
+    'uploading:medium': 'Saving medium…',
+    'uploading:full': 'Saving full…',
+    saving: 'Saving to database…'
+  }
+
+  interface FileUploadItem {
+    file: File
+    status: UploadStatus
+    progress: number
+    stepLabel: string
+    error?: string
+  }
+
+  let fileUploads = $state<FileUploadItem[]>([])
+  let uploading = $state(false)
+  let categoryId = $state('')
+  let fileInput = $state<HTMLInputElement | null>(null)
+  let dragActive = $state(false)
 
   let doneCount = $derived(
-    fileUploads.filter((f) => f.status === "done").length,
-  );
+    fileUploads.filter((f) => f.status === 'done').length
+  )
   let errorCount = $derived(
-    fileUploads.filter((f) => f.status === "error").length,
-  );
-  let totalCount = $derived(fileUploads.length);
+    fileUploads.filter((f) => f.status === 'error').length
+  )
+  let totalCount = $derived(fileUploads.length)
   let overallDone = $derived(
     totalCount > 0 &&
-      fileUploads.every((f) => f.status === "done" || f.status === "error"),
-  );
+      fileUploads.every((f) => f.status === 'done' || f.status === 'error')
+  )
 
-  const ACCEPTED_TYPES = ".jpg,.jpeg,.png,.webp,.heic,.heif";
-  const MAX_SIZE = 50 * 1024 * 1024;
+  const ACCEPTED_TYPES = '.jpg,.jpeg,.png,.webp,.heic,.heif'
+  const MAX_SIZE = 50 * 1024 * 1024
 
   function handleDrop(e: DragEvent) {
-    if (uploading) return;
-    dragActive = false;
-    if (!e.dataTransfer?.files) return;
-    addFiles(Array.from(e.dataTransfer.files));
+    if (uploading) return
+    dragActive = false
+    if (!e.dataTransfer?.files) return
+    addFiles(Array.from(e.dataTransfer.files))
   }
 
   function handleFileSelect(e: Event) {
-    if (uploading) return;
-    const input = e.target as HTMLInputElement;
-    if (!input.files) return;
-    addFiles(Array.from(input.files));
-    input.value = "";
+    if (uploading) return
+    const input = e.target as HTMLInputElement
+    if (!input.files) return
+    addFiles(Array.from(input.files))
+    input.value = ''
   }
 
   function addFiles(files: File[]) {
-    if (uploading) return;
+    if (uploading) return
     const valid = files.filter((f) => {
-      const ext = f.name.toLowerCase().split(".").pop();
+      const ext = f.name.toLowerCase().split('.').pop()
       return (
-        ["jpg", "jpeg", "png", "webp", "heic", "heif"].includes(ext ?? "") &&
+        ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].includes(ext ?? '') &&
         f.size <= MAX_SIZE
-      );
-    });
+      )
+    })
 
     const newUploads = valid.map((f) => ({
       file: f,
-      status: "pending" as UploadStatus,
+      status: 'pending' as UploadStatus,
       progress: 0,
-      stepLabel: "",
-    }));
+      stepLabel: ''
+    }))
 
-    fileUploads = [...fileUploads, ...newUploads];
+    fileUploads = [...fileUploads, ...newUploads]
   }
 
   function removeFile(index: number) {
-    if (uploading) return;
-    fileUploads = fileUploads.filter((_, i) => i !== index);
+    if (uploading) return
+    fileUploads = fileUploads.filter((_, i) => i !== index)
   }
 
   function clearFiles() {
-    if (uploading) return;
-    fileUploads = [];
+    if (uploading) return
+    fileUploads = []
   }
 
   function formatBytes(bytes: number) {
-    if (!bytes) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+    if (!bytes) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
   }
 
   function isHeic(name: string) {
-    const ext = name.toLowerCase().split(".").pop();
-    return ext === "heic" || ext === "heif";
+    const ext = name.toLowerCase().split('.').pop()
+    return ext === 'heic' || ext === 'heif'
   }
 
   async function readProcessStream(
     response: Response,
-    item: FileUploadItem,
+    item: FileUploadItem
   ): Promise<void> {
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
+    const reader = response.body!.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
 
     while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      const { done, value } = await reader.read()
+      if (done) break
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n\n");
-      buffer = lines.pop() ?? "";
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n\n')
+      buffer = lines.pop() ?? ''
 
       for (const line of lines) {
-        const match = line.match(/^data:\s*(.+)$/m);
-        if (!match) continue;
+        const match = line.match(/^data:\s*(.+)$/m)
+        if (!match) continue
 
-        const event = JSON.parse(match[1]);
+        const event = JSON.parse(match[1])
 
-        if (event.step === "done") {
+        if (event.step === 'done') {
           if (event.error) {
-            throw new Error(event.error);
+            throw new Error(event.error)
           }
-          item.progress = 100;
-          item.stepLabel = "";
-          return;
+          item.progress = 100
+          item.stepLabel = ''
+          return
         }
 
-        item.progress = STEP_PROGRESS[event.step] ?? item.progress;
-        item.stepLabel = STEP_LABELS[event.step] ?? "";
+        item.progress = STEP_PROGRESS[event.step] ?? item.progress
+        item.stepLabel = STEP_LABELS[event.step] ?? ''
       }
     }
   }
 
   async function uploadFile(index: number) {
-    const item = fileUploads[index];
-    item.status = "uploading";
-    item.progress = 0;
-    item.stepLabel = "Uploading…";
+    const item = fileUploads[index]
+    item.status = 'uploading'
+    item.progress = 0
+    item.stepLabel = 'Uploading…'
 
     try {
-      const blob = await upload(item.file.name, item.file, {
-        access: "public",
-        handleUploadUrl: "/admin/gallery/upload/api",
-        multipart: item.file.size > 4 * 1024 * 1024,
-        onUploadProgress: ({ percentage }) => {
-          item.progress = Math.round(percentage * 0.7);
-          item.stepLabel = `Uploading… ${Math.round(percentage)}%`;
-        },
-      });
+      const formData = new FormData()
+      formData.append('file', item.file)
+      formData.append('originalName', item.file.name)
+      formData.append('categoryId', String(categoryId))
 
-      item.status = "processing";
-      item.progress = 70;
-      item.stepLabel = "Starting processing…";
+      item.status = 'processing'
+      item.progress = 5
+      item.stepLabel = 'Starting processing…'
 
-      const processResponse = await fetch("/admin/gallery/upload/process", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          blobUrl: blob.url,
-          originalName: item.file.name,
-          categoryId: Number(categoryId),
-        }),
-      });
+      const processResponse = await fetch('/admin/gallery/upload/process', {
+        method: 'POST',
+        body: formData
+      })
 
       if (!processResponse.ok) {
-        const errData = await processResponse.json().catch(() => null);
+        const errData = await processResponse.json().catch(() => null)
         throw new Error(
-          errData?.message || `Processing failed (${processResponse.status})`,
-        );
+          errData?.message || `Processing failed (${processResponse.status})`
+        )
       }
 
-      await readProcessStream(processResponse, item);
+      await readProcessStream(processResponse, item)
 
-      item.status = "done";
-      item.progress = 100;
-      item.stepLabel = "";
+      item.status = 'done'
+      item.progress = 100
+      item.stepLabel = ''
     } catch (err) {
-      item.status = "error";
-      item.error = err instanceof Error ? err.message : "Upload failed";
-      item.stepLabel = "";
+      item.status = 'error'
+      item.error = err instanceof Error ? err.message : 'Upload failed'
+      item.stepLabel = ''
     }
   }
 
   async function startUpload() {
-    if (uploading || fileUploads.length === 0 || !categoryId) return;
+    if (uploading || fileUploads.length === 0 || !categoryId) return
 
-    uploading = true;
-    let index = 0;
+    uploading = true
+    let index = 0
 
     async function processNext() {
       while (index < fileUploads.length) {
-        const currentIndex = index++;
-        if (fileUploads[currentIndex].status === "done") continue;
-        await uploadFile(currentIndex);
+        const currentIndex = index++
+        if (fileUploads[currentIndex].status === 'done') continue
+        await uploadFile(currentIndex)
       }
     }
 
     const workers = Array.from(
       { length: Math.min(3, fileUploads.length) },
-      () => processNext(),
-    );
-    await Promise.all(workers);
+      () => processNext()
+    )
+    await Promise.all(workers)
   }
 
   function resetUpload() {
-    uploading = false;
-    fileUploads = [];
+    uploading = false
+    fileUploads = []
   }
 </script>
 
@@ -302,24 +287,24 @@
       role="button"
       tabindex="0"
       ondragenter={(e) => {
-        e.preventDefault();
-        dragActive = true;
+        e.preventDefault()
+        dragActive = true
       }}
       ondragover={(e) => {
-        e.preventDefault();
-        dragActive = true;
+        e.preventDefault()
+        dragActive = true
       }}
       ondragleave={() => {
-        dragActive = false;
+        dragActive = false
       }}
       ondrop={(e) => {
-        e.preventDefault();
-        handleDrop(e);
+        e.preventDefault()
+        handleDrop(e)
       }}
       onclick={() => !uploading && fileInput?.click()}
       onkeydown={(e) => {
-        if ((e.key === "Enter" || e.key === " ") && !uploading)
-          fileInput?.click();
+        if ((e.key === 'Enter' || e.key === ' ') && !uploading)
+          fileInput?.click()
       }}
     >
       <input
@@ -368,7 +353,7 @@
       <div class="file-list">
         <div class="file-list-header">
           <span class="file-count"
-            >{fileUploads.length} file{fileUploads.length !== 1 ? "s" : ""} selected</span
+            >{fileUploads.length} file{fileUploads.length !== 1 ? 's' : ''} selected</span
           >
           <button
             type="button"
@@ -382,7 +367,7 @@
 
         <div class="file-items">
           {#each fileUploads as item, index}
-            <div class="file-item" class:error={item.status === "error"}>
+            <div class="file-item" class:error={item.status === 'error'}>
               <div class="file-info">
                 <div class="file-header">
                   <span class="file-name" title={item.file.name}
@@ -400,7 +385,7 @@
                   <motion.div
                     class="progress-bar {item.status}"
                     animate={{ width: `${item.progress}%` }}
-                    transition={{ type: "spring", stiffness: 120, damping: 20 }}
+                    transition={{ type: 'spring', stiffness: 120, damping: 20 }}
                   />
                 </div>
 
@@ -408,13 +393,13 @@
                   <div class="step-label">{item.stepLabel}</div>
                 {/if}
 
-                {#if item.status === "error" && item.error}
+                {#if item.status === 'error' && item.error}
                   <div class="error-message">{item.error}</div>
                 {/if}
               </div>
 
               <div class="file-actions">
-                {#if item.status === "pending"}
+                {#if item.status === 'pending'}
                   <button
                     type="button"
                     class="btn icon small"
@@ -440,11 +425,11 @@
                       ></line></svg
                     >
                   </button>
-                {:else if item.status === "uploading" || item.status === "processing"}
+                {:else if item.status === 'uploading' || item.status === 'processing'}
                   <div class="status-spinner"></div>
-                {:else if item.status === "done"}
+                {:else if item.status === 'done'}
                   <div class="status-icon success">✓</div>
-                {:else if item.status === "error"}
+                {:else if item.status === 'error'}
                   <div class="status-icon error">✕</div>
                 {/if}
               </div>
@@ -470,8 +455,8 @@
             disabled={uploading || !categoryId || fileUploads.length === 0}
           >
             Upload {fileUploads.length} image{fileUploads.length !== 1
-              ? "s"
-              : ""}
+              ? 's'
+              : ''}
           </button>
         {/if}
       </div>
@@ -807,7 +792,7 @@
   }
 
   :global(.progress-bar.processing)::after {
-    content: "";
+    content: '';
     position: absolute;
     top: 0;
     left: 0;

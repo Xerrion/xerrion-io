@@ -60,14 +60,14 @@ describe('randomSuffix', () => {
     expect(typeof result).toBe('string')
   })
 
-  test('returns a string of 6 characters', () => {
+  test('returns a 12-character hex string', () => {
     const result = randomSuffix()
-    expect(result).toHaveLength(6)
+    expect(result).toHaveLength(12)
   })
 
-  test('contains only alphanumeric characters (base36)', () => {
+  test('contains only lowercase hex characters', () => {
     const result = randomSuffix()
-    expect(result).toMatch(/^[0-9a-z]{6}$/)
+    expect(result).toMatch(/^[0-9a-f]{12}$/)
   })
 
   test('multiple calls produce different results', () => {

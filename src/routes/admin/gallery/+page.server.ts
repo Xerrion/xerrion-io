@@ -1,140 +1,152 @@
-import type { PageServerLoad, Actions } from "./$types";
-import type { ImageMetadata } from "$lib/server/image";
-import { getDb } from "$lib/server/db";
-import { fail } from "@sveltejs/kit";
-import { del } from "@vercel/blob";
-import { env } from "$env/dynamic/private";
+import type { PageServerLoad, Actions } from './$types'
+import { error, fail } from '@sveltejs/kit'
+import { getPrisma } from '$lib/server/db'
+import { deleteFromR2, getR2Url } from '$lib/server/r2'
+import { extractSizes } from '$lib/server/gallery'
+import type { ImageMetadata } from '$lib/server/image'
 
 export const load: PageServerLoad = async () => {
-  const db = getDb();
+  try {
+    const prisma = getPrisma()
 
-  const [photosResult, categoriesResult] = await Promise.all([
-    db.execute(`
-			SELECT p.*, c.name as category_name, c.slug as category_slug
-			FROM photo p
-			JOIN category c ON p.category_id = c.id
-			ORDER BY p.uploaded_at DESC
-		`),
-    db.execute("SELECT * FROM category ORDER BY sort_order ASC"),
-  ]);
+    const [photoRows, categoryRows] = await Promise.all([
+      prisma.photo.findMany({
+        orderBy: { uploadedAt: 'desc' },
+        include: {
+          sizes: true,
+          category: { select: { slug: true, name: true } }
+        }
+      }),
+      prisma.category.findMany({ orderBy: { sortOrder: 'asc' } })
+    ])
 
-  return {
-    photos: photosResult.rows.map((row) => ({
-      id: row.id as number,
-      categoryId: row.category_id as number,
-      categoryName: row.category_name as string,
-      categorySlug: row.category_slug as string,
-      originalName: row.original_name as string,
-      thumbUrl: row.thumb_url as string,
-      mediumUrl: row.medium_url as string,
-      fullUrl: row.full_url as string,
-      width: row.width as number | null,
-      height: row.height as number | null,
-      thumbSize: row.thumb_size as number | null,
-      mediumSize: row.medium_size as number | null,
-      fullSize: row.full_size as number | null,
-      metadata: row.metadata
-        ? (JSON.parse(row.metadata as string) as ImageMetadata)
-        : null,
-      uploadedAt: row.uploaded_at as string,
-    })),
-    categories: categoriesResult.rows.map((row) => ({
-      id: row.id as number,
-      slug: row.slug as string,
-      name: row.name as string,
-      description: row.description as string | null,
-      sortOrder: row.sort_order as number,
-    })),
-  };
-};
+    return {
+      photos: photoRows.map((row) => {
+        const { thumb, medium, full } = extractSizes(row.sizes)
+        return {
+          id: row.id,
+          categoryId: row.categoryId,
+          categoryName: row.category.name,
+          categorySlug: row.category.slug,
+          originalName: row.originalName,
+          thumbUrl: thumb ? getR2Url(thumb.r2Key) : null,
+          mediumUrl: medium ? getR2Url(medium.r2Key) : null,
+          fullUrl: full ? getR2Url(full.r2Key) : null,
+          width: full?.width ?? null,
+          height: full?.height ?? null,
+          thumbSize: thumb?.byteSize ?? null,
+          mediumSize: medium?.byteSize ?? null,
+          fullSize: full?.byteSize ?? null,
+          metadata: row.metadata as ImageMetadata | null,
+          uploadedAt: row.uploadedAt.toISOString()
+        }
+      }),
+      categories: categoryRows.map((row) => ({
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        description: row.description,
+        sortOrder: row.sortOrder
+      }))
+    }
+  } catch (err) {
+    console.error('[admin/gallery] Failed to load gallery data:', err)
+    error(500, 'Failed to load gallery data')
+  }
+}
 
 export const actions: Actions = {
-  delete: async ({ request }) => {
-    const data = await request.formData();
-    const photoId = data.get("photoId")?.toString();
+  delete: async ({ request, locals }) => {
+    if (!locals.user) return fail(401, { error: 'Unauthorized' })
 
-    if (!photoId) {
-      return fail(400, { error: "Photo ID is required" });
+    const data = await request.formData()
+    const photoId = data.get('photoId')?.toString()
+    const photoIdNum = Number(photoId)
+
+    if (!photoId || !Number.isInteger(photoIdNum) || photoIdNum <= 0) {
+      return fail(400, { error: 'Photo ID is required' })
     }
 
-    const db = getDb();
+    try {
+      const prisma = getPrisma()
 
-    const result = await db.execute({
-      sql: "SELECT blob_path, thumb_url, medium_url, full_url FROM photo WHERE id = ?",
-      args: [Number(photoId)],
-    });
+      const photo = await prisma.photo.findUnique({
+        where: { id: photoIdNum },
+        select: { id: true }
+      })
+      if (!photo) return fail(404, { error: 'Photo not found' })
 
-    if (result.rows.length === 0) {
-      return fail(404, { error: "Photo not found" });
+      const sizeRows = await prisma.photoSize.findMany({
+        where: { photoId: photoIdNum },
+        select: { r2Key: true }
+      })
+
+      await prisma.photo.delete({ where: { id: photoIdNum } })
+
+      if (sizeRows.length > 0) {
+        await deleteFromR2(sizeRows.map((r) => r.r2Key)).catch((err) => {
+          console.error(
+            '[admin/gallery] R2 cleanup failed, objects may be orphaned:',
+            err
+          )
+        })
+      }
+
+      return { success: true }
+    } catch (err) {
+      console.error('[admin/gallery] delete failed:', err)
+      return fail(500, { error: 'Failed to delete photo' })
     }
-
-    const photo = result.rows[0];
-    const urlsToDelete = [
-      photo.thumb_url as string,
-      photo.medium_url as string,
-      photo.full_url as string,
-    ].filter(Boolean);
-
-    await Promise.all([
-      del(urlsToDelete, { token: env.BLOB_READ_WRITE_TOKEN }),
-      db.execute({
-        sql: "DELETE FROM photo WHERE id = ?",
-        args: [Number(photoId)],
-      }),
-    ]);
-
-    return { success: true };
   },
 
-  deleteMany: async ({ request }) => {
-    const data = await request.formData();
-    const idsRaw = data.get("photoIds")?.toString();
+  deleteMany: async ({ request, locals }) => {
+    if (!locals.user) return fail(401, { error: 'Unauthorized' })
 
-    if (!idsRaw) {
-      return fail(400, { error: "No photos selected" });
-    }
+    const data = await request.formData()
+    const idsRaw = data.get('photoIds')?.toString()
+
+    if (!idsRaw) return fail(400, { error: 'No photos selected' })
 
     const ids = idsRaw
-      .split(",")
+      .split(',')
       .map((id) => Number(id.trim()))
-      .filter((id) => !Number.isNaN(id) && id > 0);
+      .filter((id) => !Number.isNaN(id) && id > 0)
+    if (ids.length === 0)
+      return fail(400, { error: 'No valid photo IDs provided' })
 
-    if (ids.length === 0) {
-      return fail(400, { error: "No valid photo IDs provided" });
+    try {
+      const prisma = getPrisma()
+
+      const sizeRows = await prisma.photoSize.findMany({
+        where: { photoId: { in: ids } },
+        select: { r2Key: true, photoId: true }
+      })
+
+      if (sizeRows.length === 0) return fail(404, { error: 'No photos found' })
+
+      const allR2Keys = sizeRows.map((r) => r.r2Key)
+      const foundIds = [...new Set(sizeRows.map((r) => r.photoId))]
+      const missingIds = ids.filter((id) => !foundIds.includes(id))
+
+      if (missingIds.length > 0) {
+        console.warn(
+          `[admin/gallery] deleteMany: ${missingIds.length} ID(s) had no size rows: [${missingIds.join(', ')}]`
+        )
+      }
+
+      await prisma.photo.deleteMany({ where: { id: { in: foundIds } } })
+
+      await deleteFromR2(allR2Keys).catch((err) => {
+        console.error(
+          '[admin/gallery] R2 bulk delete failed, objects may be orphaned:',
+          err
+        )
+      })
+
+      return { success: true, deletedCount: foundIds.length }
+    } catch (err) {
+      console.error('[admin/gallery] deleteMany failed:', err)
+      return fail(500, { error: 'Failed to delete photos' })
     }
-
-    const db = getDb();
-    const token = env.BLOB_READ_WRITE_TOKEN;
-
-    const placeholders = ids.map(() => "?").join(",");
-    const result = await db.execute({
-      sql: `SELECT id, thumb_url, medium_url, full_url FROM photo WHERE id IN (${placeholders})`,
-      args: ids,
-    });
-
-    if (result.rows.length === 0) {
-      return fail(404, { error: "No photos found" });
-    }
-
-    const allBlobUrls = result.rows.flatMap((row) =>
-      [
-        row.thumb_url as string,
-        row.medium_url as string,
-        row.full_url as string,
-      ].filter(Boolean),
-    );
-
-    const foundIds = result.rows.map((row) => row.id as number);
-    const deletePlaceholders = foundIds.map(() => "?").join(",");
-
-    await Promise.all([
-      del(allBlobUrls, { token }),
-      db.execute({
-        sql: `DELETE FROM photo WHERE id IN (${deletePlaceholders})`,
-        args: foundIds,
-      }),
-    ]);
-
-    return { success: true, deletedCount: foundIds.length };
-  },
-};
+  }
+}

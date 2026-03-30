@@ -1,60 +1,68 @@
-import type { PageServerLoad } from "./$types";
-import { getDb } from "$lib/server/db";
-import type { PhotoCategory } from "$lib/gallery";
-import { mapRowToPhoto } from "$lib/server/gallery";
+import type { PageServerLoad } from './$types'
+import type { PhotoCategory } from '$lib/gallery'
+import { getPrisma } from '$lib/server/db'
+import { mapRowToPhoto } from '$lib/server/gallery'
 
 export const load: PageServerLoad = async () => {
   try {
-    const db = getDb();
+    const prisma = getPrisma()
 
-    const catResult = await db.execute(
-      "SELECT id, slug, name, description, sort_order FROM category ORDER BY sort_order ASC",
-    );
+    const [categories, totalPhotos, photoCounts, photoRows] = await Promise.all(
+      [
+        prisma.category.findMany({
+          orderBy: { sortOrder: 'asc' },
+          select: { slug: true, name: true, description: true, sortOrder: true }
+        }),
+        prisma.photo.count(),
+        prisma.category.findMany({
+          orderBy: { sortOrder: 'asc' },
+          select: {
+            slug: true,
+            _count: { select: { photos: true } }
+          }
+        }),
+        prisma.photo.findMany({
+          orderBy: { uploadedAt: 'desc' },
+          take: 20,
+          include: {
+            sizes: true,
+            category: { select: { slug: true } }
+          }
+        })
+      ]
+    )
 
-    const categories: PhotoCategory[] = catResult.rows.map((row) => ({
-      name: row.name as string,
-      slug: row.slug as string,
-      description: (row.description as string) || undefined,
-      order: row.sort_order as number,
-    }));
+    const mappedCategories: PhotoCategory[] = categories.map((row) => ({
+      name: row.name,
+      slug: row.slug,
+      description: row.description ?? undefined,
+      order: row.sortOrder
+    }))
 
-    // Get total photo count globally
-    const totalResult = await db.execute("SELECT COUNT(*) as count FROM photo");
-    const totalPhotos = Number(totalResult.rows[0]?.count || 0);
-
-    // Get photo count per category
-    const countResult = await db.execute(`
-			SELECT c.slug, COUNT(p.id) as count
-			FROM category c
-			LEFT JOIN photo p ON c.id = p.category_id
-			GROUP BY c.id, c.slug
-		`);
-    const photoCounts: Record<string, number> = {};
-    for (const row of countResult.rows) {
-      photoCounts[row.slug as string] = Number(row.count || 0);
+    const photoCountMap: Record<string, number> = {}
+    for (const row of photoCounts) {
+      photoCountMap[row.slug] = row._count.photos
     }
 
-    // Fetch initial 20 photos
-    const photoResult = await db.execute(
-      `SELECT p.id, p.original_name, p.thumb_url, p.medium_url, p.full_url,
-					p.width, p.height, p.uploaded_at, c.slug as category_slug
-			 FROM photo p
-			 JOIN category c ON p.category_id = c.id
-			 ORDER BY p.uploaded_at DESC
-			 LIMIT 20`,
-    );
+    const initialPhotos = photoRows.map((row) =>
+      mapRowToPhoto({ photo: row, category: row.category })
+    )
 
-    const initialPhotos = photoResult.rows.map(mapRowToPhoto);
-
-    return { categories, photoCounts, totalPhotos, initialPhotos, error: null };
+    return {
+      categories: mappedCategories,
+      photoCounts: photoCountMap,
+      totalPhotos,
+      initialPhotos,
+      error: null
+    }
   } catch (err) {
-    console.error("[gallery] Failed to load from Turso:", err);
+    console.error('[gallery] Failed to load from database:', err)
     return {
       categories: [],
       photoCounts: {},
       totalPhotos: 0,
       initialPhotos: [],
-      error: "Failed to load gallery",
-    };
+      error: 'Failed to load gallery'
+    }
   }
-};
+}

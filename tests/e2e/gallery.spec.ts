@@ -25,7 +25,6 @@ test.describe('Gallery', () => {
       return Array.from({ length: count }).map((_, i) => ({
         id: `mock-${startId + i}`,
         name: `Mock Photo ${startId + i}`,
-        url: `https://example.com/${startId + i}.jpg`,
         thumbUrl: `https://example.com/${startId + i}-thumb.jpg`,
         mediumUrl: `https://example.com/${startId + i}-medium.jpg`,
         fullUrl: `https://example.com/${startId + i}-full.jpg`,
@@ -104,9 +103,9 @@ test.describe('Gallery', () => {
     const counter = page.locator('.lightbox-counter')
     await expect(counter).toContainText('1 /')
 
-    // Previous button should be hidden on the first photo
+    // Previous button should be disabled on the first photo
     const prevBtn = page.locator('.lightbox-prev')
-    await expect(prevBtn).toBeHidden()
+    await expect(prevBtn).toBeDisabled()
 
     // Click Next button
     const nextBtn = page.locator('.lightbox-next')
@@ -116,13 +115,13 @@ test.describe('Gallery', () => {
     // The counter should update
     await expect(counter).toContainText('2 /')
 
-    // Now Previous button should be visible
-    await expect(prevBtn).toBeAttached()
+    // Now Previous button should be enabled
+    await expect(prevBtn).toBeEnabled()
 
     // Navigate back to the first photo
     await prevBtn.click()
     await expect(counter).toContainText('1 /')
-    await expect(prevBtn).toBeHidden()
+    await expect(prevBtn).toBeDisabled()
 
     // Close via Close Button
     const closeBtn = page.locator('.lightbox-close')
@@ -144,9 +143,9 @@ test.describe('Gallery', () => {
       {
         id: 'mock-1',
         name: 'Photo One',
-        url: 'https://example.com/1.jpg',
         thumbUrl: 'https://example.com/1.jpg',
         mediumUrl: 'https://example.com/1.jpg',
+        fullUrl: 'https://example.com/1.jpg',
         width: 800,
         height: 600,
         category: 'test',
@@ -155,9 +154,9 @@ test.describe('Gallery', () => {
       {
         id: 'mock-2',
         name: 'Photo Two',
-        url: 'https://example.com/2.jpg',
         thumbUrl: 'https://example.com/2.jpg',
         mediumUrl: 'https://example.com/2.jpg',
+        fullUrl: 'https://example.com/2.jpg',
         width: 800,
         height: 600,
         category: 'test',
@@ -196,7 +195,7 @@ test.describe('Gallery', () => {
     // Counter shows 2/2
     await expect(page.locator('.lightbox-counter')).toContainText('2 / 2')
 
-    // Next button should be hidden
-    await expect(nextBtn).toBeHidden()
+    // Next button should be disabled
+    await expect(nextBtn).toBeDisabled()
   })
 })

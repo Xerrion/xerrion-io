@@ -63,8 +63,6 @@
 
   <!-- JSON-LD Structured Data -->
   {#if jsonLdString}
-    <script type="application/ld+json">
-      {@html jsonLdString}
-    </script>
+    {@html `<script type="application/ld+json">${jsonLdString}<\/script>`}
   {/if}
 </svelte:head>
