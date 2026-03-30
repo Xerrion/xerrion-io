@@ -1,15 +1,9 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
-import { and, eq } from 'drizzle-orm'
-import postgres from 'postgres'
+import { PrismaClient, PhotoSizeKey } from '@prisma/client'
 import {
   S3Client,
   PutObjectCommand,
   DeleteObjectsCommand
 } from '@aws-sdk/client-s3'
-
-import { photo, photoSize, category } from '../src/lib/server/schema'
-import type { PhotoSizeKey } from '../src/lib/server/schema'
-import * as schema from '../src/lib/server/schema'
 
 // ---------------------------------------------------------------------------
 // Environment validation
@@ -249,12 +243,13 @@ function groupByPhoto(
 async function main() {
   const env = parseEnvironment()
 
-  const sql = postgres(env.databaseUrl, { max: 1 })
-  const db = drizzle(sql, { schema, casing: 'snake_case' })
+  const prisma = new PrismaClient({
+    datasources: { db: { url: env.databaseUrl } }
+  })
 
   try {
     // Verify DB connection before proceeding
-    await sql`SELECT 1`
+    await prisma.$queryRaw`SELECT 1`
     console.log('Database connection verified.')
 
     const s3 = createR2Client(env)
@@ -297,21 +292,19 @@ async function main() {
     const categoryIdMap = new Map<string, number>()
 
     for (const slug of uniqueSlugs) {
-      // Check if category exists
-      const [existing] = await db
-        .select({ id: category.id })
-        .from(category)
-        .where(eq(category.slug, slug))
-        .limit(1)
+      const existing = await prisma.category.findUnique({
+        where: { slug },
+        select: { id: true }
+      })
 
       if (existing) {
         categoryIdMap.set(slug, existing.id)
         console.log(`  Category "${slug}" exists (id=${existing.id})`)
       } else {
-        const [inserted] = await db
-          .insert(category)
-          .values({ slug, name: slug })
-          .returning({ id: category.id })
+        const inserted = await prisma.category.create({
+          data: { slug, name: slug },
+          select: { id: true }
+        })
         categoryIdMap.set(slug, inserted.id)
         console.log(`  Created category "${slug}" (id=${inserted.id})`)
       }
@@ -329,8 +322,11 @@ async function main() {
     for (const [groupKey, sizeMap] of photoGroups) {
       photoIndex++
       const progress = `[${photoIndex}/${totalPhotos}]`
-      const [categorySlug, ...baseNameParts] = groupKey.split('/')
-      const baseName = baseNameParts.join('/')
+      // Use explicit indexOf to avoid re-joining path segments.
+      // parseBlobPathname already enforces parts.length === 3, so baseName is guaranteed slash-free.
+      const slashIdx = groupKey.indexOf('/')
+      const categorySlug = groupKey.slice(0, slashIdx)
+      const baseName = groupKey.slice(slashIdx + 1)
 
       const categoryId = categoryIdMap.get(categorySlug)
       if (!categoryId) {
@@ -354,16 +350,10 @@ async function main() {
       console.log(`${progress} Migrating "${groupKey}"...`)
 
       // Idempotency: skip if a photo with this categoryId + originalName already exists
-      const [existingPhoto] = await db
-        .select({ id: photo.id })
-        .from(photo)
-        .where(
-          and(
-            eq(photo.categoryId, categoryId),
-            eq(photo.originalName, baseName)
-          )
-        )
-        .limit(1)
+      const existingPhoto = await prisma.photo.findFirst({
+        where: { categoryId, originalName: baseName },
+        select: { id: true }
+      })
 
       if (existingPhoto) {
         console.log(`  [SKIP] Already exists (id=${existingPhoto.id})`)
@@ -402,7 +392,7 @@ async function main() {
           )
 
           uploadedKeys.push(r2Key)
-          // width/height are null for migrated photos — blobs are reused as-is
+          // width/height are null for migrated photos - blobs are reused as-is
           // without re-decoding. Dimensions would require re-processing each image.
           sizeInserts.push({
             size,
@@ -440,17 +430,17 @@ async function main() {
 
       // Insert photo + photo_size rows in a transaction
       try {
-        await db.transaction(async (tx) => {
-          const [inserted] = await tx
-            .insert(photo)
-            .values({
+        await prisma.$transaction(async (tx) => {
+          const inserted = await tx.photo.create({
+            data: {
               categoryId,
               originalName: baseName
-            })
-            .returning({ id: photo.id })
+            },
+            select: { id: true }
+          })
 
-          await tx.insert(photoSize).values(
-            sizeInserts.map((s) => ({
+          await tx.photoSize.createMany({
+            data: sizeInserts.map((s) => ({
               photoId: inserted.id,
               size: s.size,
               r2Key: s.r2Key,
@@ -459,7 +449,7 @@ async function main() {
               height: s.height,
               byteSize: s.byteSize
             }))
-          )
+          })
         })
 
         const sizeSummary = sizeInserts.map((s) => s.size).join(' | ')
@@ -474,11 +464,11 @@ async function main() {
             hint?: string
           }
           console.log(
-            `  ✗ [WARN] DB insert failed: [${pgErr.code}] ${pgErr.message}${pgErr.detail ? ' — ' + pgErr.detail : ''}${pgErr.hint ? ' (hint: ' + pgErr.hint + ')' : ''}`
+            `  \u2717 [WARN] DB insert failed: [${pgErr.code}] ${pgErr.message}${pgErr.detail ? ' - ' + pgErr.detail : ''}${pgErr.hint ? ' (hint: ' + pgErr.hint + ')' : ''}`
           )
         } else {
           const reason = err instanceof Error ? err.message : String(err)
-          console.log(`  ✗ [WARN] DB insert failed: ${reason}`)
+          console.log(`  \u2717 [WARN] DB insert failed: ${reason}`)
         }
 
         // Best-effort cleanup of orphaned R2 objects
@@ -504,7 +494,7 @@ async function main() {
     console.log(`  Failed:   ${failedCount}`)
     console.log(`  Total:    ${totalPhotos}`)
   } finally {
-    await sql.end()
+    await prisma.$disconnect()
   }
 }
 
@@ -519,7 +509,7 @@ try {
       hint?: string
     }
     console.error(
-      `Migration failed: [${pgErr.code}] ${pgErr.message}${pgErr.detail ? ' — ' + pgErr.detail : ''}${pgErr.hint ? ' (hint: ' + pgErr.hint + ')' : ''}`
+      `Migration failed: [${pgErr.code}] ${pgErr.message}${pgErr.detail ? ' - ' + pgErr.detail : ''}${pgErr.hint ? ' (hint: ' + pgErr.hint + ')' : ''}`
     )
   } else {
     console.error('Migration failed:', err instanceof Error ? err.message : err)

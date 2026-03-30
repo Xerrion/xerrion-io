@@ -1,15 +1,10 @@
 import { error } from '@sveltejs/kit'
+import type { Prisma } from '@prisma/client'
 import type { RequestHandler } from './$types'
-import { getDb } from '$lib/server/db'
+import { getPrisma } from '$lib/server/db'
 import { uploadToR2, deleteFromR2 } from '$lib/server/r2'
 import { processImage, generateBlobPath, randomSuffix } from '$lib/server/image'
 import type { ProcessingStep } from '$lib/server/image'
-import {
-  photo as photoTable,
-  photoSize as photoSizeTable,
-  category as categoryTable
-} from '$lib/server/schema'
-import { eq } from 'drizzle-orm'
 
 type StreamStep =
   | ProcessingStep
@@ -20,9 +15,7 @@ type StreamStep =
   | 'done'
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!locals.user) {
-    error(401, 'Unauthorized')
-  }
+  if (!locals.user) error(401, 'Unauthorized')
 
   const formData = await request.formData()
   const file = formData.get('file')
@@ -50,14 +43,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       const uploadedR2Keys: string[] = []
 
       try {
-        const db = getDb()
+        const prisma = getPrisma()
 
-        // Validate category exists
-        const [cat] = await db
-          .select({ slug: categoryTable.slug })
-          .from(categoryTable)
-          .where(eq(categoryTable.id, categoryIdNum))
-          .limit(1)
+        const cat = await prisma.category.findUnique({
+          where: { id: categoryIdNum },
+          select: { slug: true }
+        })
 
         if (!cat) {
           send('done', { error: 'Invalid category' })
@@ -66,12 +57,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         }
 
         const inputBuffer = Buffer.from(await file.arrayBuffer())
-
         const processed = await processImage(
           inputBuffer,
-          (step: ProcessingStep) => {
-            send(step)
-          }
+          (step: ProcessingStep) => send(step)
         )
 
         const suffix = randomSuffix()
@@ -119,65 +107,64 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         uploadedR2Keys.push(fullPath)
 
         send('saving')
-        await db.transaction(async (tx) => {
-          const [inserted] = await tx
-            .insert(photoTable)
-            .values({
+        await prisma.$transaction(async (tx) => {
+          const newPhoto = await tx.photo.create({
+            data: {
               categoryId: categoryIdNum,
               originalName: String(originalName),
               metadata: processed.metadata
-            })
-            .returning({ id: photoTable.id })
-
-          const newId = inserted.id
-
-          await tx.insert(photoSizeTable).values([
-            {
-              photoId: newId,
-              size: 'thumb',
-              r2Key: thumbPath,
-              url: thumbUrl,
-              width: processed.thumb.width,
-              height: processed.thumb.height,
-              byteSize: processed.thumb.byteLength
-            },
-            {
-              photoId: newId,
-              size: 'medium',
-              r2Key: mediumPath,
-              url: mediumUrl,
-              width: processed.medium.width,
-              height: processed.medium.height,
-              byteSize: processed.medium.byteLength
-            },
-            {
-              photoId: newId,
-              size: 'full',
-              r2Key: fullPath,
-              url: fullUrl,
-              width: processed.full.width,
-              height: processed.full.height,
-              byteSize: processed.full.byteLength
+                ? (JSON.parse(
+                    JSON.stringify(processed.metadata)
+                  ) as Prisma.InputJsonObject)
+                : undefined
             }
-          ])
+          })
+
+          await tx.photoSize.createMany({
+            data: [
+              {
+                photoId: newPhoto.id,
+                size: 'thumb',
+                r2Key: thumbPath,
+                url: thumbUrl,
+                width: processed.thumb.width,
+                height: processed.thumb.height,
+                byteSize: processed.thumb.byteLength
+              },
+              {
+                photoId: newPhoto.id,
+                size: 'medium',
+                r2Key: mediumPath,
+                url: mediumUrl,
+                width: processed.medium.width,
+                height: processed.medium.height,
+                byteSize: processed.medium.byteLength
+              },
+              {
+                photoId: newPhoto.id,
+                size: 'full',
+                r2Key: fullPath,
+                url: fullUrl,
+                width: processed.full.width,
+                height: processed.full.height,
+                byteSize: processed.full.byteLength
+              }
+            ]
+          })
         })
 
         send('done', { success: true, name: String(originalName) })
       } catch (err) {
-        // Best-effort R2 cleanup for uploaded objects on failure
         if (uploadedR2Keys.length > 0) {
-          try {
-            await deleteFromR2(uploadedR2Keys)
-          } catch (cleanupErr) {
+          await deleteFromR2(uploadedR2Keys).catch((cleanupErr) => {
             console.error(
               '[upload/process] R2 cleanup failed, objects may be orphaned:',
               cleanupErr
             )
-          }
+          })
         }
-
-        const message = err instanceof Error ? err.message : 'Processing failed'
-        send('done', { error: message })
+        const msg = err instanceof Error ? err.message : 'Processing failed'
+        send('done', { error: msg })
       } finally {
         controller.close()
       }

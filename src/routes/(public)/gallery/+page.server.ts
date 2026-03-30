@@ -1,46 +1,36 @@
 import type { PageServerLoad } from './$types'
-
-import { getDb } from '$lib/server/db'
-import { category, photo } from '$lib/server/schema'
-import { eq, asc, count } from 'drizzle-orm'
 import type { PhotoCategory } from '$lib/gallery'
+import { getPrisma } from '$lib/server/db'
 import { mapRowToPhoto } from '$lib/server/gallery'
 
 export const load: PageServerLoad = async () => {
   try {
-    const db = getDb()
+    const prisma = getPrisma()
 
-    const [categories, totalResult, countRows, photoRows] = await Promise.all([
-      db
-        .select({
-          slug: category.slug,
-          name: category.name,
-          description: category.description,
-          sortOrder: category.sortOrder
+    const [categories, totalPhotos, photoCounts, photoRows] = await Promise.all(
+      [
+        prisma.category.findMany({
+          orderBy: { sortOrder: 'asc' },
+          select: { slug: true, name: true, description: true, sortOrder: true }
+        }),
+        prisma.photo.count(),
+        prisma.category.findMany({
+          orderBy: { sortOrder: 'asc' },
+          select: {
+            slug: true,
+            _count: { select: { photos: true } }
+          }
+        }),
+        prisma.photo.findMany({
+          orderBy: { uploadedAt: 'desc' },
+          take: 20,
+          include: {
+            sizes: true,
+            category: { select: { slug: true } }
+          }
         })
-        .from(category)
-        .orderBy(asc(category.sortOrder)),
-
-      db.select({ count: count() }).from(photo),
-
-      db
-        .select({
-          slug: category.slug,
-          count: count(photo.id)
-        })
-        .from(category)
-        .leftJoin(photo, eq(category.id, photo.categoryId))
-        .groupBy(category.id, category.slug),
-
-      db.query.photo.findMany({
-        with: {
-          sizes: true,
-          category: { columns: { slug: true } }
-        },
-        orderBy: (p, { desc }) => [desc(p.uploadedAt)],
-        limit: 20
-      })
-    ])
+      ]
+    )
 
     const mappedCategories: PhotoCategory[] = categories.map((row) => ({
       name: row.name,
@@ -49,11 +39,9 @@ export const load: PageServerLoad = async () => {
       order: row.sortOrder
     }))
 
-    const totalPhotos = totalResult[0]?.count ?? 0
-
-    const photoCounts: Record<string, number> = {}
-    for (const row of countRows) {
-      photoCounts[row.slug] = row.count
+    const photoCountMap: Record<string, number> = {}
+    for (const row of photoCounts) {
+      photoCountMap[row.slug] = row._count.photos
     }
 
     const initialPhotos = photoRows.map((row) =>
@@ -62,7 +50,7 @@ export const load: PageServerLoad = async () => {
 
     return {
       categories: mappedCategories,
-      photoCounts,
+      photoCounts: photoCountMap,
       totalPhotos,
       initialPhotos,
       error: null

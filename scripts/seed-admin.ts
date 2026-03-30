@@ -1,8 +1,5 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
+import { PrismaClient } from '@prisma/client'
 import { hash } from '@node-rs/argon2'
-
-import { adminUser } from '../src/lib/server/schema'
 
 const DEFAULT_PASSWORD = 'changeme12345'
 
@@ -20,24 +17,23 @@ async function main() {
     )
   }
 
-  const username = 'admin'
+  const username = 'xerrion'
   const finalPassword = password ?? DEFAULT_PASSWORD
 
   console.log('Hashing password...')
   const passwordHash = await hash(finalPassword)
 
-  const sql = postgres(databaseUrl, { max: 1 })
-  const db = drizzle(sql, { casing: 'snake_case' })
+  const prisma = new PrismaClient()
 
   console.log(`Seeding admin user "${username}"...`)
-  await db
-    .insert(adminUser)
-    .values({ username, passwordHash })
-    .onConflictDoNothing()
+  await prisma.adminUser.upsert({
+    where: { username },
+    update: {},
+    create: { username, passwordHash }
+  })
 
   console.log(`Admin user "${username}" seeded successfully.`)
-
-  await sql.end()
+  await prisma.$disconnect()
   process.exit(0)
 }
 

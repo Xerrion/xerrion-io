@@ -1,21 +1,15 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
+import { PrismaClient } from '@prisma/client'
 import { env } from '$env/dynamic/private'
-import * as schema from './schema'
 
-let _db: ReturnType<typeof drizzle<typeof schema>> | null = null
+let _prisma: PrismaClient | null = null
 
 /**
- * Get the Drizzle database instance (singleton).
+ * Get the PrismaClient instance (singleton).
  * Lazily initialized on first call.
  */
-export function getDb() {
-  if (_db) return _db
-
-  const url = env.DATABASE_URL
-  if (!url) throw new Error('DATABASE_URL is not set')
-
-  const sql = postgres(url, { max: 10 })
-  _db = drizzle(sql, { schema, casing: 'snake_case' })
-  return _db
+export function getPrisma(): PrismaClient {
+  if (_prisma) return _prisma
+  if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set')
+  _prisma = new PrismaClient({ datasources: { db: { url: env.DATABASE_URL } } })
+  return _prisma
 }

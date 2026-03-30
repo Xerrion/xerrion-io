@@ -10,7 +10,7 @@ describe('mapRowToPhoto', () => {
       categoryId: 1,
       originalName: 'sunset.jpg',
       metadata: null,
-      uploadedAt: '2024-06-15T12:00:00Z',
+      uploadedAt: new Date('2024-06-15T12:00:00Z'),
       sizes: [
         {
           id: 1,
@@ -47,7 +47,7 @@ describe('mapRowToPhoto', () => {
     category: { slug: 'nature' }
   }
 
-  test('maps all fields correctly from Drizzle row', () => {
+  test('maps all fields correctly from Prisma row', () => {
     const photo = mapRowToPhoto(fullRow)
 
     expect(photo.id).toBe('42')
@@ -99,7 +99,7 @@ describe('mapRowToPhoto', () => {
         categoryId: 2,
         originalName: 'test.jpg',
         metadata: null,
-        uploadedAt: '2024-01-01T00:00:00Z',
+        uploadedAt: new Date('2024-01-01T00:00:00Z'),
         sizes: []
       },
       category: { slug: 'misc' }
