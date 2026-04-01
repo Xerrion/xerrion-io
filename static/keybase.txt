@@ -1,0 +1,73 @@
+==================================================================
+https://keybase.io/xerrion
+--------------------------------------------------------------------
+
+I hereby claim:
+
+  * I am an admin of https://xerrion.io
+  * I am xerrion (https://keybase.io/xerrion) on keybase.
+  * I have a public key with fingerprint 84BA C6A2 AD05 C0BC 8458  8C3B A50F AEFA B087 6445
+
+To do so, I am signing this object:
+
+{
+  "body": {
+    "key": {
+      "eldest_kid": "012002a92d2b8ce0f36507c059948f57590b166ebca1ceb0e5baa908704f836471350a",
+      "fingerprint": "84bac6a2ad05c0bc84588c3ba50faefab0876445",
+      "host": "keybase.io",
+      "key_id": "a50faefab0876445",
+      "kid": "01010fc3f964013f565b4fa120d456659b83d9dd746abaf75f385cdea4c841e3f14d0a",
+      "uid": "53b06e8d546a07215c56c1dfaa75bb19",
+      "username": "xerrion"
+    },
+    "service": {
+      "hostname": "xerrion.io",
+      "protocol": "https:"
+    },
+    "type": "web_service_binding",
+    "version": 1
+  },
+  "ctime": 1775030684,
+  "expire_in": 157680000,
+  "prev": "38293a389683f356c67943e4f2c1c48d0bb6ca9ca705b8208a5a8ca4ccebfea9",
+  "seqno": 23,
+  "tag": "signature"
+}
+
+which yields the signature:
+
+-----BEGIN PGP MESSAGE-----
+
+owFtkntMVEcUxlnEB9AGE6mPVhDHUpuywtzH3Dt3aaktQUtqRFqLFjXrzNy561W7
+u9xdtqISpa5BfKLVkmAjgpaGREAxVauWkCo2uKQNNT6KEiClWE3oSwlNVdJcWv9o
+0r8mZ/I73/m+k1P57LioOMdnCU1/nSzXcxyRezTK7Ow6tglQn14CXJvAOj728PU6
+DwTd60wduAAURAhFoom6SDHj0JAUBFUGkabJ2EAq0iAVFIVTRgTGKeSIEqJBrELZ
+wJIiq4KEIAFOYJheD7f8lukNAhfAMiVMISLRIWKQMiwjjJlECYIG4QahEKuKLCPg
+BGt8AbtjHS+hJMDTTR9w2oV7zN7/8E99QwEaTDI0RYaCZCAFUdkgggh1GSkK0iiW
+dE3XVVkhlBgqMiSMmM6JzLAscMkQZH3Md/GYHJIoVDjWkawQqIoCYkhhgm4QoiJK
+Bc0GA9zykg84cIEN3LJMnxeUOkGAWyGTcXuvdpD/Av+E8Vu+oI/51gMXWBMM+gMu
+uy9Y4rfBDzl1/yvhpqZXN70e4AQhbgVsfZdQ6gQsaNqagqoiKEEFy07AN/hNi7tN
+m0CqgiGE0J7DQ8AFJCxqEpGwphRgyZCQwhRVkyUuGyITmIx1SKnCiMaIChHFIsQE
+EcyIzBinBid21gAv8vqAS5ScIEg8wAUCpsdLgsUWB6VxFdFSTJQjLipp6uyY8Pkr
+dY3j2y6Gl+/OfHp546Pts4uKi5389OfEioTHsafwj88sKmsinh1GnxafwByoqnDX
+aKp2nZa3ryhhwrWq7IjVleO9G+6gL73WmjopYrqWz4rseXfOyFfzK6/OyGopcBiQ
+60X+Vbm1XTek5Pot3aGP0icdvpS0+OPOib3qm2+1iYHhnAn9B9Z/u8AzJV683FN9
+773kA+Vbb9blLNx/42AaO/JG7da8x23eJbv3/NlyNtzeP/fJy9NhQ3T36d+7Mr6Z
+V/d8/VBHTGpeb//0msyU/LWiHhzJffvB8KXBF69sjMC1VbeLE0NdCytHJtQD4zo+
+fThbHUo5fqSaOFpLfqUz71/cmP8wYWTmof0Plw28bqIFWS+A+c2rB5b2fb3IM7qr
+uE4fmh4/bdnZ6kfh36TRjN7kUlLQuF1eeupO3rbbFW03pibW5KctHjCPVtzfqXxS
+2tB8uX3O5L6OslddVkX3wdZZ6fTCdyu3pGfjpql0btHxQPqt1NyYmNyf6JGr104M
+ejp71r5yZ0qaXrg6CXlUR+J93b2n8YczCS3PvbMveee5C1d4R+y+mZ+3lPbdCSd9
+0VkYSr2QWVlZW9jV3zpvU+6jGQ7h5rbLf1QMtI+eM0PTLFg8pPRGhLJrjsE13/98
+azjnqn/vSv395iWzJ57PjDoa3JxxaPuxyi9T4tN6Ump+GXdmdEesvHn3isTWshmt
+4sQnvVknGz5tq19190FJqhumzPsb
+=CNWR
+-----END PGP MESSAGE-----
+
+And finally, I am proving ownership of this host by posting or
+appending to this document.
+
+View my publicly-auditable identity here: https://keybase.io/xerrion
+
+==================================================================
