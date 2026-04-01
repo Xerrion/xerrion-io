@@ -137,10 +137,7 @@ export const actions: Actions = {
             readingTime,
             coverR2Key: newCoverKey ?? null,
             coverR2KeyFull: newCoverKeyFull ?? null,
-            publishedAt:
-              status === 'published'
-                ? (publishedAt ?? new Date())
-                : publishedAt,
+            publishedAt,
             tags: {
               create: tagIds.map((tagId) => ({ tagId }))
             }

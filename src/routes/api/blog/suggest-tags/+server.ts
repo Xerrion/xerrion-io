@@ -49,7 +49,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const apiKey = env.OPENAI_API_KEY
   if (!apiKey) {
     console.error('[suggest-tags] OPENAI_API_KEY is not set')
-    return json({ suggestions: [] })
+    return json(
+      { error: 'Tag suggestion service is unavailable' },
+      { status: 503 }
+    )
   }
 
   let body: SuggestTagsBody
@@ -94,6 +97,9 @@ Respond with only a JSON object containing a "suggestions" array of tag name str
     return json({ suggestions })
   } catch (err) {
     console.error('[suggest-tags] OpenAI request failed:', err)
-    return json({ suggestions: [] })
+    return json(
+      { error: 'Failed to generate tag suggestions' },
+      { status: 502 }
+    )
   }
 }

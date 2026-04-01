@@ -32,9 +32,8 @@
     return Math.max(1, Math.round(trimmed.split(/\s+/).length / 200))
   })
 
-  // Tag selection - initialize from existing post data
-  // svelte-ignore state_referenced_locally
-  let selectedTagIds = $state<Set<number>>(new Set(data.post.tagIds))
+  // Tag selection - derived from form state (single source of truth)
+  let selectedTagIds = $derived(new Set($form.tagIds))
 
   // Cover image preview URL (UI-only, not submitted)
   // svelte-ignore state_referenced_locally
@@ -264,7 +263,6 @@
           tags={data.tags}
           selectedIds={selectedTagIds}
           onchange={(ids) => {
-            selectedTagIds = ids
             $form.tagIds = [...ids]
           }}
           formTitle={$form.title}

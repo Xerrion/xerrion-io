@@ -88,11 +88,11 @@
     }
   })
 
-  // Reconfigure editable state when disabled prop changes
+  // Reconfigure editable state when disabled prop or editorView changes
   $effect(() => {
     const isDisabled = disabled
-    const view = untrack(() => editorView)
-    const compartment = untrack(() => editableCompartment)
+    const view = editorView
+    const compartment = editableCompartment
     if (!view || !compartment) return
 
     import('@codemirror/view').then(({ EditorView }) => {

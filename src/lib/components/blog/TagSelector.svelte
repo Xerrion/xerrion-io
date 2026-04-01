@@ -53,7 +53,9 @@
       (t) => t.name.toLowerCase() === suggestion.toLowerCase()
     )
     if (matchingTag) {
-      toggleTag(matchingTag.id)
+      if (!selectedIds.has(matchingTag.id)) {
+        toggleTag(matchingTag.id)
+      }
     } else {
       // Auto-create the tag via API
       try {

@@ -40,8 +40,8 @@
     return Math.max(1, Math.round(trimmed.split(/\s+/).length / 200))
   })
 
-  // Tag selection
-  let selectedTagIds = $state<Set<number>>(new Set())
+  // Tag selection - derived from form state (single source of truth)
+  let selectedTagIds = $derived(new Set($form.tagIds))
 
   // AI description suggestion
   let isDescriptionLoading = $state(false)
@@ -271,7 +271,6 @@
           tags={data.tags}
           selectedIds={selectedTagIds}
           onchange={(ids) => {
-            selectedTagIds = ids
             $form.tagIds = [...ids]
           }}
           formTitle={$form.title}

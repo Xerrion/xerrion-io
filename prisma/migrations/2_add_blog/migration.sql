@@ -47,9 +47,6 @@ CREATE UNIQUE INDEX "post_slug_key" ON "post"("slug");
 -- CreateIndex
 CREATE UNIQUE INDEX "tag_slug_key" ON "tag"("slug");
 
--- CreateIndex
-CREATE UNIQUE INDEX "photo_size_photo_id_size_key" ON "photo_size"("photo_id", "size");
-
 -- AddForeignKey
 ALTER TABLE "post_tag" ADD CONSTRAINT "post_tag_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "post"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
