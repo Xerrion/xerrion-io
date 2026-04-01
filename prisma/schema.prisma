@@ -59,3 +59,52 @@ model PhotoSize {
   @@unique([photoId, size])
   @@map("photo_size")
 }
+
+enum PostStatus {
+  draft
+  published
+}
+
+enum EditorMode {
+  markdown
+  tiptap
+}
+
+model Post {
+  id             Int        @id @default(autoincrement())
+  slug           String     @unique
+  title          String
+  description    String?
+  content        String
+  editorMode     EditorMode @default(markdown) @map("editor_mode")
+  status         PostStatus @default(draft)
+  coverR2Key     String?    @map("cover_r2_key")
+  coverR2KeyFull String?    @map("cover_r2_key_full")
+  readingTime    Int?       @map("reading_time")
+  publishedAt    DateTime?  @map("published_at") @db.Timestamptz
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+  tags           PostTag[]
+
+  @@map("post")
+}
+
+model Tag {
+  id        Int       @id @default(autoincrement())
+  slug      String    @unique
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  posts     PostTag[]
+
+  @@map("tag")
+}
+
+model PostTag {
+  postId Int  @map("post_id")
+  tagId  Int  @map("tag_id")
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("post_tag")
+}

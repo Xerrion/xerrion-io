@@ -10,6 +10,7 @@
     imageAlt?: string
     noindex?: boolean
     jsonLd?: Record<string, unknown> | Record<string, unknown>[]
+    isBlog?: boolean
   }
   const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`
   const DEFAULT_IMAGE_ALT = 'Xerrion - Software Engineer'
@@ -21,7 +22,8 @@
     image = DEFAULT_IMAGE,
     imageAlt = DEFAULT_IMAGE_ALT,
     noindex = false,
-    jsonLd
+    jsonLd,
+    isBlog = false
   }: Props = $props()
 
   let canonicalUrl = $derived(`${SITE_URL}${page.url.pathname}`)
@@ -39,6 +41,21 @@
 
   {#if noindex}
     <meta name="robots" content="noindex, nofollow" />
+  {/if}
+
+  {#if isBlog}
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="{SITE_NAME} Blog RSS"
+      href="/blog/rss.xml"
+    />
+    <link
+      rel="alternate"
+      type="application/atom+xml"
+      title="{SITE_NAME} Blog Atom"
+      href="/blog/atom.xml"
+    />
   {/if}
 
   <!-- Open Graph -->
