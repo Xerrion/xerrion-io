@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../src/lib/generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 import { createClient, type Client } from '@libsql/client'
 
 // ---------------------------------------------------------------------------
@@ -228,9 +229,8 @@ async function main(): Promise<void> {
     authToken: env.tursoAuthToken
   })
 
-  const prisma = new PrismaClient({
-    datasources: { db: { url: env.databaseUrl } }
-  })
+  const adapter = new PrismaPg({ connectionString: env.databaseUrl })
+  const prisma = new PrismaClient({ adapter })
 
   try {
     console.log('Fetching photos and categories from Turso...')

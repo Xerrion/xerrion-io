@@ -3,7 +3,7 @@ import type {
   Photo as DbPhoto,
   PhotoSize as DbPhotoSize,
   Category as DbCategory
-} from '@prisma/client'
+} from '$lib/generated/prisma/client'
 import { getR2Url } from '$lib/server/r2'
 
 export interface PhotoWithSizes {
