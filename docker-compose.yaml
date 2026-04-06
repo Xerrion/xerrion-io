@@ -14,6 +14,7 @@ services:
   db:
     image: postgres:17-alpine
     restart: unless-stopped
+    command: ['postgres', '-c', 'listen_addresses=*']
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -55,12 +56,12 @@ services:
         echo "Waiting for database at db:5432..."
         retries=0
         until bunx prisma migrate deploy 2>&1; do
-          retries=$((retries + 1))
-          if [ "$retries" -ge 10 ]; then
+          retries=$$((retries + 1))
+          if [ "$$retries" -ge 10 ]; then
             echo "Migration failed after 10 attempts"
             exit 1
           fi
-          echo "Attempt $retries failed, retrying in 3s..."
+          echo "Attempt $$retries failed, retrying in 3s..."
           sleep 3
         done
     depends_on:
