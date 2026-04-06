@@ -1,7 +1,7 @@
 # docker-compose.yml - xerrion.io SvelteKit deployment stack
 #
 # Services:
-#   db      - Supabase PostgreSQL 17 database
+#   db      - PostgreSQL 17 database
 #   redis   - Redis 7 session cache
 #   migrate - Prisma migration runner (runs once, then exits)
 #   app     - SvelteKit app built with Bun (port 3000)
@@ -12,7 +12,7 @@
 services:
   # ---------- PostgreSQL ----------
   db:
-    image: supabase/postgres:17.6.1.103
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -25,7 +25,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 30s
 
   # ---------- Redis ----------
   redis:
