@@ -6,10 +6,6 @@
 #   migrate - Prisma migration runner (runs once, then exits)
 #   app     - SvelteKit app built with Bun (port 3000)
 #
-# Usage:
-#   cp .env.example .env    # then fill in real values
-#   docker compose up -d    # start all services
-#
 # Startup order: db + redis start first, then migrate runs Prisma migrations,
 # then the app starts once migrations complete successfully.
 
@@ -20,7 +16,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-xerrion}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-xerrion}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -57,7 +53,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-xerrion}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-xerrion}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-xerrion}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-xerrion}
     restart: 'no'
 
   # ---------- SvelteKit App ----------
@@ -77,7 +73,7 @@ services:
         condition: service_completed_successfully
     environment:
       # Database - constructed from the Postgres container credentials
-      DATABASE_URL: postgresql://${POSTGRES_USER:-xerrion}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-xerrion}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-xerrion}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-xerrion}
 
       # Cache
       REDIS_URL: redis://redis:6379
