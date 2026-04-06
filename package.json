@@ -11,7 +11,7 @@
     "@types/node": "^25.5.0",
     "prettier": "^3.8.1",
     "prettier-plugin-svelte": "^3.5.1",
-    "prisma": "6",
+    "prisma": "7",
     "svelte": "^5.55.0",
     "svelte-adapter-bun": "^1.0.1",
     "svelte-check": "^4.4.5",
