@@ -1,0 +1,101 @@
+# docker-compose.yml - xerrion.io SvelteKit deployment stack
+#
+# Services:
+#   db      - PostgreSQL 16 database
+#   redis   - Redis 7 session cache
+#   migrate - Prisma migration runner (runs once, then exits)
+#   app     - SvelteKit app built with Bun (port 3000)
+#
+# Usage:
+#   cp .env.example .env    # then fill in real values
+#   docker compose up -d    # start all services
+#
+# Startup order: db + redis start first, then migrate runs Prisma migrations,
+# then the app starts once migrations complete successfully.
+
+services:
+  # ---------- PostgreSQL ----------
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-xerrion}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-xerrion}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-xerrion}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------- Redis ----------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ── Run Prisma migrations ─────────────────────────────────────────
+  # Uses the full build stage image which has all devDependencies (including prisma CLI).
+  # Runs once on startup, then exits. The app service waits for it to complete successfully.
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
+    command: ['bunx', 'prisma', 'migrate', 'deploy']
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-xerrion}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-xerrion}
+    restart: 'no'
+
+  # ---------- SvelteKit App ----------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      # Database - constructed from the Postgres container credentials
+      DATABASE_URL: postgresql://${POSTGRES_USER:-xerrion}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-xerrion}
+
+      # Cache
+      REDIS_URL: redis://redis:6379
+
+      # Cloudflare R2 storage
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL}
+
+      # GitHub API (projects page)
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+
+      # Analytics (public)
+      PUBLIC_UMAMI_WEBSITE_ID: ${PUBLIC_UMAMI_WEBSITE_ID}
+      PUBLIC_GA_MEASUREMENT_ID: ${PUBLIC_GA_MEASUREMENT_ID}
+
+volumes:
+  postgres_data:
+  redis_data:
