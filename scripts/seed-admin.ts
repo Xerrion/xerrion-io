@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../src/lib/generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 import { hash } from '@node-rs/argon2'
 
 const DEFAULT_PASSWORD = 'changeme12345'
@@ -23,7 +24,8 @@ async function main() {
   console.log('Hashing password...')
   const passwordHash = await hash(finalPassword)
 
-  const prisma = new PrismaClient()
+  const adapter = new PrismaPg({ connectionString: databaseUrl })
+  const prisma = new PrismaClient({ adapter })
 
   console.log(`Seeding admin user "${username}"...`)
   await prisma.adminUser.upsert({

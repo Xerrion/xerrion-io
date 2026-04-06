@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit'
-import type { Prisma } from '@prisma/client'
+import type { Prisma } from '$lib/generated/prisma/client'
 import type { RequestHandler } from './$types'
 import { getPrisma } from '$lib/server/db'
 import { uploadToR2, deleteFromR2 } from '$lib/server/r2'
