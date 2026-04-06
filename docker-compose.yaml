@@ -15,13 +15,13 @@ services:
     image: supabase/postgres:17.6.1.103
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-xerrion}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-xerrion}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-xerrion}']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -53,7 +53,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-xerrion}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-xerrion}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-xerrion}
     restart: 'no'
 
   # ---------- SvelteKit App ----------
@@ -73,7 +73,7 @@ services:
         condition: service_completed_successfully
     environment:
       # Database - constructed from the Postgres container credentials
-      DATABASE_URL: postgresql://${POSTGRES_USER:-xerrion}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-xerrion}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-xerrion}
 
       # Cache
       REDIS_URL: redis://redis:6379
