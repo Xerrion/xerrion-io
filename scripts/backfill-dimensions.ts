@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../src/lib/generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 import sharp from 'sharp'
 
 // ---------------------------------------------------------------------------
@@ -65,9 +66,8 @@ async function fetchImageDimensions(
 async function main(): Promise<void> {
   const env = parseEnvironment()
 
-  const prisma = new PrismaClient({
-    datasources: { db: { url: env.databaseUrl } }
-  })
+  const adapter = new PrismaPg({ connectionString: env.databaseUrl })
+  const prisma = new PrismaClient({ adapter })
 
   try {
     const photosToFix = await prisma.photo.findMany({

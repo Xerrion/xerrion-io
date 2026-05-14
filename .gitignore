@@ -7,6 +7,9 @@ build/
 .vercel/
 .cloudflare/
 
+# Generated code
+src/lib/generated/
+
 # Environment variables
 .env
 .env.*

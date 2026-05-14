@@ -1,4 +1,5 @@
-import { PrismaClient, PhotoSizeKey } from '@prisma/client'
+import { PrismaClient, PhotoSizeKey } from '../src/lib/generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 import {
   S3Client,
   PutObjectCommand,
@@ -271,9 +272,8 @@ function groupByPhoto(
 async function main() {
   const env = parseEnvironment()
 
-  const prisma = new PrismaClient({
-    datasources: { db: { url: env.databaseUrl } }
-  })
+  const adapter = new PrismaPg({ connectionString: env.databaseUrl })
+  const prisma = new PrismaClient({ adapter })
 
   try {
     // Verify DB connection before proceeding

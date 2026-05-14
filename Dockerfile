@@ -15,14 +15,12 @@ RUN bun run build
 FROM base AS prod-deps
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
-# Copy generated Prisma client from build stage (prisma CLI is a devDep)
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
 # Stage 4: Minimal production runtime
 FROM oven/bun:1-slim
 WORKDIR /app
 
-# Install shared libraries needed by native deps (sharp/libvips, Prisma/OpenSSL)
+# Install shared libraries needed by native deps (sharp/libvips, pg/TLS)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     libexpat1 \

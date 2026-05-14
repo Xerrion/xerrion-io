@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types'
 import type { BlogPostCard } from '$lib/types/blog'
 
-import { Prisma } from '@prisma/client'
+import { Prisma } from '$lib/generated/prisma/client'
 import { getPrisma } from '$lib/server/db'
 import { getR2Url } from '$lib/server/r2'
 
