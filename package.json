@@ -47,7 +47,7 @@
     "formsnap": "^2.0.1",
     "heic-decode": "^2.1.0",
     "ioredis": "^5.10.1",
-    "openai": "^6.33.0",
+    "openai": "^6.38.0",
     "rehype-stringify": "^10.0.1",
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
