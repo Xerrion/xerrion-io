@@ -55,6 +55,10 @@
         if (isDestroyed || !containerEl) return
 
         editableCompartment = new Compartment()
+        const markdownExtensions = [
+          GFM,
+          prosemarkMarkdownSyntaxExtensions
+        ] as unknown as NonNullable<Parameters<typeof markdown>[0]>['extensions']
 
         editorView = new EditorView({
           doc: initialContent,
@@ -62,7 +66,7 @@
           extensions: [
             markdown({
               codeLanguages: languages,
-              extensions: [GFM, prosemarkMarkdownSyntaxExtensions]
+              extensions: markdownExtensions
             }),
             prosemarkBasicSetup(),
             prosemarkBaseThemeSetup(),

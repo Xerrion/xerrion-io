@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 
 import sharp from 'sharp'
+import type { Sharp } from 'sharp'
 import exifr from 'exifr'
 
 export interface ImageMetadata {
@@ -163,13 +164,13 @@ async function decodeHeic(
   // a non-iterable ArrayBuffer, so we must pass a Uint8Array instead.
   const uint8 = new Uint8Array(input.buffer, input.byteOffset, input.byteLength)
   const { data, width, height } = await decode({
-    buffer: uint8 as unknown as ArrayBufferLike
+    buffer: uint8
   })
   return { data: Buffer.from(data), width, height }
 }
 
 interface SharpSource {
-  instance: () => sharp.Sharp
+  instance: () => Sharp
   width: number
   height: number
 }
