@@ -63,6 +63,8 @@ export async function startPocketIdLogin(
   const url = oidc.buildAuthorizationUrl(config, {
     redirect_uri: settings.redirectUri,
     scope: 'openid profile',
+    prompt: 'login',
+    max_age: '0',
     response_mode: 'query',
     code_challenge: await oidc.calculatePKCECodeChallenge(attempt.verifier),
     code_challenge_method: 'S256',
@@ -113,6 +115,7 @@ export async function finishPocketIdLogin(
     expectedState: attempt.state,
     expectedNonce: attempt.nonce,
     pkceCodeVerifier: attempt.verifier,
+    maxAge: 0,
     idTokenExpected: true
   })
   const claims = tokens.claims()

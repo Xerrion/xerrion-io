@@ -186,6 +186,7 @@ function fixture(
           sub: 'admin-subject',
           iat: now,
           exp: now + 300,
+          auth_time: now,
           nonce,
           preferred_username: 'Test Admin',
           ...overrides
@@ -233,6 +234,8 @@ describe('Pocket ID authorization code flow', () => {
       'S256'
     )
     expect(a.authorization.searchParams.get('scope')).toBe('openid profile')
+    expect(a.authorization.searchParams.get('prompt')).toBe('login')
+    expect(a.authorization.searchParams.get('max_age')).toBe('0')
     expect(a.authorization.searchParams.get('nonce')).not.toBeEmpty()
     expect(a.id).toMatch(/^[a-f0-9]{64}$/)
     const user = await finishPocketIdLogin(
@@ -295,6 +298,8 @@ describe('Pocket ID authorization code flow', () => {
     'wrong issuer': { iss: 'https://other.example' },
     'wrong audience': { aud: 'other-client' },
     'expired token': { exp: 1 },
+    'stale authentication': { auth_time: 1 },
+    'missing authentication time': { auth_time: undefined },
     'unauthorized user': { sub: 'other-user' }
   })) {
     test(`rejects ${name}`, async () => {
