@@ -75,6 +75,7 @@ Configure categories in `src/lib/supabase.ts`.
 Create a confidential OIDC client in Pocket ID with PKCE enabled. Register the
 exact callback `https://xerrion.io/auth/pocket-id/callback` and launch URL
 `https://xerrion.io/admin`. Keep the client restricted to a dedicated admin group.
+Enable Requires Re-Authentication on the Pocket ID client.
 
 Set these runtime environment variables in the deployment secret manager:
 
@@ -95,6 +96,8 @@ Login attempts expire after 10 minutes and can be consumed only once. Sessions
 expire after 8 hours. Removing a user ID from the allowlist rejects that user's
 existing sessions after the new configuration is deployed. Logout clears the
 website session and keeps the Pocket ID session available for other apps.
+Each admin login requires fresh Pocket ID authentication with `prompt=login`
+and `max_age=0`. The callback requires a recent signed `auth_time` claim.
 
 With all five variables empty, the existing local password login remains
 available for development. Setting any Pocket ID variable disables password
