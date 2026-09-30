@@ -1,7 +1,7 @@
 declare global {
   namespace App {
     interface Locals {
-      user: { id: number; username: string } | null
+      user: { id: number | string; username: string } | null
       sessionId: string | null
     }
     interface Platform {
