@@ -1,0 +1,4 @@
+{
+  "extends": "../../../.svelte-kit/admin-mobile/tsconfig.json",
+  "compilerOptions": { "strict": true }
+}

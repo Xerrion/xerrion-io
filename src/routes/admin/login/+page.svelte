@@ -204,4 +204,13 @@
       padding: var(--space-6);
     }
   }
+  .login-container {
+    min-height: 100dvh;
+  }
+
+  @media (max-width: 480px) {
+    .login-container {
+      padding: var(--space-4);
+    }
+  }
 </style>

@@ -68,6 +68,7 @@
               codeLanguages: languages,
               extensions: markdownExtensions
             }),
+            EditorView.lineWrapping,
             prosemarkBasicSetup(),
             prosemarkBaseThemeSetup(),
             pasteRichTextExtension(),
@@ -153,5 +154,29 @@
 
   .prosemark-editor :global(.cm-editor.cm-focused) {
     outline: none;
+  }
+  .prosemark-editor {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .prosemark-editor :global(.cm-scroller) {
+    overflow: auto;
+  }
+
+  .prosemark-editor :global(img) {
+    max-width: 100%;
+    height: auto;
+  }
+
+  @media (max-width: 767px) {
+    .prosemark-editor, .prosemark-editor :global(.cm-editor) {
+      min-height: 320px;
+    }
+
+    .prosemark-editor :global(.cm-editor) {
+      font-size: var(--text-base);
+      padding: var(--space-2);
+    }
   }
 </style>

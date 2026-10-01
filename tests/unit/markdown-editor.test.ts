@@ -22,6 +22,7 @@ test('blog editor extensions initialize together and retain editable Markdown', 
     doc: content,
     extensions: [
       markdown({ codeLanguages: languages, extensions }),
+      EditorView.lineWrapping,
       prosemarkBasicSetup(),
       prosemarkBaseThemeSetup(),
       pasteRichTextExtension(),

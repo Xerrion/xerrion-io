@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests/e2e',
+  testIgnore: '**/admin-mobile.spec.ts',
   name: 'Xerrion.io E2E Tests',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

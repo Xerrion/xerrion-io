@@ -104,21 +104,26 @@
 
   <section class="list-section">
     <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>Sort</th>
-            <th>Name / Slug</th>
-            <th>Description</th>
-            <th>Created</th>
-            <th class="actions-col">Actions</th>
+      <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+      <table class="admin-table" role="table">
+        <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+        <thead role="rowgroup">
+          <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+          <tr role="row">
+            <th role="columnheader" scope="col">Sort</th>
+            <th role="columnheader" scope="col">Name / Slug</th>
+            <th role="columnheader" scope="col">Description</th>
+            <th role="columnheader" scope="col">Created</th>
+            <th role="columnheader" scope="col" class="actions-col">Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+        <tbody role="rowgroup">
           {#each data.categories as category (category.id)}
-            <tr class:editing={editingId === category.id}>
+            <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+            <tr role="row" class:editing={editingId === category.id}>
               {#if editingId === category.id}
-                <td colspan="5" class="edit-cell">
+                <td role="cell" colspan="5" class="edit-cell">
                   <form
                     method="POST"
                     action="?/update"
@@ -184,20 +189,20 @@
                   </form>
                 </td>
               {:else}
-                <td>{category.sortOrder}</td>
-                <td>
+                <td role="cell" data-label="Sort order">{category.sortOrder}</td>
+                <td role="cell" data-label="Name / slug" class="mobile-title">
                   <div class="name-col">
                     <span class="name">{category.name}</span>
                     <span class="slug">{category.slug}</span>
                   </div>
                 </td>
-                <td class="desc-col" title={category.description}
+                <td role="cell" data-label="Description" class="desc-col" title={category.description}
                   >{category.description || "-"}</td
                 >
-                <td class="date"
+                <td role="cell" data-label="Created" class="date"
                   >{new Date(category.createdAt).toLocaleDateString()}</td
                 >
-                <td class="actions-col">
+                <td role="cell" data-label="Actions" class="actions-col mobile-actions">
                   <button
                     class="btn icon"
                     onclick={() => toggleEdit(category.id)}
@@ -488,5 +493,38 @@
     font-size: var(--text-xs);
     color: #ef4444;
     margin-top: var(--space-1);
+  }
+  .field, .field-mini {
+    min-width: 0;
+  }
+
+  input, textarea {
+    width: 100%;
+  }
+
+  @media (max-width: 767px) {
+    .page {
+      padding: 0;
+    }
+
+    .create-section {
+      padding: var(--space-4);
+    }
+
+    .form-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .edit-fields {
+      flex-direction: column;
+    }
+
+    .field-mini.grow {
+      min-width: 0;
+    }
+
+    .actions .btn {
+      width: 100%;
+    }
   }
 </style>

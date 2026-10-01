@@ -148,6 +148,7 @@
         type="button"
         class="chip tag-chip"
         class:selected={selectedIds.has(tag.id)}
+        aria-pressed={selectedIds.has(tag.id)}
         onclick={() => toggleTag(tag.id)}
       >
         {tag.name}
@@ -285,6 +286,26 @@
       animation: none;
       border-right-color: currentColor;
       opacity: 0.5;
+    }
+  }
+  .sidebar-card-header {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .chip, .suggestion-chip {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 767px) {
+    .chip, .chip-dismiss {
+      min-height: calc(var(--space-10) + var(--space-1));
+    }
+
+    .chip-dismiss {
+      min-width: calc(var(--space-10) + var(--space-1));
+      justify-content: center;
     }
   }
 </style>
