@@ -2,7 +2,7 @@
   "name": "xerrion-io",
   "version": "1.0.0",
   "devDependencies": {
-    "@libsql/client": "^0.17.4",
+    "@libsql/client": "^0.18.0",
     "@playwright/test": "^1.61.1",
     "@sveltejs/kit": "^2.69.1",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
