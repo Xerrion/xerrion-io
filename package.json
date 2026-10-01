@@ -26,7 +26,8 @@
     "check": "svelte-kit sync && prisma generate && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && prisma generate && svelte-check --tsconfig ./tsconfig.json --watch",
     "test": "svelte-kit sync && prisma generate && bun test tests/unit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:admin-mobile": "playwright test --config playwright.admin.config.ts"
   },
   "type": "module",
   "dependencies": {

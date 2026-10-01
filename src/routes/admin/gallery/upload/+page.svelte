@@ -932,4 +932,41 @@
       transform: rotate(360deg);
     }
   }
+  .title-group, .results-summary {
+    flex-wrap: wrap;
+  }
+
+  .results-summary > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 767px) {
+    .page {
+      padding: 0;
+    }
+
+    .drop-zone {
+      padding: var(--space-8) var(--space-4);
+    }
+
+    .file-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-1);
+    }
+
+    .file-name {
+      max-width: 100%;
+    }
+
+    .file-actions {
+      width: calc(var(--space-10) + var(--space-1));
+    }
+
+    .submit-area .btn {
+      width: 100%;
+      min-width: 0;
+    }
+  }
 </style>

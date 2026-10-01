@@ -74,21 +74,26 @@
       </div>
     {:else}
       <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Slug</th>
-              <th>Posts</th>
-              <th>Created</th>
-              <th class="actions-col">Actions</th>
+        <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+        <table class="admin-table" role="table">
+          <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+          <thead role="rowgroup">
+            <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+            <tr role="row">
+              <th role="columnheader" scope="col">Name</th>
+              <th role="columnheader" scope="col">Slug</th>
+              <th role="columnheader" scope="col">Posts</th>
+              <th role="columnheader" scope="col">Created</th>
+              <th role="columnheader" scope="col" class="actions-col">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+          <tbody role="rowgroup">
             {#each data.tags as tag (tag.id)}
-              <tr class:editing={editingId === tag.id}>
+              <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+              <tr role="row" class:editing={editingId === tag.id}>
                 {#if editingId === tag.id}
-                  <td colspan="5" class="edit-cell">
+                  <td role="cell" colspan="5" class="edit-cell">
                     <form
                       method="POST"
                       action="?/update"
@@ -133,11 +138,11 @@
                     </form>
                   </td>
                 {:else}
-                  <td class="tag-name">{tag.name}</td>
-                  <td><code class="slug-code">{tag.slug}</code></td>
-                  <td>{tag.postCount}</td>
-                  <td>{new Date(tag.createdAt).toLocaleDateString()}</td>
-                  <td class="row-actions">
+                  <td role="cell" data-label="Name" class="tag-name mobile-title">{tag.name}</td>
+                  <td role="cell" data-label="Slug"><code class="slug-code">{tag.slug}</code></td>
+                  <td role="cell" data-label="Posts">{tag.postCount}</td>
+                  <td role="cell" data-label="Created">{new Date(tag.createdAt).toLocaleDateString()}</td>
+                  <td role="cell" data-label="Actions" class="row-actions mobile-actions">
                     <button
                       class="btn icon"
                       title="Edit"
@@ -419,5 +424,33 @@
     display: flex;
     gap: var(--space-2);
     flex-shrink: 0;
+  }
+  .field, .field-mini {
+    min-width: 0;
+  }
+
+  @media (max-width: 767px) {
+    .form-row, .edit-fields {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .form-action .btn, .field-mini input {
+      width: 100%;
+    }
+
+    .create-section {
+      padding: var(--space-4);
+    }
+  }
+  .page-header {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  @media (max-width: 767px) {
+    .empty-state {
+      padding: var(--space-8) var(--space-4);
+    }
   }
 </style>

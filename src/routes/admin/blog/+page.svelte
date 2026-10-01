@@ -30,39 +30,44 @@
     </div>
   {:else}
     <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Tags</th>
-            <th>Reading Time</th>
-            <th>Published</th>
-            <th>Created</th>
-            <th class="actions-col">Actions</th>
+      <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+      <table class="admin-table" role="table">
+        <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+        <thead role="rowgroup">
+          <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+          <tr role="row">
+            <th role="columnheader" scope="col">Title</th>
+            <th role="columnheader" scope="col">Status</th>
+            <th role="columnheader" scope="col">Tags</th>
+            <th role="columnheader" scope="col">Reading Time</th>
+            <th role="columnheader" scope="col">Published</th>
+            <th role="columnheader" scope="col">Created</th>
+            <th role="columnheader" scope="col" class="actions-col">Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+        <tbody role="rowgroup">
           {#each data.posts as post (post.id)}
-            <tr>
-              <td>
+            <!-- svelte-ignore a11y_no_redundant_roles (retain table semantics after mobile display changes) -->
+            <tr role="row">
+              <td role="cell" data-label="Title" class="mobile-title">
                 <a href="/admin/blog/{post.id}" class="post-title-link"
                   >{post.title}</a
                 >
                 <span class="post-slug">/{post.slug}</span>
               </td>
-              <td>
+              <td role="cell" data-label="Status">
                 <span class="badge {post.status}">{post.status}</span>
               </td>
-              <td>{post.tagCount}</td>
-              <td>{post.readingTime ? `${post.readingTime} min` : '-'}</td>
-              <td
+              <td role="cell" data-label="Tags">{post.tagCount}</td>
+              <td role="cell" data-label="Reading time">{post.readingTime ? `${post.readingTime} min` : '-'}</td>
+              <td role="cell" data-label="Published"
                 >{post.publishedAt
                   ? new Date(post.publishedAt).toLocaleDateString()
                   : '-'}</td
               >
-              <td>{new Date(post.createdAt).toLocaleDateString()}</td>
-              <td class="row-actions">
+              <td role="cell" data-label="Created">{new Date(post.createdAt).toLocaleDateString()}</td>
+              <td role="cell" data-label="Actions" class="row-actions mobile-actions">
                 <a href="/admin/blog/{post.id}" class="btn icon" title="Edit">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -346,5 +351,15 @@
 
   .row-actions form {
     display: contents;
+  }
+  .page-header {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  @media (max-width: 767px) {
+    .empty-state {
+      padding: var(--space-8) var(--space-4);
+    }
   }
 </style>

@@ -1,3 +1,8 @@
+/* Preserve the 16px base size for admin forms on small screens. */
+html:has(.admin-shell, .login-container) {
+  font-size: 100%;
+}
+
 /* ===== Shared Admin Button Styles ===== */
 
 .btn {
@@ -17,7 +22,7 @@
 
 .btn.primary {
   background-color: var(--color-primary);
-  color: white;
+  color: var(--color-text-inverse);
 }
 
 .btn.primary:hover:not(:disabled) {
@@ -81,11 +86,127 @@
 }
 
 .btn.icon.danger:hover:not(:disabled) {
-  color: #ef4444;
-  background-color: #fee2e2;
+  color: var(--color-danger);
+  background-color: color-mix(
+    in oklch,
+    var(--color-danger) 10%,
+    var(--color-surface)
+  );
 }
 
 .btn.icon:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.admin-shell .admin-main .table-container {
+  overflow-x: auto;
+}
+
+.admin-shell :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+@media (max-width: 1023px), (pointer: coarse) {
+  .admin-shell :is(button, .btn) {
+    min-height: calc(var(--space-10) + var(--space-1));
+  }
+
+  .admin-shell :is(.btn.icon, .chip-dismiss) {
+    min-width: calc(var(--space-10) + var(--space-1));
+  }
+
+  .admin-main
+    :is(input:not([type='radio']):not([type='checkbox']), select, textarea) {
+    min-width: 0;
+    max-width: 100%;
+    font-size: var(--text-base);
+  }
+
+  .admin-main :is(input:not([type='radio']):not([type='checkbox']), select) {
+    min-height: calc(var(--space-10) + var(--space-1));
+  }
+}
+
+@media (max-width: 1023px) {
+  /* Keep every table value and action visible without horizontal scrolling. */
+  .admin-shell .admin-main .table-container {
+    background: transparent;
+    border: none;
+    overflow: visible;
+  }
+
+  .admin-main .admin-table {
+    display: block;
+    background: transparent;
+  }
+
+  .admin-main .admin-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .admin-main .admin-table tbody {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .admin-main .admin-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: var(--space-2);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .admin-main .admin-table td {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    border: none;
+    min-width: 0;
+    max-width: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-main .admin-table td > .badge {
+    align-self: flex-start;
+  }
+
+  .admin-main .admin-table td[data-label]::before {
+    content: attr(data-label);
+    color: var(--color-text-secondary);
+    font-size: var(--text-xs);
+    font-weight: 500;
+  }
+
+  .admin-main .admin-table :is(.mobile-title, .mobile-actions, .edit-cell) {
+    grid-column: 1 / -1;
+  }
+
+  .admin-main .admin-table .mobile-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--space-2);
+    border-top: 1px solid var(--color-border);
+    margin-top: var(--space-2);
+    padding-top: var(--space-3);
+  }
+
+  .admin-main .admin-table .mobile-actions::before {
+    flex-basis: 100%;
+  }
+
+  .admin-main .admin-table .edit-cell {
+    display: block;
+  }
 }

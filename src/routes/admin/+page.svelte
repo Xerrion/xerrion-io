@@ -352,7 +352,7 @@
 
   .quick-actions {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
     gap: var(--space-5);
   }
 
@@ -443,5 +443,14 @@
     font-size: var(--text-sm);
     color: var(--color-text-muted);
     margin: 0;
+  }
+  @media (max-width: 767px) {
+    .quick-actions {
+      gap: var(--space-3);
+    }
+
+    :global(.action-card) {
+      padding: var(--space-5);
+    }
   }
 </style>

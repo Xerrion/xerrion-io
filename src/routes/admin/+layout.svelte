@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores'
+  import { afterNavigate } from '$app/navigation'
   import { motion } from '@humanspeak/svelte-motion'
   import Toast from '$lib/components/Toast.svelte'
   import '$lib/styles/admin.css'
@@ -10,6 +11,22 @@
   }
 
   let { children, data }: Props = $props()
+
+  let mobileMenuOpen = $state(false)
+  let menuReady = $state(false)
+  let menuButton = $state<HTMLButtonElement | null>(null)
+
+  afterNavigate(() => {
+    mobileMenuOpen = false
+    menuReady = true
+  })
+
+  function closeMenu(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && mobileMenuOpen) {
+      mobileMenuOpen = false
+      menuButton?.focus()
+    }
+  }
 
   const isLoggedIn = $derived(!!data.user)
   const pathname = $derived($page.url.pathname)
@@ -40,10 +57,37 @@
   }
 </script>
 
+<svelte:window onkeydown={closeMenu} />
+
 {#if isLoggedIn}
   <Toast />
   <div class="admin-shell">
-    <aside class="admin-sidebar">
+    <a class="skip-link" href="#admin-content">Skip to content</a>
+    <header class="mobile-header">
+      <a href="/admin" class="logo">
+        <span class="logo-icon">X</span>
+        <span class="logo-text">Admin</span>
+      </a>
+      <button
+        type="button"
+        class="menu-toggle"
+        bind:this={menuButton}
+        aria-expanded={mobileMenuOpen}
+        aria-controls="admin-navigation"
+        disabled={!menuReady}
+        onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          {#if mobileMenuOpen}
+            <path d="m6 6 12 12M6 18 18 6" />
+          {:else}
+            <path d="M3 6h18M3 12h18M3 18h18" />
+          {/if}
+        </svg>
+        {mobileMenuOpen ? 'Close menu' : 'Menu'}
+      </button>
+    </header>
+    <aside class="admin-sidebar" class:mobile-open={mobileMenuOpen} id="admin-navigation">
       <div class="sidebar-header">
         <a href="/admin" class="logo">
           <span class="logo-icon">X</span>
@@ -51,9 +95,10 @@
         </a>
       </div>
 
-      <nav class="sidebar-nav">
+      <nav class="sidebar-nav" aria-label="Admin navigation">
         <motion.a
           href="/admin"
+          aria-current={isActive('/admin', true) ? 'page' : undefined}
           class="nav-item {isActive('/admin', true) ? 'active' : ''}"
           whileHover={{ x: 4, transition: { duration: 0.12 } }}
           whileTap={{ scale: 0.97 }}
@@ -125,6 +170,7 @@
             <div class="nav-section-items">
               <motion.a
                 href="/admin/gallery"
+                aria-current={isActive('/admin/gallery', true) ? 'page' : undefined}
                 class="nav-item sub-item {isActive('/admin/gallery', true)
                   ? 'active'
                   : ''}"
@@ -156,6 +202,7 @@
               </motion.a>
               <motion.a
                 href="/admin/gallery/categories"
+                aria-current={isActive('/admin/gallery/categories') ? 'page' : undefined}
                 class="nav-item sub-item {isActive('/admin/gallery/categories')
                   ? 'active'
                   : ''}"
@@ -180,6 +227,7 @@
               </motion.a>
               <motion.a
                 href="/admin/gallery/upload"
+                aria-current={isActive('/admin/gallery/upload') ? 'page' : undefined}
                 class="nav-item sub-item {isActive('/admin/gallery/upload')
                   ? 'active'
                   : ''}"
@@ -261,6 +309,7 @@
             <div class="nav-section-items">
               <motion.a
                 href="/admin/blog"
+                aria-current={isActive('/admin/blog', true) ? 'page' : undefined}
                 class="nav-item sub-item {isActive('/admin/blog', true)
                   ? 'active'
                   : ''}"
@@ -298,6 +347,7 @@
               </motion.a>
               <motion.a
                 href="/admin/blog/new"
+                aria-current={isActive('/admin/blog/new') ? 'page' : undefined}
                 class="nav-item sub-item {isActive('/admin/blog/new')
                   ? 'active'
                   : ''}"
@@ -325,6 +375,7 @@
               </motion.a>
               <motion.a
                 href="/admin/blog/tags"
+                aria-current={isActive('/admin/blog/tags') ? 'page' : undefined}
                 class="nav-item sub-item {isActive('/admin/blog/tags')
                   ? 'active'
                   : ''}"
@@ -375,7 +426,7 @@
       </div>
     </aside>
 
-    <main class="admin-main">
+    <main class="admin-main" id="admin-content" tabindex="-1">
       {@render children()}
     </main>
   </div>
@@ -387,6 +438,43 @@
   .admin-shell {
     display: flex;
     min-height: 100vh;
+    min-height: 100dvh;
+    width: 100%;
+  }
+
+  .mobile-header {
+    display: none;
+  }
+
+  .skip-link {
+    position: fixed;
+    top: var(--space-2);
+    left: var(--space-2);
+    z-index: 300;
+    transform: translateY(-200%);
+    padding: var(--space-3);
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-radius: var(--radius-md);
+  }
+
+  .skip-link:focus {
+    transform: none;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: calc(var(--space-10) + var(--space-1));
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    cursor: pointer;
   }
 
   .admin-sidebar {
@@ -400,6 +488,8 @@
     left: 0;
     bottom: 0;
     z-index: 100;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .sidebar-header {
@@ -408,6 +498,7 @@
   }
 
   .logo {
+    min-height: calc(var(--space-10) + var(--space-1));
     display: flex;
     align-items: center;
     gap: var(--space-3);
@@ -421,7 +512,7 @@
     width: 32px;
     height: 32px;
     background: var(--color-primary);
-    color: white;
+    color: var(--color-text-inverse);
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
@@ -439,7 +530,8 @@
     gap: var(--space-1);
   }
 
-  :global(.nav-item) {
+  .admin-sidebar :global(.nav-item) {
+    min-height: calc(var(--space-10) + var(--space-1));
     display: flex;
     align-items: center;
     gap: var(--space-3);
@@ -451,19 +543,19 @@
     font-weight: 500;
   }
 
-  :global(.nav-item:hover) {
+  .admin-sidebar :global(.nav-item:hover) {
     background: var(--color-surface-hover);
     color: var(--color-text);
   }
 
-  :global(.nav-item.active) {
+  .admin-sidebar :global(.nav-item.active) {
     background: var(--color-primary);
-    color: white;
+    color: var(--color-text-inverse);
   }
 
-  :global(.nav-item.active:hover) {
+  .admin-sidebar :global(.nav-item.active:hover) {
     background: var(--color-primary-hover);
-    color: white;
+    color: var(--color-text-inverse);
   }
 
   .nav-section {
@@ -472,6 +564,7 @@
   }
 
   .nav-section-header {
+    min-height: calc(var(--space-10) + var(--space-1));
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -520,12 +613,13 @@
     margin-top: var(--space-1);
   }
 
-  :global(.nav-item.sub-item) {
+  .admin-sidebar :global(.nav-item.sub-item) {
     font-size: var(--text-xs);
     padding: var(--space-2) var(--space-3);
   }
 
   .sidebar-footer {
+    gap: var(--space-3);
     padding: var(--space-4) var(--space-5);
     border-top: 1px solid var(--color-border);
     display: flex;
@@ -534,12 +628,17 @@
   }
 
   .user-badge {
+    min-width: 0;
+    overflow-wrap: anywhere;
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
     font-weight: 500;
   }
 
   .logout-btn {
+    min-height: calc(var(--space-10) + var(--space-1));
+    min-width: calc(var(--space-10) + var(--space-1));
+    justify-content: center;
     background: none;
     border: none;
     color: var(--color-text-muted);
@@ -557,9 +656,71 @@
 
   .admin-main {
     flex: 1;
+    min-width: 0;
     margin-left: 240px;
     padding: var(--space-8);
     background: var(--color-bg);
     min-height: 100vh;
+  }
+
+  @media (max-width: 767px) {
+    .admin-shell {
+      flex-direction: column;
+    }
+
+    .mobile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      position: sticky;
+      top: 0;
+      z-index: 150;
+      min-height: var(--space-16);
+      padding: var(--space-2) var(--space-4);
+      background: var(--color-bg-secondary);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .admin-sidebar {
+      display: none;
+      position: static;
+      width: 100%;
+      max-height: calc(100dvh - var(--space-16));
+      border-right: none;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .admin-sidebar.mobile-open {
+      display: flex;
+    }
+
+    .sidebar-header {
+      display: none;
+    }
+
+    .sidebar-nav {
+      flex: none;
+    }
+
+    .admin-sidebar :global(.nav-item),
+    .admin-sidebar :global(.nav-item.sub-item),
+    .nav-section-header,
+    .logout-btn {
+      min-height: calc(var(--space-10) + var(--space-1));
+      font-size: var(--text-sm);
+    }
+
+    .logout-btn {
+      min-width: calc(var(--space-10) + var(--space-1));
+      justify-content: center;
+    }
+
+    .admin-main {
+      margin-left: 0;
+      padding: var(--space-5) var(--space-4) var(--space-8);
+      min-height: 0;
+      width: 100%;
+    }
   }
 </style>

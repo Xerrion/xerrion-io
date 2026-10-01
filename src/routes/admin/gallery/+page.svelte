@@ -552,7 +552,7 @@
 
   .photo-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
     gap: var(--space-6);
   }
 
@@ -774,6 +774,10 @@
   }
 
   .modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--color-surface);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -793,7 +797,7 @@
 
   .modal-body {
     display: grid;
-    grid-template-columns: 1fr 300px;
+    grid-template-columns: minmax(0, 1fr) 300px;
     gap: 0;
   }
 
@@ -882,6 +886,77 @@
 
     .modal-preview {
       min-height: 200px;
+    }
+  }
+  .title-group, .header-controls, .filter-group, .meta-row {
+    flex-wrap: wrap;
+  }
+
+  .header-controls, .filter-group {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .filter-group select {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .photo-card, .modal-header h2, .modal-preview, .modal-meta {
+    min-width: 0;
+  }
+
+  .modal-header {
+    gap: var(--space-2);
+  }
+
+  .bulk-bar {
+    max-width: calc(100% - var(--space-8));
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .bulk-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  @media (max-width: 767px) {
+    .page {
+      padding: 0;
+      padding-bottom: var(--space-20);
+    }
+
+    .header-controls, .filter-group {
+      width: 100%;
+    }
+
+    .filter-group select {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .photo-grid {
+      gap: var(--space-4);
+    }
+
+    .bulk-bar {
+      bottom: max(var(--space-3), env(safe-area-inset-bottom));
+      gap: var(--space-2);
+      padding: var(--space-3);
+      z-index: 90;
+    }
+
+    .modal-backdrop {
+      padding: var(--space-3);
+    }
+
+    .modal {
+      max-height: calc(100dvh - var(--space-6));
+    }
+
+    .modal-preview img {
+      max-height: 35dvh;
     }
   }
 </style>
