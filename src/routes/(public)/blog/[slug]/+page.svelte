@@ -1,7 +1,8 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import SEOHead from '$lib/components/SEOHead.svelte'
   import { breadcrumbSchema, SITE_URL } from '$lib/seo'
-  import { fadeInUp } from '$lib/utils/animate'
+  import { reveal } from '$lib/utils/animate'
   import type { BlogPost } from '$lib/types/blog'
 
   interface Props {
@@ -183,26 +184,38 @@
   <div class="container">
     <nav class="back-link" aria-label="Breadcrumb">
       <a class="text-link" href="/blog"
-        ><span aria-hidden="true">←</span> Back to the blog</a
+        ><span class="back-arrow"><Icon name="arrow-right" size="sm" /></span> Back
+        to the blog</a
       >
     </nav>
     <article class="post-article" aria-labelledby="post-heading">
       {#if post.coverUrl}
-        <figure class="post-cover">
+        <figure
+          class="post-cover"
+          use:reveal={{ type: 'fadeIn', duration: 550 }}
+        >
           <img src={post.coverUrl} alt="Cover image for {post.title}" />
         </figure>
       {/if}
-      <header class="post-header" use:fadeInUp={{ duration: 450 }}>
-        <p class="eyebrow">Blog</p>
-        <h1 id="post-heading">{post.title}</h1>
-        <div class="post-meta">
+      <header class="post-header">
+        <p class="eyebrow" use:reveal={{ duration: 450 }}>
+          <Icon name="book-open" size="sm" /> Blog
+        </p>
+        <h1 id="post-heading" use:reveal={{ duration: 520 }}>{post.title}</h1>
+        <div class="post-meta" use:reveal={{ duration: 450 }}>
           {#if formattedDate}<time datetime={post.publishedAt ?? undefined}
-              >{formattedDate}</time
+              ><Icon name="calendar" size="sm" />{formattedDate}</time
             >{/if}
-          {#if readingLabel}<span>{readingLabel}</span>{/if}
+          {#if readingLabel}<span
+              ><Icon name="clock" size="sm" />{readingLabel}</span
+            >{/if}
         </div>
         {#if post.tags.length > 0}
-          <nav class="post-tags" aria-label="Post tags">
+          <nav
+            class="post-tags"
+            aria-label="Post tags"
+            use:reveal={{ type: 'fadeIn', duration: 450 }}
+          >
             {#each post.tags as tag (tag.id)}<a
                 href="/blog?tag={encodeURIComponent(tag.slug)}"
                 class="tag-chip">{tag.name}</a
@@ -214,7 +227,9 @@
         <div class="article-toc">
           {#if tableOfContents.length > 1}
             <nav aria-label="On this page">
-              <p class="eyebrow">On this page</p>
+              <p class="eyebrow">
+                <Icon name="layers" size="sm" /> On this page
+              </p>
               {#each tableOfContents as entry (entry.id)}
                 <a
                   class:subsection={entry.level === 3}
@@ -235,16 +250,22 @@
               {#if post.prevPost}<a
                   href="/blog/{post.prevPost.slug}"
                   class="nav-link nav-prev"
+                  use:reveal={{ duration: 480 }}
                   ><span class="eyebrow">Previous post</span><span
                     >{post.prevPost.title}</span
-                  ><span aria-hidden="true">←</span></a
+                  ><span class="back-arrow"
+                    ><Icon name="arrow-right" size="sm" /></span
+                  ></a
                 >{/if}
               {#if post.nextPost}<a
                   href="/blog/{post.nextPost.slug}"
                   class="nav-link nav-next"
+                  use:reveal={{ duration: 480, delay: 50 }}
                   ><span class="eyebrow">Next post</span><span
                     >{post.nextPost.title}</span
-                  ><span aria-hidden="true">→</span></a
+                  ><span class="next-arrow"
+                    ><Icon name="arrow-right" size="sm" /></span
+                  ></a
                 >{/if}
             </nav>
           {/if}
@@ -259,6 +280,9 @@
     padding-block: var(--space-8) var(--space-12);
   }
   .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     margin: 0;
     color: var(--color-muted);
     font-size: var(--text-xs);
@@ -280,6 +304,25 @@
   }
   .text-link:hover {
     color: var(--color-accent);
+  }
+  .back-arrow,
+  .next-arrow {
+    display: inline-flex;
+    width: fit-content;
+    transition: transform 240ms var(--motion-easing);
+  }
+  .back-arrow {
+    transform: rotate(180deg);
+  }
+  .text-link:hover .back-arrow,
+  .text-link:focus-visible .back-arrow,
+  .nav-link:hover .back-arrow,
+  .nav-link:focus-visible .back-arrow {
+    transform: translateX(-3px) rotate(180deg);
+  }
+  .nav-link:hover .next-arrow,
+  .nav-link:focus-visible .next-arrow {
+    transform: translateX(3px);
   }
   .post-cover {
     margin: 0 0 var(--space-10);
@@ -314,6 +357,12 @@
     margin-top: var(--space-6);
     color: var(--color-muted);
     font-size: var(--text-sm);
+  }
+  .post-meta time,
+  .post-meta > span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
   }
   .post-tags {
     display: flex;
@@ -642,6 +691,22 @@
   @media (max-width: 350px) {
     .post-header h1 {
       font-size: 1.9rem;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .back-arrow,
+    .next-arrow {
+      transition: none;
+    }
+    .text-link:hover .back-arrow,
+    .text-link:focus-visible .back-arrow,
+    .nav-link:hover .back-arrow,
+    .nav-link:focus-visible .back-arrow {
+      transform: rotate(180deg);
+    }
+    .nav-link:hover .next-arrow,
+    .nav-link:focus-visible .next-arrow {
+      transform: none;
     }
   }
 </style>

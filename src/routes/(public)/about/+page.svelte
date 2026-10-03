@@ -1,7 +1,8 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import SEOHead from '$lib/components/SEOHead.svelte'
   import { personSchema, breadcrumbSchema } from '$lib/seo'
-  import { fadeInUp, staggerReveal } from '$lib/utils/animate'
+  import { reveal, stagger } from '$lib/utils/animate'
 </script>
 
 <SEOHead
@@ -19,8 +20,11 @@
 
 <article class="about about-page">
   <div class="container">
-    <header class="reading-header" use:fadeInUp={{ duration: 500 }}>
-      <p class="eyebrow">About</p>
+    <header
+      class="reading-header"
+      use:stagger={{ duration: 550, staggerDelay: 70 }}
+    >
+      <p class="eyebrow"><Icon name="book-open" size="sm" /> About</p>
       <h1>The longer<span>version.</span></h1>
       <p class="reading-lead">
         I'm Lasse Skovgaard Nielsen, online as Xerrion. A software developer
@@ -28,44 +32,68 @@
       </p>
     </header>
 
-    <div use:staggerReveal={{ staggerDelay: 80, selector: '.about-row' }}>
+    <div>
       <section class="about-row" aria-labelledby="about-work-title">
-        <p class="eyebrow row-label">Software</p>
+        <p
+          class="eyebrow row-label"
+          use:reveal={{ type: 'slideInLeft', duration: 480 }}
+        >
+          <Icon name="code" size="md" /> Software
+        </p>
         <div class="about-prose">
-          <h2 id="about-work-title">Curious about software.</h2>
-          <p>
+          <h2 id="about-work-title" use:reveal={{ duration: 520 }}>
+            Curious about software.
+          </h2>
+          <p use:reveal={{ duration: 520, delay: 50 }}>
             I like practical software that makes everyday tasks easier. At TV 2
             Danmark, I build internal tools that help people do their jobs.
           </p>
-          <p>
+          <p use:reveal={{ duration: 520, delay: 70 }}>
             TypeScript is my daily driver, and I'm learning more Rust through
             personal projects. Before TV 2, I worked in satellite
             communications, where I learned a lot about building reliable
             systems.
           </p>
-          <a class="text-link" href="/projects"
-            >See my projects <span aria-hidden="true">→</span></a
+          <a class="text-link" href="/projects" use:reveal={{ duration: 450 }}
+            >See my projects <span class="link-arrow"
+              ><Icon name="arrow-right" size="sm" /></span
+            ></a
           >
         </div>
         <aside class="about-tools" aria-labelledby="about-tools-title">
-          <h3 class="eyebrow" id="about-tools-title">
+          <h3
+            class="eyebrow"
+            id="about-tools-title"
+            use:reveal={{ duration: 480 }}
+          >
             Tools I spend time with
           </h3>
           <dl>
-            <div>
-              <dt>TypeScript</dt>
+            <div use:reveal={{ duration: 480 }}>
+              <dt>
+                <span class="tool-icon"><Icon name="terminal" size="sm" /></span
+                >TypeScript
+              </dt>
               <dd>Everyday development</dd>
             </div>
-            <div>
-              <dt>Rust</dt>
+            <div use:reveal={{ duration: 480, delay: 50 }}>
+              <dt>
+                <span class="tool-icon"><Icon name="cpu" size="sm" /></span>Rust
+              </dt>
               <dd>Personal projects and learning</dd>
             </div>
-            <div>
-              <dt>Svelte</dt>
+            <div use:reveal={{ duration: 480, delay: 100 }}>
+              <dt>
+                <span class="tool-icon"><Icon name="globe" size="sm" /></span
+                >Svelte
+              </dt>
               <dd>This website</dd>
             </div>
-            <div>
-              <dt>ServiceNow</dt>
+            <div use:reveal={{ duration: 480, delay: 150 }}>
+              <dt>
+                <span class="tool-icon"><Icon name="workflow" size="sm" /></span
+                >ServiceNow
+              </dt>
               <dd>Internal tools and integrations</dd>
             </div>
           </dl>
@@ -73,45 +101,75 @@
       </section>
 
       <section class="about-row" aria-labelledby="about-life-title">
-        <p class="eyebrow row-label">Outside work</p>
+        <p
+          class="eyebrow row-label"
+          use:reveal={{ type: 'slideInLeft', duration: 480 }}
+        >
+          <Icon name="paw" size="md" /> Outside work
+        </p>
         <div class="about-prose">
-          <h2 id="about-life-title">Away from the keyboard.</h2>
-          <p>
+          <h2 id="about-life-title" use:reveal={{ duration: 520 }}>
+            Away from the keyboard.
+          </h2>
+          <p use:reveal={{ duration: 520, delay: 50 }}>
             I'm usually walking Charlie with a podcast on or gaming with
             friends. Charlie is my golden retriever. He gets me outside and
             turns up in far too many of the photos here.
           </p>
-          <p>
+          <p use:reveal={{ duration: 520, delay: 70 }}>
             The podcasts range from tech to true crime, with a few random topics
             in between. There are also the side projects. Some even get
             finished.
           </p>
-          <a class="text-link" href="/gallery"
-            >Browse the gallery <span aria-hidden="true">→</span></a
+          <a class="text-link" href="/gallery" use:reveal={{ duration: 450 }}
+            >Browse the gallery <span class="link-arrow"
+              ><Icon name="arrow-right" size="sm" /></span
+            ></a
           >
         </div>
-        <figure class="about-charlie">
-          <img
-            src="https://pub-371d85115c2944799b7b432c262540fb.r2.dev/gallery/charlie/img_20230813_112407-289s9y-medium.webp"
-            alt="Charlie, my golden retriever"
-            width="600"
-            height="420"
-            loading="lazy"
-          />
-          <figcaption>Charlie. A good reason to take a break.</figcaption>
+        <figure
+          class="about-charlie"
+          use:reveal={{ type: 'scaleIn', duration: 600 }}
+        >
+          <div class="charlie-photo">
+            <img
+              src="https://pub-371d85115c2944799b7b432c262540fb.r2.dev/gallery/charlie/img_20230813_112407-289s9y-medium.webp"
+              alt="Charlie, my golden retriever"
+              width="600"
+              height="420"
+              loading="lazy"
+            />
+          </div>
+          <figcaption>
+            <Icon name="paw" size="sm" /> Charlie. A good reason to take a break.
+          </figcaption>
         </figure>
       </section>
 
       <section class="about-row" aria-labelledby="about-contact-title">
-        <p class="eyebrow row-label">Contact</p>
+        <p
+          class="eyebrow row-label"
+          use:reveal={{ type: 'slideInLeft', duration: 480 }}
+        >
+          <Icon name="mail" size="md" /> Contact
+        </p>
         <div class="about-prose">
-          <h2 id="about-contact-title">Say hi.</h2>
-          <p>
+          <h2 id="about-contact-title" use:reveal={{ duration: 520 }}>
+            Say hi.
+          </h2>
+          <p use:reveal={{ duration: 520, delay: 50 }}>
             I'm happy to talk about code, dogs, or whatever. Email is the
             easiest way to get in touch.
           </p>
-          <a class="button" href="mailto:lasse@xerrion.dk"
-            >Send an email <span aria-hidden="true">↗</span></a
+          <a
+            class="button"
+            href="mailto:lasse@xerrion.dk"
+            use:reveal={{ duration: 480 }}
+            ><span class="button-label"
+              ><Icon name="mail" size="sm" /> Send an email</span
+            ><span class="link-arrow"
+              ><Icon name="arrow-up-right" size="sm" /></span
+            ></a
           >
         </div>
         <aside class="about-social" aria-label="Find me elsewhere">
@@ -120,14 +178,22 @@
             href="https://github.com/Xerrion"
             target="_blank"
             rel="noopener noreferrer"
-            >GitHub <span aria-hidden="true">↗</span></a
+            use:reveal={{ duration: 480 }}
+            ><Icon name="github" size="sm" /> GitHub
+            <span class="link-arrow"
+              ><Icon name="arrow-up-right" size="sm" /></span
+            ></a
           >
           <a
             class="text-link"
             href="https://www.linkedin.com/in/lasse-skovgaard-nielsen/"
             target="_blank"
             rel="noopener noreferrer"
-            >LinkedIn <span aria-hidden="true">↗</span></a
+            use:reveal={{ duration: 480, delay: 70 }}
+            ><Icon name="linkedin" size="sm" /> LinkedIn
+            <span class="link-arrow"
+              ><Icon name="arrow-up-right" size="sm" /></span
+            ></a
           >
         </aside>
       </section>
@@ -143,6 +209,9 @@
     padding-bottom: var(--space-16);
   }
   .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     margin: 0;
     color: var(--color-muted);
     font-size: var(--text-xs);
@@ -179,6 +248,9 @@
   .row-label {
     padding-top: var(--space-1);
   }
+  .row-label :global(svg) {
+    color: var(--color-accent);
+  }
   .about-prose h2 {
     margin: 0;
     font-size: clamp(1.65rem, 2.2vw, 2.3rem);
@@ -204,6 +276,20 @@
   .text-link:hover {
     color: var(--color-accent-hover);
   }
+  .link-arrow {
+    display: inline-flex;
+    transition: transform 240ms var(--motion-easing);
+  }
+  .text-link:hover .link-arrow,
+  .text-link:focus-visible .link-arrow,
+  .button:hover .link-arrow,
+  .button:focus-visible .link-arrow {
+    transform: translateX(3px);
+  }
+  .about-social .text-link:hover .link-arrow,
+  .about-social .text-link:focus-visible .link-arrow {
+    transform: translate(2px, -2px);
+  }
   .about-prose .text-link {
     margin-top: var(--space-4);
   }
@@ -225,6 +311,11 @@
   .button:hover {
     background: var(--color-accent-hover);
   }
+  .button-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
   .about-tools dl {
     margin: var(--space-4) 0 0;
   }
@@ -233,8 +324,19 @@
     padding-block: var(--space-3);
   }
   .about-tools dt {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     font-size: var(--text-sm);
     color: var(--color-text);
+  }
+  .tool-icon {
+    display: inline-flex;
+    color: var(--color-accent);
+    transition: transform 240ms var(--motion-easing);
+  }
+  .about-tools dl div:hover .tool-icon {
+    transform: translateY(-2px);
   }
   .about-tools dd {
     margin: var(--space-1) 0 0;
@@ -245,14 +347,25 @@
   .about-charlie {
     margin: 0;
   }
+  .charlie-photo {
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+  }
   .about-charlie img {
     display: block;
     width: 100%;
     height: 232px;
     object-fit: cover;
     border-radius: var(--radius-sm);
+    transition: transform 650ms var(--motion-easing);
+  }
+  .about-charlie:hover img {
+    transform: scale(1.035);
   }
   .about-charlie figcaption {
+    display: flex;
+    align-items: start;
+    gap: var(--space-2);
     padding-top: var(--space-3);
     color: var(--color-muted);
     font-size: var(--text-xs);
@@ -332,6 +445,23 @@
     }
     .about-tools dl {
       gap: 0 var(--space-4);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .link-arrow,
+    .tool-icon,
+    .about-charlie img {
+      transition: none;
+    }
+    .text-link:hover .link-arrow,
+    .text-link:focus-visible .link-arrow,
+    .button:hover .link-arrow,
+    .button:focus-visible .link-arrow,
+    .about-social .text-link:hover .link-arrow,
+    .about-social .text-link:focus-visible .link-arrow,
+    .about-tools dl div:hover .tool-icon,
+    .about-charlie:hover img {
+      transform: none;
     }
   }
 </style>

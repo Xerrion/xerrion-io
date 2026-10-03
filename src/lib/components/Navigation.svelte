@@ -4,6 +4,7 @@
   import { page } from '$app/state'
 
   import { navigation, socialLinks } from '$lib/config/navigation'
+  import Icon from '$lib/components/Icon.svelte'
   import Brand from '$lib/components/Brand.svelte'
 
   let dialog: HTMLDialogElement
@@ -83,7 +84,7 @@
     {#each navigation as item}
       <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>{item.label}</a>
     {/each}
-    <a class="say-hi" href="mailto:lasse@xerrion.dk">Say hi <span aria-hidden="true">↗</span></a>
+    <a class="say-hi" href="mailto:lasse@xerrion.dk">Say hi <Icon name="arrow-up-right" size="sm" /></a>
   </nav>
   <button class="menu-trigger" onclick={openMenu} aria-label="Open navigation menu" aria-expanded={mobileMenuOpen} aria-controls="mobile-menu" aria-haspopup="dialog">
     Menu <span class="menu-symbol" aria-hidden="true"><span></span><span></span></span>
@@ -95,24 +96,24 @@
     <div class="menu-top">
       <Brand onNavigate={() => closeMenu(true)} />
       <button bind:this={closeButton} class="menu-close" onclick={() => closeMenu()} aria-label="Close navigation menu">
-        Close <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+        Close <Icon name="x" size="sm" />
       </button>
     </div>
     <p class="menu-overline">Explore</p>
     <nav class="mobile-navigation" aria-label="Mobile navigation">
       {#each navigation as item, index}
         <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined} onclick={() => closeMenu(true)}>
-          <span class="nav-index" aria-hidden="true">0{index + 1}</span><span class="nav-label">{item.label}</span><span class="nav-arrow" aria-hidden="true">↗</span>
+          <span class="nav-index" aria-hidden="true">0{index + 1}</span><span class="nav-label">{item.label}</span><span class="nav-arrow"><Icon name="arrow-up-right" /></span>
         </a>
       {/each}
     </nav>
     <div class="menu-bottom">
-      <a class="menu-contact" href="mailto:lasse@xerrion.dk">Say hi <span aria-hidden="true">↗</span></a>
+      <a class="menu-contact" href="mailto:lasse@xerrion.dk">Say hi <Icon name="arrow-up-right" size="sm" /></a>
       <div class="menu-socials">
         {#each socialLinks.filter(link => link.icon !== 'email') as link}
-          <a href={link.url} target="_blank" rel="noopener noreferrer">{link.name}</a>
+          <a href={link.url} target="_blank" rel="noopener noreferrer"><Icon name={link.icon === 'email' ? 'mail' : link.icon} size="sm" /> {link.name}</a>
         {/each}
-        <span class="menu-location">Odense, Denmark</span>
+        <span class="menu-location"><Icon name="map-pin" size="sm" /> Odense, Denmark</span>
       </div>
     </div>
   </div>
@@ -127,44 +128,46 @@
 .desktop-navigation .say-hi { margin-left: var(--space-3); }
 .menu-trigger { display: none; align-items: center; justify-content: center; gap: 13px; height: 46px; padding: 0 17px; border: 1px solid var(--color-border); border-radius: 999px; color: var(--color-text); background: var(--color-menu-surface); cursor: pointer; font-size: var(--text-sm); }
 .menu-symbol { display: flex; flex-direction: column; gap: 6px; width: 19px; }
-.menu-symbol span { display: block; height: 1.5px; width: 19px; background: var(--color-accent); }
+.menu-symbol span { transition: width 240ms var(--motion-easing); display: block; height: 1.5px; width: 19px; background: var(--color-accent); }
 .menu-symbol span:last-child { width: 13px; align-self: flex-end; }
 .menu-trigger:hover { border-color: var(--color-accent); }
+.menu-trigger:is(:hover, :focus-visible) .menu-symbol span:last-child { width: 19px; }
 .menu-dialog { position: fixed; inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 0; border: 0; background: var(--color-background); color: var(--color-text); overflow: auto; overscroll-behavior: contain; }
 .menu-dialog::backdrop { background: var(--color-backdrop); }
 .menu-dialog[open] { animation: menu-arrive 180ms ease-out both; }
 .menu-inner { min-height: 100%; width: min(calc(100% - 40px), 620px); margin-inline: auto; display: flex; flex-direction: column; padding-bottom: max(28px, env(safe-area-inset-bottom)); }
 .menu-top { display: flex; align-items: center; justify-content: space-between; min-height: 82px; border-bottom: 1px solid var(--color-border); }
 .menu-close { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--color-menu-surface); border: 1px solid var(--color-border); color: var(--color-text); border-radius: 999px; height: 46px; padding: 0 15px; font-size: var(--text-sm); cursor: pointer; }
-.menu-close svg { width: 18px; height: 18px; stroke: var(--color-accent); stroke-width: 1.5; fill: none; }
+.menu-close :global(.icon) { width: 18px; height: 18px; stroke: var(--color-accent); stroke-width: 1.5; fill: none; }
 .menu-overline { color: var(--color-muted); text-transform: uppercase; font-size: 11px; letter-spacing: .11em; margin: 35px 0 14px; }
 .mobile-navigation { display: flex; flex-direction: column; }
 .mobile-navigation a { display: grid; grid-template-columns: 30px minmax(0, 1fr) 24px; gap: 12px; align-items: center; padding: 12px 4px; min-height: 71px; border-bottom: 1px solid var(--color-border); }
 .nav-index { font-size: 11px; color: var(--color-muted); font-variant-numeric: tabular-nums; align-self: center; }
 .nav-label { font-size: clamp(2rem, 8.5vw, 2.8rem); line-height: 1.2; font-weight: 400; letter-spacing: -.035em; }
-.nav-arrow { color: var(--color-muted); font-size: 23px; font-weight: 400; }
-.mobile-navigation a[aria-current="page"] .nav-label, .mobile-navigation a[aria-current="page"] .nav-arrow { color: var(--color-accent); }
+.nav-arrow { transition: transform 260ms var(--motion-easing); color: var(--color-muted); font-size: 23px; font-weight: 400; }
+.mobile-navigation a[aria-current="page"] .nav-label, .mobile-navigation a[aria-current="page"] .nav-arrow { transition: transform 260ms var(--motion-easing); color: var(--color-accent); }
 .mobile-navigation a[aria-current="page"] .nav-index { font-size: 0; }
 .mobile-navigation a[aria-current="page"] .nav-index::before { content: ''; display: block; width: 7px; height: 7px; border-radius: 100%; background: var(--color-accent); }
+.mobile-navigation a:is(:hover, :focus-visible) .nav-arrow { transform: translate(2px, -2px); }
 .mobile-navigation a:hover { color: var(--color-accent); background: var(--color-menu-surface); }
 .menu-bottom { margin-top: auto; padding-top: 30px; }
 .menu-contact { display: flex; justify-content: space-between; align-items: center; min-height: 60px; padding: 16px 20px; border-radius: 12px; color: var(--color-background); background: var(--color-accent); font-size: 18px; letter-spacing: -.015em; }
 .menu-contact:hover { color: var(--color-background); background: var(--color-accent-hover); }
-.menu-socials { display: flex; align-items: center; gap: 24px; padding-top: 12px; }
-.menu-socials a { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-muted); font-size: 13px; }
+.menu-socials { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); padding-top: 12px; }
+.menu-socials a { display: inline-flex; gap: var(--space-2); align-items: center; min-height: 44px; color: var(--color-muted); font-size: 13px; }
 .menu-socials a:hover { color: var(--color-accent); }
-.menu-location { margin-left: auto; color: var(--color-muted); font-size: 11px; }
+.menu-location { display: inline-flex; align-items: center; gap: var(--space-1); margin-left: auto; color: var(--color-muted); font-size: 11px; }
 
 @keyframes menu-arrive { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 1000px) { .desktop-navigation { gap: var(--space-4); } .desktop-navigation .say-hi { margin-left: 0; } }
 @media (max-width: 740px) { .site-header { min-height: 82px; } .desktop-navigation { display: none; } .menu-trigger { display: inline-flex; } }
 @media (max-width: 350px) { .menu-inner { width: calc(100% - 32px); } .mobile-navigation a { min-height: 65px; padding-block: 9px; } .menu-socials { gap: 18px; } .menu-location { font-size: 10px; } }
 @media (max-height: 650px) { .menu-overline { margin-top: 18px; } .mobile-navigation a { min-height: 57px; padding-block: 8px; } .nav-label { font-size: 30px; } .menu-bottom { padding-top: 22px; } }
-@media (prefers-reduced-motion: reduce) { .menu-dialog[open] { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .menu-dialog[open] { animation: none; } .desktop-navigation a::after { transition: none; } .menu-symbol span { transition: none; } .mobile-navigation a:is(:hover, :focus-visible) .nav-arrow { transform: none; } }
 
 .desktop-navigation a { gap: var(--space-2); position: relative; }
 .desktop-navigation a::after { content: ''; position: absolute; bottom: var(--space-2); left: 0; right: 0; height: 1px; background: var(--color-accent); transform: scaleX(0); transform-origin: left; transition: transform 220ms var(--motion-easing); }
-.desktop-navigation a:hover::after { transform: scaleX(1); }
+.desktop-navigation a:is(:hover, :focus-visible)::after { transform: scaleX(1); }
 .mobile-navigation a { transition: background-color var(--transition-fast), padding-inline var(--transition-base); }
 .mobile-navigation a:hover { padding-inline: var(--space-2); }
 .menu-close:hover { border-color: var(--color-accent); }

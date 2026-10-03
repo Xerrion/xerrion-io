@@ -265,3 +265,14 @@ body.lightbox-open {
     width: calc(100% - var(--space-8));
   }
 }
+
+/* Directional icons respond to the action they represent. */
+.public-site a > :is([data-icon="arrow-right"], [data-icon="arrow-up-right"], [data-icon="arrow-up"]) {
+  transition: transform 260ms var(--motion-easing);
+}
+.public-site a:is(:hover, :focus-visible) > [data-icon="arrow-right"] { transform: translateX(3px); }
+.public-site a:is(:hover, :focus-visible) > [data-icon="arrow-up-right"] { transform: translate(2px, -2px); }
+.public-site a:is(:hover, :focus-visible) > [data-icon="arrow-up"] { transform: translateY(-3px); }
+@media (prefers-reduced-motion: reduce) {
+  .public-site a:is(:hover, :focus-visible) > :is([data-icon="arrow-right"], [data-icon="arrow-up-right"], [data-icon="arrow-up"]) { transform: none; }
+}

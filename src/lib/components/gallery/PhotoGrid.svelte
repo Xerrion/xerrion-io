@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Photo, PhotoCategory } from '$lib/gallery'
+  import Icon from '$lib/components/Icon.svelte'
   import { reveal } from '$lib/utils/animate'
   interface Props {
     photos: Photo[]
@@ -22,7 +23,7 @@
       {:else}
         <span class="photo-unavailable">Photo preview unavailable</span>
       {/if}
-      <span class="photo-open" aria-hidden="true">View photo <span>↗</span></span>
+      <span class="photo-open" aria-hidden="true">View photo <span class="photo-open-icon"><Icon name="arrow-up-right" size="sm" /></span></span>
     </button>
     <figcaption><span>{categoryName(photo.category)}</span><span>{String(index + 1).padStart(2, '0')}</span></figcaption>
   </figure>
@@ -48,11 +49,14 @@
   .photo-button { display: block; width: 100%; height: 270px; padding: 0; border: 0; border-radius: var(--radius-sm); position: relative; overflow: hidden; background: var(--color-surface); color: var(--color-text); cursor: pointer; }
   .featured .photo-button { height: 598px; }
   .photo-button img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 45%; transition: transform 600ms cubic-bezier(.2, .7, .2, 1); }
+  .photo-button::after { content: ''; position: absolute; inset: 0; border: 1px solid var(--color-clear); border-radius: inherit; pointer-events: none; transition: border-color 220ms ease; }
   .photo-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; }
+  .photo-button:focus-visible::after { border-color: var(--color-accent); }
   figcaption { display: flex; justify-content: space-between; gap: var(--space-4); padding-top: var(--space-3); color: var(--color-text-muted); font-size: var(--text-sm); }
-  .photo-open { position: absolute; left: var(--space-4); bottom: var(--space-4); display: inline-flex; align-items: center; gap: var(--space-5); padding: var(--space-2) var(--space-3); color: var(--color-text); background: var(--color-bg); font-size: var(--text-xs); transition: color 180ms ease; }
-  .photo-open span { transition: transform 180ms ease; }
-  .photo-button:focus-visible .photo-open { color: var(--color-accent); }
+  .photo-open { position: absolute; left: var(--space-4); bottom: var(--space-4); display: inline-flex; align-items: center; gap: var(--space-5); padding: var(--space-2) var(--space-3); color: var(--color-text); background: var(--color-bg); font-size: var(--text-xs); transition: color 180ms ease, background-color 180ms ease; }
+  .photo-open-icon { display: inline-flex; transition: transform 220ms cubic-bezier(.2, .7, .2, 1); }
+  .photo-button:focus-visible .photo-open { color: var(--color-accent); background: var(--color-surface-hover); }
+  .photo-button:focus-visible .photo-open-icon { transform: translate(2px, -2px); }
   .photo-unavailable { display: block; padding: var(--space-6); color: var(--color-text-muted); }
   .photo-grid-more { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-6); margin-top: var(--space-6); }
   .photo-grid-more .photo-button { height: 320px; }
@@ -64,9 +68,9 @@
   .empty-state h2 { font-size: var(--text-xl); font-weight: 400; }
   .empty-state p { margin-top: var(--space-3); color: var(--color-text-muted); }
   .empty-state a { display: inline-flex; min-height: 44px; align-items: center; color: var(--color-accent); margin-top: var(--space-4); }
-  @media (hover: hover) { .photo-button:hover img { transform: scale(1.025); } .photo-button:hover .photo-open { color: var(--color-accent); } .photo-button:hover .photo-open span { transform: translate(2px, -2px); } }
+  @media (hover: hover) { .photo-button:hover img { transform: scale(1.025); } .photo-button:hover::after { border-color: var(--color-accent); } .photo-button:hover .photo-open { color: var(--color-accent); background: var(--color-surface-hover); } .photo-button:hover .photo-open-icon { transform: translate(2px, -2px); } }
   @media (max-width: 1000px) { .photo-button { height: 230px; } .featured .photo-button { height: 518px; } .photo-grid-more { grid-template-columns: repeat(2, minmax(0, 1fr)); } .photo-grid-more .photo-button { height: 280px; } .compact .photo-button { height: 340px; } }
   @media (max-width: 740px) { .featured-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); } .featured { grid-column: 1 / -1; grid-row: auto; } .featured .photo-button { height: 380px; } .photo-button, .photo-grid-more .photo-button { height: 200px; } .photo-open { left: var(--space-2); bottom: var(--space-2); gap: var(--space-2); padding: var(--space-2); font-size: .6875rem; } figcaption { font-size: var(--text-xs); } .photo-grid-more { gap: var(--space-5); margin-top: var(--space-5); } .compact { grid-template-columns: minmax(0, 1fr); } .compact .photo-button { height: 340px; } }
   @media (max-width: 350px) { .featured .photo-button { height: 320px; } .photo-button, .photo-grid-more .photo-button { height: 180px; } }
-  @media (prefers-reduced-motion: reduce) { .photo-button img, .photo-open, .photo-open span { transition: none; } .photo-button:hover img, .photo-button:hover .photo-open span { transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .photo-button img, .photo-button::after, .photo-open, .photo-open-icon { transition: none; } .photo-button:hover img, .photo-button:hover .photo-open-icon, .photo-button:focus-visible .photo-open-icon { transform: none; } }
 </style>

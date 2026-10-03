@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { PageData } from './$types'
 
+  import Icon from '$lib/components/Icon.svelte'
   import SEOHead from '$lib/components/SEOHead.svelte'
   import { websiteSchema, personSchema } from '$lib/seo'
   import { fadeInUp, fadeIn, reveal } from '$lib/utils/animate'
@@ -14,51 +15,61 @@
 <div class="container">
       <section class="hero" aria-labelledby="intro-heading">
         <div class="hero-content">
-          <p class="hero-eyebrow eyebrow" use:fadeInUp={{ duration: 500 }}>Software developer · Odense, Denmark</p>
+          <p class="hero-eyebrow eyebrow" use:fadeInUp={{ duration: 500 }}><Icon name="code" size="sm" /> Software developer · Odense, Denmark</p>
           <h1 id="intro-heading" use:fadeInUp={{ duration: 650, delay: 60 }}>I'm Lasse.<span>I build software.</span></h1>
           <p class="hero-description" use:fadeInUp={{ duration: 600, delay: 120 }}>I'm <strong>Lasse Skovgaard Nielsen</strong>, online as Xerrion. I build internal tools at TV 2 Danmark and explore ideas through personal projects.</p>
-          <div class="hero-actions" use:fadeInUp={{ duration: 550, delay: 180 }}><a class="button" href="/projects">See my projects <span aria-hidden="true">↘</span></a><a class="text-link" href="/about">A little about me <span aria-hidden="true">↓</span></a></div>
+          <div class="hero-actions" use:fadeInUp={{ duration: 550, delay: 180 }}><a class="button" href="/projects">See my projects <Icon name="arrow-right" size="sm" /></a><a class="text-link" href="/about">A little about me <Icon name="arrow-right" size="sm" /></a></div>
         </div>
         <aside class="charlie-aside" use:fadeIn={{ duration: 650, delay: 200 }} aria-label="Charlie, my golden retriever">
-          <a class="charlie-link" href="/gallery"><img class="charlie-photo" src="https://pub-371d85115c2944799b7b432c262540fb.r2.dev/gallery/charlie/img_20230813_112523-x5xgpi-medium.webp" alt="Charlie, my golden retriever" width="408" height="434"><span class="charlie-caption"><span>Meet Charlie</span><span aria-hidden="true">↓</span></span></a>
+          <a class="charlie-link" href="/gallery"><img class="charlie-photo" src="https://pub-371d85115c2944799b7b432c262540fb.r2.dev/gallery/charlie/img_20230813_112523-x5xgpi-medium.webp" alt="Charlie, my golden retriever" width="408" height="434"><span class="charlie-caption"><span class="charlie-name"><Icon name="paw" size="sm" /> Meet Charlie</span><Icon name="arrow-right" size="sm" /></span></a>
           <p>My golden retriever.</p>
         </aside>
       </section>
       <section class="projects" id="projects" aria-labelledby="projects-heading">
-        <div class="section-top"><p class="eyebrow" id="projects-heading">Selected work</p><a class="text-link" href="/projects">All projects <span aria-hidden="true">↗</span></a></div>
-        <article class="project" use:reveal={{ duration: 650, threshold: 0.05 }}>
-          <div class="project-copy"><h2>Particle Foundry</h2><p>A browser sandbox where particles fall, liquids flow, and heat changes materials.</p><a class="text-link" href="https://github.com/Xerrion/particle-foundry" target="_blank" rel="noopener noreferrer" aria-label="Particle Foundry source on GitHub, opens in a new tab">View the source <span aria-hidden="true">↗</span></a></div>
-          <figure class="project-art">
+        <div class="section-top"><p class="eyebrow" id="projects-heading"><Icon name="folder" size="sm" /> Selected work</p><a class="text-link" href="/projects">All projects <Icon name="arrow-up-right" size="sm" /></a></div>
+        <article class="project">
+          <div class="project-copy" use:reveal={{ duration: 650 }}><h2>Particle Foundry</h2><p>A browser sandbox where particles fall, liquids flow, and heat changes materials.</p><a class="text-link" href="https://github.com/Xerrion/particle-foundry" target="_blank" rel="noopener noreferrer" aria-label="Particle Foundry source on GitHub, opens in a new tab">View the source <Icon name="arrow-up-right" size="sm" /></a></div>
+          <figure class="project-art" use:reveal={{ duration: 700, delay: 80, type: 'scaleIn' }}>
             <a class="project-preview-link" href="https://github.com/Xerrion/particle-foundry" target="_blank" rel="noopener noreferrer" aria-label="Particle Foundry source on GitHub, opens in a new tab"><img class="project-preview" src="/images/particle-foundry-preview.jpg" alt="Particle Foundry sandbox with water, sand and oil, alongside the material controls" width="1280" height="720"></a>
             <figcaption class="project-caption"><span>Particle Foundry</span><span>Falling-sand sandbox</span></figcaption>
           </figure>
         </article>
       </section>
       <section class="editorial-row" use:reveal={{ duration: 600, threshold: 0.05 }} id="about" aria-labelledby="about-heading">
-        <p class="row-label eyebrow">About</p>
+        <p class="row-label eyebrow"><Icon name="code" size="sm" /> About</p>
         <div><h2 class="row-heading" id="about-heading">Curious about software.</h2><p class="row-copy">I like practical software that makes everyday tasks easier. TypeScript is my daily driver, and I'm learning more Rust through personal projects. Before TV 2, I worked in satellite communications, where I learned a lot about building reliable systems.</p><p class="row-copy">Away from the keyboard, I'm usually walking Charlie with a podcast on or gaming with friends. Charlie is my golden retriever. He gets me outside and turns up in far too many of the photos here.</p></div>
-        <div class="row-aside"><p>You can find my code on GitHub and my professional profile on LinkedIn.</p><a class="text-link" href="https://www.linkedin.com/in/lasse-skovgaard-nielsen/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn profile, opens in a new tab">Find me on LinkedIn <span aria-hidden="true">↗</span></a></div>
+        <div class="row-aside"><p>You can find my code on GitHub and my professional profile on LinkedIn.</p><a class="text-link" href="https://www.linkedin.com/in/lasse-skovgaard-nielsen/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn profile, opens in a new tab">Find me on LinkedIn <Icon name="arrow-up-right" size="sm" /></a></div>
       </section>
       <section class="editorial-row" use:reveal={{ duration: 600, threshold: 0.05 }} id="blog" aria-labelledby="blog-heading">
-        <p class="row-label eyebrow">Blog</p>
+        <p class="row-label eyebrow"><Icon name="book-open" size="sm" /> Blog</p>
         <div><h2 class="row-heading" id="blog-heading">Notes on what I'm learning.</h2><p class="row-copy">A place for software, personal projects, and the things I learn along the way.</p>
           {#if data.latestPosts.length > 0}
             <ul class="recent-posts" aria-label="Latest posts">
               {#each data.latestPosts as post (post.id)}
-                <li><a href={`/blog/${post.slug}`}>{post.title}<span aria-hidden="true">↗</span></a></li>
+                <li><a href={`/blog/${post.slug}`}>{post.title}<Icon name="arrow-up-right" size="sm" /></a></li>
               {/each}
             </ul>
           {/if}</div>
-        <div class="row-aside"><a class="text-link" href="/blog">Read the blog</a></div>
+        <div class="row-aside"><a class="text-link" href="/blog">Read the blog <Icon name="arrow-right" size="sm" /></a></div>
       </section>
       <section class="editorial-row" use:reveal={{ duration: 600, threshold: 0.05 }} id="gallery" aria-labelledby="gallery-heading">
-        <p class="row-label eyebrow">Gallery</p>
-        <div><h2 class="row-heading" id="gallery-heading">Away from the keyboard.</h2><p class="row-copy">Photos from life outside software. Charlie, my golden retriever, makes regular appearances.</p><a class="text-link" href="/gallery">Browse the gallery</a></div>
+        <p class="row-label eyebrow"><Icon name="camera" size="sm" /> Gallery</p>
+        <div><h2 class="row-heading" id="gallery-heading">Away from the keyboard.</h2><p class="row-copy">Photos from life outside software. Charlie, my golden retriever, makes regular appearances.</p><a class="text-link" href="/gallery">Browse the gallery <Icon name="arrow-right" size="sm" /></a></div>
         <div class="row-aside"><a class="gallery-image-link" href="/gallery"><img class="gallery-preview" src="https://pub-371d85115c2944799b7b432c262540fb.r2.dev/gallery/charlie/img_20230813_112407-289s9y-medium.webp" alt="Charlie, my golden retriever" loading="lazy" width="600" height="420"></a></div>
       </section>
     </div>
 
 <style>
+  .hero-eyebrow, .section-top .eyebrow, .row-label, .charlie-name { display: inline-flex; align-items: center; gap: var(--space-2); }
+  .eyebrow :global(.icon), .charlie-name :global(.icon) { color: var(--color-accent); }
+  .charlie-link { transition: transform 480ms var(--motion-easing); }
+  .charlie-link:is(:hover, :focus-visible) { transform: translateY(-3px) rotate(-1deg); }
+  .project-art { transition: border-color var(--transition-base), box-shadow var(--transition-base); }
+  .project-art:has(a:is(:hover, :focus-visible)) { border-color: var(--color-accent); box-shadow: var(--shadow-md); }
+  .editorial-row { transition: border-color 320ms var(--motion-easing); }
+  .editorial-row:focus-within, .editorial-row:hover { border-top-color: var(--color-accent); }
+  @media (prefers-reduced-motion: reduce) { .charlie-link:is(:hover, :focus-visible) { transform: none; } }
+
     .eyebrow { font-size: var(--text-xs); font-weight: 400; letter-spacing: .075em; text-transform: uppercase; color: var(--color-muted); }
     .hero { display: grid; grid-template-columns: minmax(0, 1fr) 204px; gap: var(--space-16); padding-block: var(--space-16) var(--space-12); align-items: end; }
     .hero h1 { margin-top: var(--space-6); font-size: clamp(3.2rem, 6.7vw, 6.15rem); line-height: 1.04; letter-spacing: -.043em; font-weight: 500; }
@@ -163,10 +174,9 @@
 
 
   p, figure { margin: 0; }
-  .button, .text-link span { transition: transform 240ms var(--motion-easing), background-color var(--transition-base); }
+  .button { transition: transform 240ms var(--motion-easing), background-color var(--transition-base); }
   .button:hover { transform: translateY(-2px); }
   .button:active { transform: translateY(0); }
-  .text-link:hover span { transform: translate(2px, -2px); }
   .charlie-photo, .gallery-preview, .project-preview { transition: transform 600ms var(--motion-easing); }
   .charlie-link:hover .charlie-photo, .gallery-image-link:hover .gallery-preview { transform: translateY(-3px); }
   .project-preview-link { overflow: hidden; }
@@ -174,9 +184,9 @@
   .recent-posts { list-style: none; margin-top: var(--space-6); }
   .recent-posts li { border-top: 1px solid var(--color-border); }
   .recent-posts a { display: flex; justify-content: space-between; gap: var(--space-4); min-height: 44px; padding-block: var(--space-3); font-size: var(--text-sm); }
-  .recent-posts span { color: var(--color-accent); }
+  .recent-posts :global(.icon) { color: var(--color-accent); }
   @media (prefers-reduced-motion: reduce) {
-    .button:hover, .text-link:hover span, .charlie-link:hover .charlie-photo, .gallery-image-link:hover .gallery-preview, .project-preview-link:hover .project-preview { transform: none; }
+    .button:hover, .charlie-link:hover .charlie-photo, .gallery-image-link:hover .gallery-preview, .project-preview-link:hover .project-preview { transform: none; }
   }
 
 </style>

@@ -27,4 +27,21 @@ test.describe('About page', () => {
     for (const href of ['https://github.com/Xerrion', 'https://www.linkedin.com/in/lasse-skovgaard-nielsen/', 'mailto:lasse@xerrion.dk'])
       await expect(page.locator('main a[href="' + href + '"]').first()).toBeAttached()
   })
+
+  test('keeps decorative icons out of the accessibility tree and preserves link names', async ({ page }) => {
+    const main = page.locator('main')
+    expect(await main.locator('svg[data-icon]').count()).toBeGreaterThan(8)
+    expect(await main.locator('svg[data-icon]').evaluateAll(icons => icons.every(icon =>
+      icon.getAttribute('aria-hidden') === 'true' && icon.getAttribute('focusable') === 'false'
+    ))).toBe(true)
+    await expect(main.getByRole('img')).toHaveCount(1)
+    await expect(main.getByRole('img', { name: 'Charlie, my golden retriever', exact: true })).toBeAttached()
+    for (const [name, href] of [
+      ['See my projects', '/projects'],
+      ['Browse the gallery', '/gallery'],
+      ['Send an email', 'mailto:lasse@xerrion.dk'],
+      ['GitHub', 'https://github.com/Xerrion'],
+      ['LinkedIn', 'https://www.linkedin.com/in/lasse-skovgaard-nielsen/']
+    ]) await expect(main.getByRole('link', { name, exact: true })).toHaveAttribute('href', href)
+  })
 })

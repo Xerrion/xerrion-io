@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import type { BlogPostCard } from '$lib/types/blog'
   import { reveal } from '$lib/utils/animate'
 
@@ -28,9 +29,10 @@
 >
   <div class="card-meta">
     {#if formattedDate}<time datetime={post.publishedAt ?? undefined}
-        >{formattedDate}</time
+        ><Icon name="calendar" size="sm" />{formattedDate}</time
       >{/if}
-    {#if readingLabel}<span>{readingLabel}</span>{/if}
+    {#if readingLabel}<span><Icon name="clock" size="sm" />{readingLabel}</span
+      >{/if}
   </div>
   <div class="card-body">
     <h2 class="card-title"><a href="/blog/{post.slug}">{post.title}</a></h2>
@@ -43,7 +45,9 @@
       </ul>
     {/if}
     <a class="read-link" href="/blog/{post.slug}"
-      >Read the post <span aria-hidden="true">→</span></a
+      >Read the post <span class="link-arrow"
+        ><Icon name="arrow-right" size="sm" /></span
+      ></a
     >
   </div>
   {#if post.coverUrl}
@@ -82,6 +86,12 @@
     padding-top: var(--space-1);
     color: var(--color-muted);
     font-size: var(--text-xs);
+  }
+  .card-meta time,
+  .card-meta > span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
   }
   .card-title {
     margin: 0;
@@ -130,9 +140,19 @@
   .read-link:hover {
     color: var(--color-accent-hover);
   }
+  .link-arrow {
+    display: inline-flex;
+    transition: transform 240ms var(--motion-easing);
+  }
+  .read-link:hover .link-arrow,
+  .read-link:focus-visible .link-arrow {
+    transform: translateX(3px);
+  }
   .card-cover {
     display: block;
     margin-top: var(--space-1);
+    overflow: hidden;
+    border-radius: var(--radius-sm);
   }
   .card-cover img {
     display: block;
@@ -140,6 +160,11 @@
     height: 220px;
     object-fit: cover;
     border-radius: var(--radius-sm);
+    transition: transform 650ms var(--motion-easing);
+  }
+  .card-cover:hover img,
+  .card-cover:focus-visible img {
+    transform: scale(1.035);
   }
   @media (max-width: 1000px) {
     .post-card {
@@ -175,6 +200,18 @@
     }
     .card-cover img {
       height: 235px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .link-arrow,
+    .card-cover img {
+      transition: none;
+    }
+    .read-link:hover .link-arrow,
+    .read-link:focus-visible .link-arrow,
+    .card-cover:hover img,
+    .card-cover:focus-visible img {
+      transform: none;
     }
   }
 </style>

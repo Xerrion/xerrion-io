@@ -1,8 +1,9 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import SEOHead from '$lib/components/SEOHead.svelte'
   import PostCard from '$lib/components/blog/PostCard.svelte'
   import { breadcrumbSchema } from '$lib/seo'
-  import { fadeInUp } from '$lib/utils/animate'
+  import { reveal, stagger } from '$lib/utils/animate'
   import type { BlogPostCard, BlogTag } from '$lib/types/blog'
 
   interface Props {
@@ -31,20 +32,24 @@
 
 <div class="blog-page">
   <div class="container">
-    <header class="reading-header" use:fadeInUp={{ duration: 500 }}>
-      <p class="eyebrow">Blog</p>
+    <header
+      class="reading-header"
+      use:stagger={{ duration: 550, staggerDelay: 70 }}
+    >
+      <p class="eyebrow"><Icon name="book-open" size="sm" /> Blog</p>
       <h1>Notes on what<span>I'm learning.</span></h1>
       <p class="reading-lead">
         Thoughts on software, photography, and building things on the web.
       </p>
     </header>
 
-    <div class="blog-toolbar">
+    <div class="blog-toolbar" use:reveal={{ duration: 450, type: 'fadeIn' }}>
       <nav class="blog-filters" aria-label="Filter posts by tag">
         <a
           class="filter-link"
           href="/blog"
-          aria-current={!data.activeTag ? 'true' : undefined}>All posts</a
+          aria-current={!data.activeTag ? 'true' : undefined}
+          ><Icon name="grid" size="sm" /> All posts</a
         >
         {#each data.tags as tag (tag.id)}
           <a
@@ -56,27 +61,38 @@
         {/each}
       </nav>
       <a class="text-link blog-rss" href="/blog/rss.xml"
-        >RSS feed <span aria-hidden="true">→</span></a
+        ><Icon name="rss" size="sm" /> RSS feed
+        <span class="link-arrow"><Icon name="arrow-right" size="sm" /></span></a
       >
     </div>
     <div class="blog-filter-status" aria-live="polite">
       <p>{data.activeTag ? `Posts tagged ${activeTagName}` : 'All posts'}</p>
       {#if data.activeTag}<a class="text-link" href="/blog"
-          >Clear filter <span aria-hidden="true">→</span></a
+          ><Icon name="x" size="sm" /> Clear filter</a
         >{/if}
     </div>
 
     {#if data.error}
-      <section class="blog-state blog-error" aria-labelledby="blog-error-title">
+      <section
+        class="blog-state blog-error"
+        aria-labelledby="blog-error-title"
+        use:reveal={{ duration: 480 }}
+      >
         <p class="eyebrow">Blog unavailable</p>
         <h2 id="blog-error-title">The posts could not load.</h2>
         <p>Please try again later.</p>
         <a class="text-link" href="/blog" data-sveltekit-reload
-          >Try again <span aria-hidden="true">→</span></a
+          >Try again <span class="link-arrow"
+            ><Icon name="arrow-right" size="sm" /></span
+          ></a
         >
       </section>
     {:else if data.posts.length === 0}
-      <section class="blog-state blog-empty" aria-labelledby="blog-empty-title">
+      <section
+        class="blog-state blog-empty"
+        aria-labelledby="blog-empty-title"
+        use:reveal={{ duration: 480 }}
+      >
         <p class="eyebrow">
           {data.activeTag ? 'No matching posts' : 'The blog'}
         </p>
@@ -89,7 +105,9 @@
             : 'New posts will appear here.'}
         </p>
         {#if data.activeTag}<a class="text-link" href="/blog"
-            >See all posts <span aria-hidden="true">→</span></a
+            >See all posts <span class="link-arrow"
+              ><Icon name="arrow-right" size="sm" /></span
+            ></a
           >{/if}
       </section>
     {:else}
@@ -98,10 +116,11 @@
       </section>
     {/if}
 
-    <aside class="blog-feed-note">
+    <aside class="blog-feed-note" use:reveal={{ duration: 450 }}>
       <p>Prefer a feed reader?</p>
       <a class="text-link" href="/blog/atom.xml"
-        >Atom feed <span aria-hidden="true">→</span></a
+        ><Icon name="rss" size="sm" /> Atom feed
+        <span class="link-arrow"><Icon name="arrow-right" size="sm" /></span></a
       >
     </aside>
   </div>
@@ -115,6 +134,9 @@
     padding-bottom: var(--space-16);
   }
   .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     margin: 0;
     color: var(--color-muted);
     font-size: var(--text-xs);
@@ -157,6 +179,7 @@
   .filter-link {
     display: inline-flex;
     align-items: center;
+    gap: var(--space-2);
     min-height: 44px;
     padding: var(--space-2) var(--space-4);
     font-size: var(--text-sm);
@@ -185,6 +208,14 @@
   }
   .text-link:hover {
     color: var(--color-accent-hover);
+  }
+  .link-arrow {
+    display: inline-flex;
+    transition: transform 240ms var(--motion-easing);
+  }
+  .text-link:hover .link-arrow,
+  .text-link:focus-visible .link-arrow {
+    transform: translateX(3px);
   }
   .blog-rss {
     flex-shrink: 0;
@@ -279,6 +310,15 @@
   @media (max-width: 350px) {
     .reading-header h1 {
       font-size: 2.55rem;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .link-arrow {
+      transition: none;
+    }
+    .text-link:hover .link-arrow,
+    .text-link:focus-visible .link-arrow {
+      transform: none;
     }
   }
 </style>
