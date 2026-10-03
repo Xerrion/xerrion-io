@@ -3,7 +3,7 @@
   import { slideInRight, animateOut } from '$lib/utils/animate'
 
   function animateToastIn(el: HTMLElement) {
-    slideInRight(el, { duration: 250 })
+    return slideInRight(el, { duration: 250 })
   }
 
   async function dismissWithAnimation(el: HTMLElement, id: number) {

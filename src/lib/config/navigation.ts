@@ -2,8 +2,8 @@ import type { NavItem, SocialLink } from '$lib/types/navigation'
 
 export const navigation: NavItem[] = [
   { label: 'Home', href: '/' },
-  { label: 'About', href: '/about' },
   { label: 'Projects', href: '/projects' },
+  { label: 'About', href: '/about' },
   { label: 'Blog', href: '/blog' },
   { label: 'Gallery', href: '/gallery' }
 ]

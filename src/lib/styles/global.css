@@ -195,3 +195,73 @@ code {
     padding: var(--space-12) 0;
   }
 }
+
+html:has(.public-site) {
+  font-size: 16px;
+  line-height: 1.65;
+  scroll-padding-top: var(--space-6);
+}
+
+.public-site .container {
+  width: min(calc(100% - var(--space-24)), var(--max-width));
+  max-width: var(--max-width);
+  padding: 0;
+}
+
+.public-site h1,
+.public-site h2,
+.public-site h3 {
+  font-weight: 500;
+}
+
+:where(.public-site) a {
+  color: inherit;
+}
+
+:where(.public-site) a:hover {
+  color: var(--color-accent);
+}
+
+.public-site button,
+.public-site input,
+.public-site select {
+  font: inherit;
+}
+
+.public-site img,
+.public-site svg {
+  display: block;
+}
+
+.public-site a,
+.public-site button {
+  -webkit-tap-highlight-color: var(--color-clear);
+}
+
+.public-site ::selection {
+  background: var(--color-accent);
+  color: var(--color-background);
+}
+
+body.navigation-open,
+body.lightbox-open {
+  overflow: hidden;
+}
+
+@media (max-width: 1000px) {
+  .public-site .container {
+    width: calc(100% - var(--space-16));
+  }
+}
+
+@media (max-width: 740px) {
+  .public-site .container {
+    width: calc(100% - var(--space-10));
+  }
+}
+
+@media (max-width: 350px) {
+  .public-site .container {
+    width: calc(100% - var(--space-8));
+  }
+}

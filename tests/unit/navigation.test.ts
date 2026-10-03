@@ -9,8 +9,8 @@ describe('navigation', () => {
 
   test('has correct labels and hrefs', () => {
     expect(navigation[0]).toEqual({ label: 'Home', href: '/' })
-    expect(navigation[1]).toEqual({ label: 'About', href: '/about' })
-    expect(navigation[2]).toEqual({ label: 'Projects', href: '/projects' })
+    expect(navigation[1]).toEqual({ label: 'Projects', href: '/projects' })
+    expect(navigation[2]).toEqual({ label: 'About', href: '/about' })
     expect(navigation[3]).toEqual({ label: 'Blog', href: '/blog' })
     expect(navigation[4]).toEqual({ label: 'Gallery', href: '/gallery' })
   })

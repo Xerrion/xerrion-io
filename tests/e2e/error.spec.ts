@@ -1,23 +1,17 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './public-fixtures'
 
-test.describe('Error Page (404)', () => {
-  test('should return 404 status and show error for nonexistent URL', async ({
-    page
-  }) => {
-    const response = await page.goto('/this-page-does-not-exist-xyz')
-
-    expect(response?.status()).toBe(404)
-
-    const heading = page.locator('h1')
-    await expect(heading).toContainText('404')
-  })
-
-  test('should return 404 for nonexistent nested route', async ({ page }) => {
-    const response = await page.goto('/about/nonexistent-subpage')
-
-    expect(response?.status()).toBe(404)
-
-    const heading = page.locator('h1')
-    await expect(heading).toContainText('404')
-  })
+test.describe('Not-found page', () => {
+  for (const route of ['/this-page-does-not-exist-xyz', '/about/this-page-does-not-exist-xyz']) {
+    test('returns 404 and offers recovery from ' + route, async ({ page }) => {
+      const response = await page.goto(route)
+      expect(response?.status()).toBe(404)
+      await expect(page.locator('h1')).toContainText("isn't here")
+      await expect(page.locator('body')).toContainText('404')
+      const home = page.getByRole('link', { name: /Back to home/ })
+      await expect(home).toHaveAttribute('href', '/')
+      await home.click()
+      await expect(page).toHaveURL('/')
+      await expect(page.locator('main h1')).toContainText("I'm Lasse.")
+    })
+  }
 })

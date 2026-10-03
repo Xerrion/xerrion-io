@@ -1,201 +1,73 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, mockGallery, navigatePublic } from './public-fixtures'
 
 test.describe('Gallery', () => {
-  test('should load the gallery page with initial photos', async ({ page }) => {
-    await page.goto('/gallery')
-
-    // Check header
-    await expect(page.locator('h1')).toHaveText('Gallery')
-
-    // Check if at least one photo is loaded (from DB)
-    const photoCards = page.locator('.photo-card')
-    await expect(photoCards.first()).toBeAttached()
-
-    // Check if filter buttons are present
-    const filters = page.locator('.filter-btn')
-    await expect(filters.first()).toBeAttached()
-    await expect(filters.locator('text=All').first()).toBeAttached()
+  test.beforeEach(async ({ page }) => {
+    await mockGallery(page)
+    await navigatePublic(page, '/gallery')
   })
 
-  test('should filter photos by category and handle infinite scroll', async ({
-    page
-  }) => {
-    // Generate mock photos
-    const generateMockPhotos = (startId: number, count: number) => {
-      return Array.from({ length: count }).map((_, i) => ({
-        id: `mock-${startId + i}`,
-        name: `Mock Photo ${startId + i}`,
-        thumbUrl: `https://example.com/${startId + i}-thumb.jpg`,
-        mediumUrl: `https://example.com/${startId + i}-medium.jpg`,
-        fullUrl: `https://example.com/${startId + i}-full.jpg`,
-        width: 800,
-        height: 600,
-        category: 'charlie',
-        createdAt: new Date().toISOString()
-      }))
-    }
+  test('shows photos and category counts without broken images', async ({ page }) => {
+    await expect(page.locator('main h1')).toContainText('Away from')
+    await expect(page.locator('.photo-card')).toHaveCount(20)
+    await expect(page.getByRole('navigation', { name: 'Photo categories' })).toBeVisible()
+    await expect(page.locator('.filter-btn').filter({ hasText: 'Charlie' })).toContainText('22')
+    await expect.poll(() => page.locator('.photo-card img').first().evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0)
+  })
 
-    // Intercept the API route
-    await page.route('**/api/gallery/photos*', async (route) => {
-      const url = new URL(route.request().url())
-      const offset = Number.parseInt(url.searchParams.get('offset') || '0', 10)
-      const category = url.searchParams.get('category')
-
-      if (category === 'charlie') {
-        if (offset === 0) {
-          // Return exactly 20 to trigger `hasMore = true`
-          route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ photos: generateMockPhotos(1, 20) })
-          })
-        } else if (offset === 20) {
-          // Return 2 more for infinite scroll
-          route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ photos: generateMockPhotos(21, 2) })
-          })
-        } else {
-          route.fulfill({ status: 200, body: JSON.stringify({ photos: [] }) })
-        }
-      } else {
-        route.fulfill({ status: 200, body: JSON.stringify({ photos: [] }) })
-      }
-    })
-
-    await page.goto('/gallery')
-
-    // Click the "Charlie" category (wait for it to be visible and click it)
-    const charlieFilter = page.locator('.filter-btn', { hasText: 'Charlie' })
-
-    await expect(async () => {
-      await charlieFilter.click()
-      await expect(page.locator('.photo-card')).toHaveCount(20)
-      await expect(page.locator('img[alt="Mock Photo 1"]')).toBeAttached()
-    }).toPass()
-
-    // Scroll to the bottom to trigger infinite scroll
-    await page.evaluate(() =>
-      globalThis.scrollTo(0, document.body.scrollHeight)
-    )
-
-    // Wait for the next batch of 2 photos to load (total 22)
+  test('keeps category and load-more state in the URL', async ({ page }) => {
+    await page.locator('.filter-btn').filter({ hasText: 'Charlie' }).click()
+    await expect(page).toHaveURL(/category=charlie/)
+    await expect(page.locator('.photo-card')).toHaveCount(20)
+    await page.getByRole('link', { name: /Load more/ }).click()
+    await expect(page).toHaveURL(/page=2/)
+    await expect(page).toHaveURL(/category=charlie/)
     await expect(page.locator('.photo-card')).toHaveCount(22)
-    await expect(page.locator('img[alt="Mock Photo 22"]')).toBeAttached()
+    await expect(page.locator('.photo-button').nth(20)).toBeFocused()
+    await expect(page.getByRole('link', { name: /Load more/ })).toHaveCount(0)
+    await page.locator('.filter-btn').filter({ hasText: 'Empty album' }).click()
+    await expect(page).toHaveURL(/category=empty/)
+    expect(new URL(page.url()).searchParams.has('page')).toBe(false)
+    await expect(page.locator('.photo-card')).toHaveCount(0)
+    await expect(page.locator('main')).toContainText(/No photos|empty/i)
+    await page.locator('.filter-btn').filter({ hasText: /^All/ }).click()
+    await expect(page.locator('.photo-card')).toHaveCount(20)
+    expect(new URL(page.url()).searchParams.has('category')).toBe(false)
   })
 
-  test('should open lightbox, navigate, and close', async ({ page }) => {
-    await page.goto('/gallery')
-
-    // Wait for photos to be visible
-    const photoButtons = page.locator('.photo-button')
-    await expect(photoButtons.first()).toBeAttached()
-
-    const lightbox = page.locator('.lightbox-backdrop')
-
-    // Click the first photo to open the Lightbox
-    await expect(async () => {
-      await photoButtons.nth(0).click()
-      await expect(lightbox).toBeAttached()
-    }).toPass()
-
-    const counter = page.locator('.lightbox-counter')
-    await expect(counter).toContainText('1 /')
-
-    // Previous button should be disabled on the first photo
-    const prevBtn = page.locator('.lightbox-prev')
-    await expect(prevBtn).toBeDisabled()
-
-    // Click Next button
-    const nextBtn = page.locator('.lightbox-next')
-    await expect(nextBtn).toBeAttached()
-    await nextBtn.click()
-
-    // The counter should update
-    await expect(counter).toContainText('2 /')
-
-    // Now Previous button should be enabled
-    await expect(prevBtn).toBeEnabled()
-
-    // Navigate back to the first photo
-    await prevBtn.click()
-    await expect(counter).toContainText('1 /')
-    await expect(prevBtn).toBeDisabled()
-
-    // Close via Close Button
-    const closeBtn = page.locator('.lightbox-close')
-    await closeBtn.click()
-    await expect(lightbox).toBeHidden()
-
-    // Open again to test Escape key
-    await photoButtons.nth(0).click()
-    await expect(lightbox).toBeAttached()
-
-    // Close via Escape key
+  test('opens the viewer, respects both boundaries, and closes with Escape', async ({ page }) => {
+    const first = page.locator('.photo-button').first()
+    await first.click()
+    const dialog = page.getByRole('dialog', { name: 'Photo viewer' })
+    await expect(dialog).toBeVisible()
+    await expect(page.locator('.lightbox-counter')).toContainText('1 /')
+    await expect(page.getByRole('button', { name: 'Previous photo' })).toBeDisabled()
+    await page.getByRole('button', { name: 'Next photo' }).click()
+    await expect(page.locator('.lightbox-counter')).toContainText('2 /')
+    await page.getByRole('button', { name: 'Previous photo' }).click()
+    await expect(page.locator('.lightbox-counter')).toContainText('1 /')
     await page.keyboard.press('Escape')
-    await expect(lightbox).toBeHidden()
+    await expect(dialog).not.toBeVisible()
   })
 
-  test('should hide Next button on the last photo', async ({ page }) => {
-    // Generate exactly 2 mock photos
-    const mockPhotos = [
-      {
-        id: 'mock-1',
-        name: 'Photo One',
-        thumbUrl: 'https://example.com/1.jpg',
-        mediumUrl: 'https://example.com/1.jpg',
-        fullUrl: 'https://example.com/1.jpg',
-        width: 800,
-        height: 600,
-        category: 'test',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'mock-2',
-        name: 'Photo Two',
-        thumbUrl: 'https://example.com/2.jpg',
-        mediumUrl: 'https://example.com/2.jpg',
-        fullUrl: 'https://example.com/2.jpg',
-        width: 800,
-        height: 600,
-        category: 'test',
-        createdAt: new Date().toISOString()
-      }
-    ]
+  test('disables next on the final photo', async ({ page }) => {
+    await page.locator('.photo-button').last().click()
+    await expect(page.getByRole('button', { name: 'Next photo' })).toBeDisabled()
+    await expect(page.locator('.lightbox-counter')).toContainText('20 / 20')
+    await page.getByRole('button', { name: 'Close viewer' }).click()
+    await expect(page.getByRole('dialog', { name: 'Photo viewer' })).not.toBeVisible()
+  })
+})
 
-    await page.route('**/api/gallery/photos*', async (route) => {
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ photos: mockPhotos })
-      })
+test.describe('Gallery server query validation', () => {
+  for (const category of ['constructor', 'toString', '__proto__']) {
+    test('handles an unknown category named ' + category, async ({ request }) => {
+      const response = await request.get('/gallery?category=' + encodeURIComponent(category))
+      expect(response.status()).toBe(200)
+      const html = await response.text()
+      const main = html.match(/<main\b[^>]*>[\s\S]*?<\/main>/)?.[0] ?? ''
+      expect(/class="[^"]*\bgallery-page\b/.test(main)).toBe(true)
+      expect(/class="[^"]*\bgallery-error\b/.test(main)).toBe(false)
+      expect(main.includes('NaN')).toBe(false)
     })
-
-    await page.goto('/gallery')
-
-    // Click a filter to trigger the mock API
-    const charlieFilter = page.locator('.filter-btn', { hasText: 'Charlie' })
-
-    await expect(async () => {
-      await charlieFilter.click()
-      await expect(page.locator('.photo-card')).toHaveCount(2)
-    }).toPass()
-
-    // Open first photo
-    await page.locator('.photo-button').nth(0).click()
-
-    // Counter shows 1/2
-    await expect(page.locator('.lightbox-counter')).toContainText('1 / 2')
-
-    // Go to second (last) photo
-    const nextBtn = page.locator('.lightbox-next')
-    await nextBtn.click()
-
-    // Counter shows 2/2
-    await expect(page.locator('.lightbox-counter')).toContainText('2 / 2')
-
-    // Next button should be disabled
-    await expect(nextBtn).toBeDisabled()
-  })
+  }
 })

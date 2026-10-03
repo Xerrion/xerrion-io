@@ -1,286 +1,92 @@
 <script lang="ts">
-  import { untrack } from "svelte";
-  import SEOHead from "$lib/components/SEOHead.svelte";
-  import CategoryFilter from "$lib/components/gallery/CategoryFilter.svelte";
-  import PhotoGrid from "$lib/components/gallery/PhotoGrid.svelte";
-  import GalleryLightbox from "$lib/components/gallery/GalleryLightbox.svelte";
-  import { breadcrumbSchema } from "$lib/seo";
-  import type { PhotoCategory, Photo } from "$lib/gallery";
-  import { fadeInDown, fadeInUp } from "$lib/utils/animate";
+  import { afterNavigate } from '$app/navigation'
+  import { navigating } from '$app/state'
+  import type { PageData } from './$types'
 
-  interface Props {
-    data: {
-      categories: PhotoCategory[];
-      initialPhotos: Photo[];
-      photoCounts: Record<string, number>;
-      totalPhotos: number;
-      error: string | null;
-    };
+  import SEOHead from '$lib/components/SEOHead.svelte'
+  import CategoryFilter from '$lib/components/gallery/CategoryFilter.svelte'
+  import PhotoGrid from '$lib/components/gallery/PhotoGrid.svelte'
+  import GalleryLightbox from '$lib/components/gallery/GalleryLightbox.svelte'
+  import { breadcrumbSchema } from '$lib/seo'
+  import type { Photo } from '$lib/gallery'
+  import { fadeInUp } from '$lib/utils/animate'
+
+  interface Props { data: PageData }
+  let { data }: Props = $props()
+  let lightboxPhoto = $state<Photo | null>(null)
+  let pendingPhotoCount: number | null = null
+  const selectedCategory = $derived(data.selectedCategory ?? null)
+  const displayedPhotos = $derived(data.initialPhotos)
+  const category = $derived(data.categories.find((item) => item.slug === selectedCategory))
+  const selectedTotal = $derived(data.selectedTotal ?? data.totalPhotos)
+  const hasMore = $derived(data.hasMore ?? displayedPhotos.length < selectedTotal)
+  const loadingMore = $derived(navigating.to?.url.pathname === '/gallery' && navigating.to.url.searchParams.get('page') !== null)
+  const moreUrl = $derived.by(() => {
+    const parameters = new URLSearchParams({ page: String((data.page ?? 1) + 1) })
+    if (selectedCategory) parameters.set('category', selectedCategory)
+    return `/gallery?${parameters}`
+  })
+  function closeLightbox(): void { lightboxPhoto = null }
+  function navigateLightbox(direction: 1 | -1): void {
+    const index = displayedPhotos.findIndex((photo) => photo.id === lightboxPhoto?.id)
+    const next = displayedPhotos[index + direction]
+    if (index !== -1 && next) lightboxPhoto = next
   }
-
-  let { data }: Props = $props();
-
-  let selectedCategory = $state<string | null>(null);
-  let lightboxPhoto = $state<Photo | null>(null);
-  let gridVisible = $state(true);
-
-  let allPhotos = $state<Photo[]>(untrack(() => data.initialPhotos));
-  let loadingMore = $state(false);
-  let hasMore = $state(untrack(() => data.initialPhotos.length >= 20));
-  let sentinel = $state<HTMLElement | null>(null);
-
-  const displayedPhotos = $derived(allPhotos);
-
-  async function fetchPhotos(category: string | null, offset: number) {
-    const params = new URLSearchParams();
-    if (category) params.set("category", category);
-    params.set("offset", offset.toString());
-    params.set("limit", "20");
-
-    const res = await fetch(`/api/gallery/photos?${params.toString()}`);
-    const json = await res.json();
-    // Convert dates back to Date objects
-    return (json.photos || []).map((p: any) => ({
-      ...p,
-      createdAt: new Date(p.createdAt),
-    })) as Photo[];
-  }
-
-  async function loadMore() {
-    if (loadingMore || !hasMore) return;
-    loadingMore = true;
-
-    try {
-      const newPhotos = await fetchPhotos(selectedCategory, allPhotos.length);
-      if (newPhotos.length === 0) {
-        hasMore = false;
-      } else {
-        const existingIds = new Set(allPhotos.map((p) => p.id));
-        const uniqueNew = newPhotos.filter((p) => !existingIds.has(p.id));
-        allPhotos = [...allPhotos, ...uniqueNew];
-        if (newPhotos.length < 20) {
-          hasMore = false;
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load more photos:", error);
-    } finally {
-      loadingMore = false;
+  afterNavigate(() => {
+    closeLightbox()
+    if (pendingPhotoCount !== null && displayedPhotos.length > pendingPhotoCount) {
+      document.querySelectorAll<HTMLButtonElement>('#gallery-grid .photo-button')[pendingPhotoCount]?.focus({ preventScroll: true })
     }
-  }
-
+    pendingPhotoCount = null
+  })
   $effect(() => {
-    if (!sentinel) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          if (!loadingMore && hasMore) {
-            loadMore();
-          }
-        }
-      },
-      { rootMargin: "400px" },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  });
-
-  function selectCategory(slug: string | null) {
-    if (slug === selectedCategory) return;
-    gridVisible = false;
-
-    setTimeout(async () => {
-      selectedCategory = slug;
-      allPhotos = [];
-      hasMore = true;
-      loadingMore = true;
-
-      try {
-        const photos = await fetchPhotos(slug, 0);
-        allPhotos = photos;
-        if (photos.length < 20) hasMore = false;
-      } catch (error) {
-        console.error("Failed to load category photos:", error);
-      } finally {
-        loadingMore = false;
-      }
-
-      requestAnimationFrame(() => {
-        gridVisible = true;
-      });
-    }, 300);
-  }
-
-  function openLightbox(photo: Photo) {
-    lightboxPhoto = photo;
-    document.body.style.overflow = "hidden";
-  }
-
-  function closeLightbox() {
-    lightboxPhoto = null;
-    document.body.style.overflow = "";
-  }
-
-  // Safety: restore body scroll if component unmounts while lightbox is open
-  $effect(() => {
-    return () => {
-      document.body.style.overflow = "";
-    };
-  });
-
-  function navigateLightbox(direction: 1 | -1) {
-    const photos = displayedPhotos;
-    const currentIndex = lightboxPhoto
-      ? photos.findIndex((p) => p.id === lightboxPhoto!.id)
-      : -1;
-    if (currentIndex === -1) return;
-    const nextIndex = currentIndex + direction;
-    if (nextIndex < 0 || nextIndex >= photos.length) return;
-    lightboxPhoto = photos[nextIndex];
-  }
-
-  function getCategoryInfo(slug: string): PhotoCategory | undefined {
-    return data.categories.find((c) => c.slug === slug);
-  }
+    if (!lightboxPhoto) return
+    document.body.classList.add('gallery-lightbox-open')
+    return () => document.body.classList.remove('gallery-lightbox-open')
+  })
 </script>
 
-<SEOHead
-  title="Gallery"
-  description="Photos from everyday life - Charlie the golden retriever, food, places, and random moments captured by Lasse Skovgaard Nielsen."
-  jsonLd={breadcrumbSchema([
-    { name: "Home", url: "/" },
-    { name: "Gallery", url: "/gallery" },
-  ])}
-/>
+<SEOHead title="Gallery" description="Photos from life outside software, including Charlie, Lasse Skovgaard Nielsen's golden retriever." jsonLd={breadcrumbSchema([{ name: 'Home', url: '/' }, { name: 'Gallery', url: '/gallery' }])} />
 
-<div class="gallery-page">
-  <div class="container">
-    <header
-      class="gallery-header"
-      use:fadeInDown={{
-        duration: 500,
-        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
-      }}
-    >
-      <h1>Gallery</h1>
-      <p class="subtitle">Photos from life. Mostly Charlie, let's be honest.</p>
-    </header>
-
-    {#if data.error}
-      <div class="gallery-error">
-        <p>Gallery is temporarily unavailable. Please try again later.</p>
-      </div>
-    {:else}
-      <CategoryFilter
-        categories={data.categories}
-        photoCounts={data.photoCounts}
-        totalPhotos={data.totalPhotos}
-        {selectedCategory}
-        onselect={selectCategory}
-      />
-
-      {#if selectedCategory}
-        {@const info = getCategoryInfo(selectedCategory)}
-        {#if info?.description}
-          <p class="category-description" use:fadeInUp={{ duration: 350 }}>
-            {info.description}
-          </p>
-        {/if}
-      {/if}
-
-      <PhotoGrid
-        photos={displayedPhotos}
-        categories={data.categories}
-        {selectedCategory}
-        visible={gridVisible}
-        onphotoclick={openLightbox}
-      />
-
-      {#if hasMore}
-        <div class="sentinel" bind:this={sentinel}>
-          {#if loadingMore}
-            <div class="loading-spinner"></div>
-          {/if}
-        </div>
-      {/if}
-    {/if}
-  </div>
+<div class="gallery-page container">
+  <header class="gallery-intro" use:fadeInUp={{ duration: 500 }}><div><p class="eyebrow">Gallery</p><h1>Away from<br /><span>the keyboard.</span></h1></div><p class="intro-description">A few moments with Charlie, my golden retriever. He turns up in far too many of the photos here.</p></header>
+  {#if data.error}
+    <div class="gallery-error"><h2>The gallery is temporarily unavailable.</h2><p>Please try again later.</p><a class="text-link" href="/gallery" data-sveltekit-reload>Try again</a></div>
+  {:else}
+    <section class="gallery-album" aria-labelledby="album-heading">
+      <div class="album-heading"><h2 id="album-heading">{category?.name ?? (data.categories.length === 1 ? data.categories[0].name : 'Photos')}</h2><CategoryFilter categories={data.categories} photoCounts={data.photoCounts} totalPhotos={data.totalPhotos} {selectedCategory} /></div>
+      {#if category?.description}<p class="category-description">{category.description}</p>{/if}
+      <PhotoGrid photos={displayedPhotos} categories={data.categories} {selectedCategory} onphotoclick={(photo) => { lightboxPhoto = photo }} />
+      {#if displayedPhotos.length > 0}<div class="gallery-pagination"><p aria-live="polite">Showing {displayedPhotos.length} of {selectedTotal} photos</p>{#if hasMore}<a class="load-more" href={moreUrl} onclick={() => { pendingPhotoCount = displayedPhotos.length }} data-sveltekit-noscroll data-sveltekit-keepfocus aria-busy={loadingMore}>{loadingMore ? 'Loading photos…' : 'Load more photos'}<span aria-hidden="true">↓</span></a>{/if}</div>{/if}
+    </section>
+  {/if}
+  <div class="next-page"><p>More about the person behind the photos.</p><a class="text-link" href="/about">A little about me <span aria-hidden="true">→</span></a></div>
 </div>
-
-<GalleryLightbox
-  photo={lightboxPhoto}
-  photos={displayedPhotos}
-  categories={data.categories}
-  onclose={closeLightbox}
-  onnavigate={navigateLightbox}
-/>
+<GalleryLightbox photo={lightboxPhoto} photos={displayedPhotos} categories={data.categories} onclose={closeLightbox} onnavigate={navigateLightbox} />
 
 <style>
-  .gallery-page {
-    padding: var(--space-16) 0 var(--space-24);
-    min-height: calc(100vh - var(--header-height) - 200px);
-  }
-
-  .gallery-header {
-    margin-bottom: var(--space-8);
-  }
-
-  .gallery-header h1 {
-    font-size: var(--text-4xl);
-    margin-bottom: var(--space-2);
-    letter-spacing: -0.03em;
-  }
-
-  .subtitle {
-    font-size: var(--text-lg);
-    color: var(--color-text-muted);
-    margin: 0;
-  }
-
-  .category-description {
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-    margin: 0 0 var(--space-6);
-  }
-
-  @media (max-width: 768px) {
-    .gallery-page {
-      padding: var(--space-8) 0 var(--space-16);
-    }
-
-    .gallery-header h1 {
-      font-size: var(--text-3xl);
-    }
-  }
-
-  .gallery-error {
-    text-align: center;
-    padding: var(--space-16) var(--space-4);
-    color: var(--color-text-muted);
-    font-size: var(--text-lg);
-  }
-
-  .sentinel {
-    display: flex;
-    justify-content: center;
-    padding: var(--space-8) 0;
-    min-height: 80px;
-  }
-
-  .loading-spinner {
-    width: 32px;
-    height: 32px;
-    border: 3px solid var(--color-border);
-    border-top-color: var(--color-primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  :global(body.gallery-lightbox-open) { overflow: hidden; }
+  .gallery-intro { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, .65fr); gap: var(--space-12); padding-block: var(--space-16) var(--space-12); align-items: end; }
+  .eyebrow { font-size: var(--text-xs); font-weight: 400; letter-spacing: .075em; text-transform: uppercase; color: var(--color-text-muted); }
+  h1 { margin-top: var(--space-6); font-size: clamp(3.2rem, 6.7vw, 6.15rem); line-height: 1.04; letter-spacing: -.043em; font-weight: 500; }
+  h1 span { color: var(--color-accent); }
+  .intro-description { color: var(--color-text-muted); font-size: var(--text-lg); line-height: 1.6; padding-bottom: var(--space-2); }
+  .gallery-album { border-top: 1px solid var(--color-border); padding-top: var(--space-6); }
+  .album-heading { display: flex; justify-content: space-between; gap: var(--space-4); align-items: center; margin-bottom: var(--space-6); }
+  .album-heading h2 { font-size: 1.5rem; font-weight: 400; letter-spacing: -.025em; }
+  .category-description { color: var(--color-text-muted); margin-bottom: var(--space-6); }
+  .gallery-pagination { display: flex; justify-content: space-between; gap: var(--space-6); align-items: center; padding-top: var(--space-8); }
+  .gallery-pagination p { color: var(--color-text-muted); font-size: var(--text-sm); }
+  .load-more { min-height: 48px; display: inline-flex; align-items: center; gap: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-5); color: var(--color-accent); text-decoration: none; }
+  .load-more:hover { border-color: var(--color-accent); }
+  .text-link { min-height: 44px; display: inline-flex; align-items: center; gap: var(--space-3); color: var(--color-accent); font-size: var(--text-sm); text-decoration: none; }
+  .next-page { display: flex; justify-content: space-between; align-items: center; gap: var(--space-6); padding-block: var(--space-8); margin-top: var(--space-10); border-top: 1px solid var(--color-border); }
+  .next-page p, .gallery-error p { color: var(--color-text-muted); }
+  .gallery-error { padding-block: var(--space-10); border-top: 1px solid var(--color-border); }
+  .gallery-error h2 { font-size: var(--text-xl); font-weight: 400; }
+  .gallery-error p { margin-top: var(--space-3); }
+  .gallery-error a { margin-top: var(--space-4); }
+  @media (max-width: 1000px) { .gallery-intro { gap: var(--space-8); grid-template-columns: minmax(0, 1.4fr) minmax(0, .8fr); } h1 { font-size: clamp(3rem, 6.4vw, 5rem); } }
+  @media (max-width: 740px) { .gallery-intro { display: block; padding-block: var(--space-10) var(--space-8); } h1 { font-size: clamp(2.75rem, 9.8vw, 4.4rem); line-height: 1.08; letter-spacing: -.038em; margin-top: var(--space-5); } .intro-description { font-size: var(--text-base); margin-top: var(--space-5); } .album-heading { align-items: flex-start; flex-direction: column; } .gallery-pagination { align-items: flex-start; flex-direction: column; gap: var(--space-4); } .next-page { align-items: flex-start; flex-direction: column; gap: var(--space-2); margin-top: var(--space-8); padding-block: var(--space-6); } }
+  @media (max-width: 350px) { h1 { font-size: 2.55rem; } }
 </style>
