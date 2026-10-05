@@ -1,7 +1,9 @@
-import type { Handle } from '@sveltejs/kit'
-import { validateSession, SESSION_COOKIE } from '$lib/server/auth'
+import type { Handle, HandleServerError } from '@sveltejs/kit'
 
-export const handle: Handle = async ({ event, resolve }) => {
+import { validateSession, SESSION_COOKIE } from '$lib/server/auth'
+import { captureServerError, withRequestMonitoring } from '$lib/server/monitoring'
+
+const authHandle: Handle = async ({ event, resolve }) => {
   event.locals.user = null
   event.locals.sessionId = null
 
@@ -24,4 +26,12 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   return response
+}
+
+export const handle: Handle = ({ event, resolve }) =>
+  withRequestMonitoring(event.route.id, () => authHandle({ event, resolve }))
+
+export const handleError: HandleServerError = ({ error, event, status, message }) => {
+  captureServerError(error, event.route.id, status)
+  return { message }
 }
