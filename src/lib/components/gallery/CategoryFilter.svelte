@@ -1,120 +1,31 @@
 <script lang="ts">
   import type { PhotoCategory } from '$lib/gallery'
-  import { motion } from '@humanspeak/svelte-motion'
-
+  import Icon from '$lib/components/Icon.svelte'
   interface Props {
     categories: PhotoCategory[]
     photoCounts: Record<string, number>
     totalPhotos: number
     selectedCategory: string | null
-    onselect: (slug: string | null) => void
   }
-
-  let {
-    categories,
-    photoCounts,
-    totalPhotos,
-    selectedCategory,
-    onselect
-  }: Props = $props()
+  let { categories, photoCounts, totalPhotos, selectedCategory }: Props = $props()
+  function categoryUrl(slug: string): string { return `/gallery?${new URLSearchParams({ category: slug })}` }
 </script>
 
 <nav class="category-filter" aria-label="Photo categories">
-  <motion.button
-    class="filter-btn {selectedCategory === null ? 'active' : ''}"
-    initial={{ opacity: 0, scale: 0.92, y: 8 }}
-    animate={{ opacity: 1, scale: 1, y: 0 }}
-    transition={{ duration: 0.4, delay: 0.15 }}
-    whileHover={{ y: -2, transition: { duration: 0.12 } }}
-    whileTap={{ scale: 0.95 }}
-    onclick={() => onselect(null)}
-  >
-    All
-    <span class="filter-count">{totalPhotos}</span>
-  </motion.button>
-  {#each categories as category, i}
-    {@const count = photoCounts[category.slug] || 0}
-    {#if count > 0}
-      <motion.button
-        class="filter-btn {selectedCategory === category.slug ? 'active' : ''}"
-        initial={{ opacity: 0, scale: 0.92, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: (i + 1) * 0.06 + 0.15 }}
-        whileHover={{ y: -2, transition: { duration: 0.12 } }}
-        whileTap={{ scale: 0.95 }}
-        onclick={() => onselect(category.slug)}
-      >
-        {category.name}
-        <span class="filter-count">{count}</span>
-      </motion.button>
-    {/if}
+  <a class="filter-btn" class:active={selectedCategory === null} href="/gallery" aria-current={selectedCategory === null ? 'page' : undefined}><span class="category-icon"><Icon name="grid" size="sm" /></span>All <span class="filter-count">{totalPhotos}</span></a>
+  {#each categories as category (category.slug)}
+    <a class="filter-btn" class:active={selectedCategory === category.slug} href={categoryUrl(category.slug)} aria-current={selectedCategory === category.slug ? 'page' : undefined}><span class="category-icon"><Icon name="folder" size="sm" /></span>{category.name} <span class="filter-count">{photoCounts[category.slug] ?? 0}</span></a>
   {/each}
 </nav>
 
 <style>
-  .category-filter {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin-bottom: var(--space-4);
-  }
-
-  :global(.filter-btn) {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-4);
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-full);
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition:
-      background-color var(--transition-base),
-      border-color var(--transition-base),
-      color var(--transition-base),
-      box-shadow var(--transition-base);
-    font-weight: 500;
-  }
-
-  :global(.filter-btn:hover) {
-    background-color: var(--color-bg-tertiary);
-    border-color: var(--color-border-hover);
-    color: var(--color-text);
-    box-shadow: var(--shadow-sm);
-  }
-
-  :global(.filter-btn.active .filter-count) {
-    opacity: 0.9;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 0.1em 0.5em;
-    border-radius: var(--radius-full);
-  }
-
-  :global(.filter-btn.active) {
-    background-color: var(--color-primary);
-    border-color: var(--color-primary);
-    color: white;
-    box-shadow: 0 2px 8px
-      color-mix(in oklch, var(--color-primary) 30%, transparent);
-  }
-
-  :global([data-theme='dark']) :global(.filter-btn.active) {
-    box-shadow: 0 2px 8px
-      color-mix(in oklch, var(--color-primary-light) 25%, transparent);
-  }
-
-  .filter-count {
-    font-size: var(--text-xs);
-    opacity: 0.7;
-    font-weight: 400;
-  }
-
-  @media (max-width: 480px) {
-    :global(.filter-btn) {
-      font-size: var(--text-xs);
-      padding: var(--space-1) var(--space-3);
-    }
-  }
+  .category-filter { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+  .filter-btn { display: inline-flex; align-items: center; gap: var(--space-3); min-height: 44px; padding: var(--space-2) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-muted); background: var(--color-bg); font-size: var(--text-sm); text-decoration: none; transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease; }
+  .filter-btn:hover { color: var(--color-accent); border-color: var(--color-accent); }
+  .filter-btn.active { color: var(--color-bg); background: var(--color-accent); border-color: var(--color-accent); }
+  .filter-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; }
+  .filter-count { font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+  .category-icon { display: inline-flex; transition: transform 220ms cubic-bezier(.2, .7, .2, 1); }
+  @media (hover: hover) { .filter-btn:hover .category-icon { transform: translateY(-2px); } }
+  @media (prefers-reduced-motion: reduce) { .filter-btn, .category-icon { transition: none; } .filter-btn:hover .category-icon { transform: none; } }
 </style>

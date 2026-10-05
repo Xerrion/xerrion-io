@@ -9,7 +9,7 @@
  *  - slideInUpSmall keyframe (used by gallery badges only)
  */
 
-/* Slide In Up Small — subtle micro entrance (used by gallery badges) */
+/* Slide In Up Small. Subtle entrance for gallery badges. */
 @keyframes slideInUpSmall {
   from {
     opacity: 0;
@@ -35,6 +35,9 @@
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   *,
   *::before,
   *::after {

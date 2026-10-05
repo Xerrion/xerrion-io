@@ -118,3 +118,41 @@
   --shadow-lg:
     0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
 }
+
+/* The public portfolio has its own approved palette. Admin keeps its theme. */
+:root:has(.public-site),
+.public-site {
+  color-scheme: dark;
+  --color-bg: oklch(0.15 0.018 258);
+  --color-background: var(--color-bg);
+  --color-bg-secondary: oklch(0.20 0.022 258);
+  --color-bg-tertiary: oklch(0.25 0.030 258);
+  --color-surface: var(--color-bg-secondary);
+  --color-surface-hover: var(--color-bg-tertiary);
+  --color-text: oklch(0.94 0.006 250);
+  --color-text-secondary: oklch(0.76 0.018 250);
+  --color-text-muted: var(--color-text-secondary);
+  --color-muted: var(--color-text-secondary);
+  --color-border: oklch(0.35 0.026 255);
+  --color-border-hover: oklch(0.48 0.050 255);
+  --color-accent: oklch(0.84 0.090 248);
+  --color-accent-hover: oklch(0.90 0.065 248);
+  --color-primary: var(--color-accent);
+  --color-primary-hover: var(--color-accent-hover);
+  --color-primary-light: var(--color-accent-hover);
+  --color-clear: oklch(0 0 0 / 0);
+  --color-menu-surface: oklch(0.21 0.027 258);
+  --color-menu-active: oklch(0.28 0.048 255);
+  --color-backdrop: oklch(0.10 0.02 258 / 0.75);
+  --color-overlay: var(--color-backdrop);
+  --color-overlay-heavy: oklch(0.10 0.02 258 / 0.95);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  --text-lg: 1.1875rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --radius-sm: 3px;
+  --max-width: 1220px;
+  --header-height: 98px;
+  --motion-easing: cubic-bezier(0.16, 1, 0.3, 1);
+}

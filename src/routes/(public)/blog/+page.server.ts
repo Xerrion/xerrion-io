@@ -1,7 +1,6 @@
 import type { PageServerLoad } from './$types'
 import type { BlogPostCard } from '$lib/types/blog'
-
-import { Prisma } from '$lib/generated/prisma/client'
+import type { Prisma } from '$lib/generated/prisma/client'
 import { getPrisma } from '$lib/server/db'
 import { getR2Url } from '$lib/server/r2'
 
@@ -18,13 +17,18 @@ export const load: PageServerLoad = async ({ url }) => {
       }
     }
 
-    const posts = await prisma.post.findMany({
-      where: whereClause,
-      orderBy: { publishedAt: 'desc' },
-      include: {
-        tags: { include: { tag: true } }
-      }
-    })
+    const [posts, tags] = await Promise.all([
+      prisma.post.findMany({
+        where: whereClause,
+        orderBy: { publishedAt: 'desc' },
+        include: { tags: { include: { tag: true } } }
+      }),
+      prisma.tag.findMany({
+        where: { posts: { some: { post: { status: 'published' } } } },
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: 'asc' }
+      })
+    ])
 
     const mappedPosts: BlogPostCard[] = posts.map((post) => ({
       id: post.id,
@@ -41,9 +45,14 @@ export const load: PageServerLoad = async ({ url }) => {
       }))
     }))
 
-    return { posts: mappedPosts, activeTag: tagFilter, error: null }
+    return { posts: mappedPosts, tags, activeTag: tagFilter, error: null }
   } catch (err) {
     console.error('[blog] Failed to load posts:', err)
-    return { posts: [], activeTag: tagFilter, error: 'Failed to load posts' }
+    return {
+      posts: [],
+      tags: [],
+      activeTag: tagFilter,
+      error: 'Failed to load posts'
+    }
   }
 }

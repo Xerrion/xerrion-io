@@ -1,70 +1,122 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './public-fixtures'
 
-test.describe('Navigation', () => {
-  test.beforeEach(async ({ page }) => {
+const links = [
+  ['Home', '/'], ['Projects', '/projects'], ['About', '/about'],
+  ['Blog', '/blog'], ['Gallery', '/gallery']
+]
+
+test.describe('Public navigation', () => {
+  test('shows the approved navigation order and home identity', async ({ page }) => {
     await page.goto('/')
-  })
-
-  test('header is visible and fixed', async ({ page }) => {
-    const header = page.locator('.header')
-    await expect(header).toBeVisible()
-    await expect(header).toHaveCSS('position', 'fixed')
-  })
-
-  test('logo is visible, contains text and links to home', async ({ page }) => {
-    const logo = page.locator('.logo')
-    await expect(logo).toBeVisible()
-    await expect(logo).toHaveAttribute('href', '/')
-
-    const logoText = logo.locator('.logo-text')
-    await expect(logoText).toHaveText('Xerrion')
-
-    await logo.click()
-    await expect(page).toHaveURL('/')
-  })
-
-  test('nav links exist with correct text and href', async ({ page }) => {
-    const navLinks = page.locator('.nav-link')
-    await expect(navLinks).toHaveCount(4)
-
-    const expectedLinks = [
-      { text: 'Home', href: '/' },
-      { text: 'About', href: '/about' },
-      { text: 'Projects', href: '/projects' },
-      { text: 'Gallery', href: '/gallery' }
-    ]
-
-    for (let i = 0; i < expectedLinks.length; i++) {
-      const link = navLinks.nth(i)
-      await expect(link).toHaveText(expectedLinks[i].text)
-      await expect(link).toHaveAttribute('href', expectedLinks[i].href)
+    const navigation = page.locator('.desktop-navigation')
+    await expect(navigation).toBeVisible()
+    for (const [index, [label, href]] of links.entries()) {
+      const link = navigation.locator('a').nth(index)
+      await expect(link).toHaveText(label)
+      await expect(link).toHaveAttribute('href', href)
     }
+    await expect(navigation.getByRole('link', { name: /Say hi/ })).toHaveAttribute('href', 'mailto:lasse@xerrion.dk')
+    await expect(page.locator('.site-header .brand')).toHaveAttribute('href', '/')
   })
 
-  test('active state works correctly', async ({ page }) => {
-    const homeLink = page.locator('.nav-link', { hasText: 'Home' })
-    await expect(homeLink).toHaveClass(/active/)
-
-    await page.goto('/about')
-    const aboutLink = page.locator('.nav-link', { hasText: 'About' })
-    await expect(aboutLink).toHaveClass(/active/)
-    await expect(homeLink).not.toHaveClass(/active/)
-  })
-
-  test('navigation links work', async ({ page }) => {
-    await page.click('.nav-link:has-text("About")')
+  test('updates the active page after client navigation', async ({ page }) => {
+    await page.goto('/')
+    const navigation = page.locator('.desktop-navigation')
+    await expect(navigation.locator('a[aria-current="page"]')).toHaveAttribute('href', '/')
+    await navigation.getByRole('link', { name: 'About', exact: true }).click()
     await expect(page).toHaveURL('/about')
+    await expect(navigation.locator('a[aria-current="page"]')).toHaveAttribute('href', '/about')
+    await page.goBack()
+    await expect(navigation.locator('a[aria-current="page"]')).toHaveAttribute('href', '/')
   })
 
-  test('skip-to-content link works correctly', async ({ page }) => {
-    const skipLink = page.locator('.skip-link')
-    await expect(skipLink).toHaveAttribute('href', '#main-content')
-
+  test('lets keyboard users skip directly to main content', async ({ page }) => {
+    await page.goto('/')
+    const skip = page.locator('.skip-link')
+    await expect(skip).toHaveAttribute('href', '#main-content')
     await page.keyboard.press('Tab')
-    await expect(skipLink).toBeFocused()
-    await expect(skipLink).toBeVisible()
+    await expect(skip).toBeFocused()
+    await expect(skip).toBeInViewport()
+    await page.keyboard.press('Enter')
+    await expect(page.locator('#main-content')).toBeFocused()
+  })
 
-    const mainContent = page.locator('#main-content')
-    await expect(mainContent).toBeAttached()
+  test.describe('Mobile menu', () => {
+    test.use({ viewport: { width: 390, height: 844 }, contextOptions: { reducedMotion: 'reduce' } })
+
+    test('opens a native modal, protects the page, and restores focus', async ({ page }) => {
+      await page.goto('/')
+      const trigger = page.getByRole('button', { name: 'Open navigation menu' })
+      const dialog = page.locator('dialog.menu-dialog')
+      const close = page.getByRole('button', { name: 'Close navigation menu' })
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      await trigger.click()
+      await expect(dialog).toBeVisible()
+      expect(await dialog.evaluate(element => element.matches(':modal'))).toBe(true)
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+      await expect(close).toBeFocused()
+      const underlyingLink = page.locator('.site-header .brand')
+      await underlyingLink.evaluate(element => element.focus())
+      await expect(close).toBeFocused()
+      for (let index = 0; index < 13; index++) {
+        await page.keyboard.press('Tab')
+        expect(await dialog.evaluate(element => element.contains(document.activeElement) || document.activeElement === document.body)).toBe(true)
+      }
+      await close.focus()
+      const before = await page.evaluate(() => scrollY)
+      await page.mouse.move(375, 420)
+      await page.mouse.wheel(0, 600)
+      await expect.poll(() => page.evaluate(() => scrollY)).toBe(before)
+      await page.keyboard.press('Escape')
+      await expect(dialog).not.toBeVisible()
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      await expect(trigger).toBeFocused()
+      await trigger.click()
+      await close.click()
+      await expect(dialog).not.toBeVisible()
+      await expect(trigger).toBeFocused()
+    })
+
+    test('closes on navigation and marks the destination', async ({ page }) => {
+      await page.goto('/')
+      await page.locator('.menu-trigger').click()
+      await page.locator('.mobile-navigation').getByRole('link', { name: /About/ }).click()
+      await expect(page).toHaveURL('/about')
+      await expect(page.locator('.menu-dialog')).not.toBeVisible()
+      await expect(page.locator('.menu-trigger')).toHaveAttribute('aria-expanded', 'false')
+      await page.locator('.menu-trigger').click()
+      await expect(page.locator('.mobile-navigation a[aria-current="page"]')).toHaveAttribute('href', '/about')
+    })
+
+    test('closes and releases the page when resized to desktop', async ({ page }) => {
+      await page.goto('/')
+      await page.locator('.menu-trigger').click()
+      await page.setViewportSize({ width: 1440, height: 1080 })
+      await expect(page.locator('.menu-dialog')).not.toBeVisible()
+      await expect(page.locator('.menu-trigger')).toHaveAttribute('aria-expanded', 'false')
+      await expect(page.locator('.menu-trigger')).not.toBeVisible()
+      await expect(page.locator('.desktop-navigation')).toBeVisible()
+      expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).not.toBe('hidden')
+    })
+
+    test('keeps a reopened menu active after a pending close event', async ({ page }) => {
+      await page.goto('/')
+      await page.locator('.menu-trigger').click()
+      await page.locator('.menu-close').click()
+      await page.evaluate(() => {
+        const trigger = document.querySelector<HTMLButtonElement>('.menu-trigger')!
+        const close = document.querySelector<HTMLButtonElement>('.menu-close')!
+        trigger.click()
+        close.click()
+        trigger.click()
+      })
+      await expect(page.locator('.menu-dialog')).toBeVisible()
+      await expect(page.locator('.menu-trigger')).toHaveAttribute('aria-expanded', 'true')
+      await expect(page.locator('.menu-close')).toBeFocused()
+      expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).toBe('hidden')
+      await page.keyboard.press('Escape')
+      await expect(page.locator('.menu-dialog')).not.toBeVisible()
+      await expect(page.locator('.menu-trigger')).toBeFocused()
+    })
   })
 })
