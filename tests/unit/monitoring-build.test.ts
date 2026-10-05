@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, test } from 'bun:test'
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { afterEach, describe, expect, setDefaultTimeout, test } from 'bun:test'
+import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { SourceMap } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
@@ -7,6 +7,9 @@ import { brotliDecompressSync, gunzipSync } from 'node:zlib'
 import { createSentrySDK } from 'sentry'
 
 import { prepareMonitoringBuild } from '../../scripts/prepare-monitoring'
+
+// Real SDK startup and local HTTP uploads need time to complete on a busy build host.
+setDefaultTimeout(15000)
 
 const fixtureDirectories: string[] = []
 
@@ -173,6 +176,7 @@ describe('monitoring build preparation', () => {
     let injected = false
     let uploaded = false
     const previousTelemetry = process.env.SENTRY_CLI_NO_TELEMETRY
+    const previousConfigDirectory = process.env.SENTRY_CONFIG_DIR
     await prepareMonitoringBuild(fixture.build, {}, (options) => {
       expect(options.url).toBe('http://127.0.0.1')
       expect(options.token).toBeUndefined()
@@ -188,6 +192,45 @@ describe('monitoring build preparation', () => {
     expect(injected).toBe(true)
     expect(uploaded).toBe(false)
     expect(process.env.SENTRY_CLI_NO_TELEMETRY).toBe(previousTelemetry)
+    expect(process.env.SENTRY_CONFIG_DIR).toBe(previousConfigDirectory)
+  })
+
+  test.each([false, true])('restores existing SDK configuration and removes only its own directory after injection failure = %j', async (failInjection) => {
+    const fixture = await createBuildFixture()
+    const originalConfigDirectory = join(fixture.directory, 'original-cli-state')
+    const originalState = join(originalConfigDirectory, 'cli.db')
+    await writeFixtureFile(originalState, 'Original CLI state fixture')
+    const previousConfigDirectory = process.env.SENTRY_CONFIG_DIR
+    const previousNoCache = process.env.SENTRY_NO_CACHE
+    process.env.SENTRY_CONFIG_DIR = originalConfigDirectory
+    let temporaryConfigDirectory: string | undefined
+    try {
+      const preparation = prepareMonitoringBuild(fixture.build, {}, () => {
+        temporaryConfigDirectory = process.env.SENTRY_CONFIG_DIR
+        expect(temporaryConfigDirectory).toBeDefined()
+        expect(temporaryConfigDirectory).not.toBe(originalConfigDirectory)
+        expect(process.env.SENTRY_NO_CACHE).toBe(previousNoCache)
+        return { sourcemap: {
+          async inject() {
+            if (!temporaryConfigDirectory) throw new Error('Expected isolated SDK configuration.')
+            await access(temporaryConfigDirectory)
+            expect(await Bun.file(originalState).text()).toBe('Original CLI state fixture')
+            if (failInjection) throw new Error('Synthetic injection failure')
+          },
+          async upload() { throw new Error('Unexpected upload') }
+        } }
+      })
+      if (failInjection) await expect(preparation).rejects.toThrow('Source map injection failed. Check the generated build maps.')
+      else await preparation
+      expect(process.env.SENTRY_CONFIG_DIR).toBe(originalConfigDirectory)
+      expect(process.env.SENTRY_NO_CACHE).toBe(previousNoCache)
+      if (!temporaryConfigDirectory) throw new Error('Expected isolated SDK configuration.')
+      await expect(access(temporaryConfigDirectory)).rejects.toMatchObject({ code: 'ENOENT' })
+      expect(await readFile(originalState, 'utf8')).toBe('Original CLI state fixture')
+    } finally {
+      if (previousConfigDirectory === undefined) delete process.env.SENTRY_CONFIG_DIR
+      else process.env.SENTRY_CONFIG_DIR = previousConfigDirectory
+    }
   })
 
   test('requires an explicit instance and slugs before it uses a token', async () => {
@@ -330,6 +373,107 @@ describe('monitoring build preparation', () => {
       api.stop(true)
     }
   })
+
+  test('uploads through the real SDK transport twice with fresh isolated configuration and cleans up both directories', async () => {
+    const fixture = await createBuildFixture()
+    const token = 'synthetic-build-token'
+    const requests: string[] = []
+    const uploadedChunks = new Set<string>()
+    let uploadedBytes = 0
+    const api = Bun.serve({
+      hostname: '127.0.0.1',
+      port: 0,
+      async fetch(request): Promise<Response> {
+        const path = new URL(request.url).pathname
+        requests.push(request.method + ' ' + path)
+        if (request.method === 'GET' && path === '/api/0/organizations/example/') {
+          return Response.json({ slug: 'example', links: { regionUrl: `http://127.0.0.1:${api.port}` } })
+        }
+        if (request.method === 'GET' && path === '/api/0/organizations/example/chunk-upload/') {
+          return Response.json({
+            url: `http://127.0.0.1:${api.port}/api/0/organizations/example/chunk-upload/`,
+            chunkSize: 33554432, chunksPerRequest: 1, maxRequestSize: 33554432,
+            hashAlgorithm: 'sha1', concurrency: 1, compression: ['gzip'], maxFileSize: 4294967296, maxWait: 300
+          })
+        }
+        if (request.method === 'POST' && path === '/api/0/organizations/example/chunk-upload/') {
+          const file = (await request.formData()).get('file_gzip')
+          if (!(file instanceof File)) return Response.json({ detail: 'Invalid synthetic chunk' }, { status: 400 })
+          uploadedChunks.add(file.name)
+          uploadedBytes += gunzipSync(new Uint8Array(await file.arrayBuffer())).byteLength
+          return Response.json({})
+        }
+        if (request.method === 'POST' && path === '/api/0/organizations/example/artifactbundle/assemble/') {
+          const body = await request.json() as { chunks: string[]; projects: string[] }
+          if (body.projects.length !== 1 || body.projects[0] !== 'website') {
+            return Response.json({ detail: 'Invalid synthetic project' }, { status: 400 })
+          }
+          const missingChunks = body.chunks.filter((checksum) => !uploadedChunks.has(checksum))
+          return Response.json({ state: missingChunks.length ? 'not_found' : 'created', missingChunks })
+        }
+        return Response.json({ detail: 'Unexpected synthetic endpoint' }, { status: 404 })
+      }
+    })
+    const runner = join(fixture.directory, 'transport.ts')
+    const originalConfigDirectory = join(fixture.directory, 'original-cli-state')
+    await writeFixtureFile(join(originalConfigDirectory, 'cli.db'), 'Original CLI state fixture')
+    await writeFile(runner, `
+      import { prepareMonitoringBuild } from ${JSON.stringify(resolve('scripts/prepare-monitoring.ts'))}
+      import { createSentrySDK } from ${JSON.stringify(resolve('node_modules/sentry/dist/index.mjs'))}
+      import { existsSync } from 'node:fs'
+      const originalConfigDirectory = process.env.SENTRY_CONFIG_DIR
+      const configurations: string[] = []
+      const results = []
+      const realFetch = globalThis.fetch
+      const guardedFetch = async (input, options) => {
+        const target = new URL(input instanceof Request ? input.url : input.toString())
+        if (target.origin !== process.env.SENTRY_URL) throw new Error('Only the local fixture API is allowed.')
+        return realFetch(input, options)
+      }
+      guardedFetch.preconnect = realFetch.preconnect
+      globalThis.fetch = guardedFetch
+      for (let attempt = 0; attempt < 2; attempt++) {
+        results.push(await prepareMonitoringBuild(process.argv[2], process.env, (options) => {
+          configurations.push(process.env.SENTRY_CONFIG_DIR!)
+          return createSentrySDK(options)
+        }))
+      }
+      console.log(JSON.stringify({
+        uploaded: results.every((result) => result.uploaded),
+        restored: process.env.SENTRY_CONFIG_DIR === originalConfigDirectory,
+        unique: new Set(configurations).size === 2,
+        removed: configurations.every((directory) => !existsSync(directory))
+      }))
+    `)
+    try {
+      const processResult = Bun.spawn([process.execPath, '--no-env-file', runner, fixture.build], {
+        cwd: fixture.directory,
+        env: {
+          PATH: process.env.PATH, SENTRY_AUTH_TOKEN: token,
+          SENTRY_URL: `http://127.0.0.1:${api.port}`, SENTRY_ORG: 'example', SENTRY_PROJECT: 'website',
+          SENTRY_CONFIG_DIR: originalConfigDirectory, XDG_CACHE_HOME: join(fixture.directory, 'api-cache')
+        },
+        stdout: 'pipe',
+        stderr: 'pipe'
+      })
+      const [exitCode, stdout, stderr] = await Promise.all([
+        processResult.exited, new Response(processResult.stdout).text(), new Response(processResult.stderr).text()
+      ])
+      expect(exitCode).toBe(0)
+      expect(stderr).toBe('')
+      expect(JSON.parse(stdout)).toEqual({ uploaded: true, restored: true, unique: true, removed: true })
+      expect(requests).toContain('GET /api/0/organizations/example/chunk-upload/')
+      expect(requests.filter((request) => request === 'POST /api/0/organizations/example/artifactbundle/assemble/').length).toBeGreaterThanOrEqual(2)
+      expect(requests).toContain('POST /api/0/organizations/example/chunk-upload/')
+      expect(uploadedBytes).toBeGreaterThan(0)
+      expect(await readFile(join(originalConfigDirectory, 'cli.db'), 'utf8')).toBe('Original CLI state fixture')
+      expect(await Bun.file(fixture.clientScript + '.map').exists()).toBe(false)
+      expect(await Bun.file(join(fixture.build, 'monitoring', 'client', relative(join(fixture.build, 'client'), fixture.clientScript)) + '.map').exists()).toBe(true)
+      expect(stdout + stderr).not.toContain(token)
+    } finally {
+      api.stop(true)
+    }
+  }, 30000)
 
   test('rejects malformed build maps with fixed diagnostics', async () => {
     const fixture = await createBuildFixture()

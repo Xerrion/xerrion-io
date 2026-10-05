@@ -1,5 +1,6 @@
-import { access, mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib'
 import { createSentrySDK, type SentryOptions } from 'sentry'
@@ -192,9 +193,12 @@ export async function prepareMonitoringBuild(
   const directory = resolve(buildDirectory)
   const previousTelemetry = process.env.SENTRY_CLI_NO_TELEMETRY
   const previousDoNotTrack = process.env.DO_NOT_TRACK
+  const previousConfigDirectory = process.env.SENTRY_CONFIG_DIR
+  const configDirectory = await mkdtemp(join(tmpdir(), 'xerrion-monitoring-sdk-'))
   // The SDK checks these values when it executes a command, including local injection.
   process.env.SENTRY_CLI_NO_TELEMETRY = '1'
   process.env.DO_NOT_TRACK = '1'
+  process.env.SENTRY_CONFIG_DIR = configDirectory
 
   try {
     await restoreArchivedClientMaps(directory)
@@ -255,6 +259,13 @@ export async function prepareMonitoringBuild(
     else process.env.SENTRY_CLI_NO_TELEMETRY = previousTelemetry
     if (previousDoNotTrack === undefined) delete process.env.DO_NOT_TRACK
     else process.env.DO_NOT_TRACK = previousDoNotTrack
+    if (previousConfigDirectory === undefined) delete process.env.SENTRY_CONFIG_DIR
+    else process.env.SENTRY_CONFIG_DIR = previousConfigDirectory
+    try {
+      await rm(configDirectory, { recursive: true, force: true })
+    } catch {
+      throw new MonitoringBuildError('Monitoring SDK cleanup failed.')
+    }
   }
 }
 

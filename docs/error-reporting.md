@@ -36,6 +36,8 @@ The DSN permits error ingestion. It cannot upload source maps. Without a build t
 
 For Coolify 4.3.23, leave the upload token unset. Its deployment command logs can retain the base64-encoded build environment. BuildKit secret mounts do not prevent that log entry. Upload the exact build artifacts from a separate local or CI process until this behavior is fixed. See the [environment-file command](https://github.com/coollabsio/coolify/blob/v4.3.23/app/Jobs/ApplicationDeploymentJob.php#L1933-L1951) and [command-log serialization](https://github.com/coollabsio/coolify/blob/v4.3.23/app/Traits/ExecuteRemoteCommand.php#L173-L180).
 
+Each invocation gives the SDK a temporary configuration directory. This prevents uploads from depending on the user's cached CLI database. The helper restores the original directory setting when it finishes.
+
 An upload retry can run `bun scripts/prepare-monitoring.ts` against the same build with upload variables supplied through a private environment file or secret store. It restores archived browser maps, preserves the emitted JavaScript and debug IDs, and archives maps again after upload. A separate rebuild may have different IDs; upload the artifacts that produced the event.
 
 Delivery tests and source map tests have different purposes. A console-injected or `bun -e` error confirms delivery but has no original application source file. Validate useful diagnostics with an error from compiled application code. Confirm its original filename, line, function, and source context in GlitchTip after map upload.
