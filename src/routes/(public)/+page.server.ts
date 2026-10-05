@@ -49,16 +49,15 @@ async function loadGalleryPreviews(): Promise<GalleryPreviews> {
     const prisma = getPrisma()
     const query = {
       orderBy: [{ uploadedAt: 'desc' as const }, { id: 'desc' as const }],
-      take: 1,
       include: { sizes: true as const, category: { select: { slug: true as const } } }
     }
     const hasImage = { sizes: { some: {} } }
     const [galleryRows, charlieRows] = await Promise.all([
-      prisma.photo.findMany({ ...query, where: hasImage }),
-      prisma.photo.findMany({ ...query, where: { ...hasImage, category: { slug: 'charlie' } } })
+      prisma.photo.findMany({ ...query, take: 2, where: hasImage }),
+      prisma.photo.findMany({ ...query, take: 1, where: { ...hasImage, category: { slug: 'charlie' } } })
     ])
-    const galleryRow = galleryRows[0]
     const charlieRow = charlieRows[0]
+    const galleryRow = galleryRows.find((row) => row.id !== charlieRow?.id) ?? galleryRows[0]
     return {
       galleryPhoto: galleryRow ? mapRowToPhoto({ photo: galleryRow, category: galleryRow.category }) : null,
       charliePhoto: charlieRow ? mapRowToPhoto({ photo: charlieRow, category: charlieRow.category }) : null,

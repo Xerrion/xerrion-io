@@ -45,7 +45,7 @@ describe('Home gallery loading', () => {
     expect(findPhotos).toHaveBeenNthCalledWith(1, {
       where: { sizes: { some: {} } },
       orderBy: [{ uploadedAt: 'desc' }, { id: 'desc' }],
-      take: 1,
+      take: 2,
       include: { sizes: true, category: { select: { slug: true } } }
     })
     expect(findPhotos).toHaveBeenNthCalledWith(2, {
@@ -57,6 +57,28 @@ describe('Home gallery loading', () => {
     expect(result).toMatchObject({
       galleryPhoto: { id: '20', category: 'nature', mediumUrl: `${publicUrl}/gallery/nature/20-medium.webp` },
       charliePhoto: { id: '19', category: 'charlie', mediumUrl: `${publicUrl}/gallery/charlie/19-medium.webp` },
+      galleryError: null
+    })
+  })
+
+  test('avoids repeating the Charlie portrait when another recent gallery photo exists', async () => {
+    const newestCharlie = photoRow(20, 'charlie')
+    findPhotos.mockResolvedValueOnce([newestCharlie, photoRow(19, 'charlie')]).mockResolvedValueOnce([newestCharlie])
+
+    expect(await load(event)).toMatchObject({
+      galleryPhoto: { id: '19' },
+      charliePhoto: { id: '20' },
+      galleryError: null
+    })
+  })
+
+  test('uses the only available photo for both positions when the gallery contains one photo', async () => {
+    const onlyPhoto = photoRow(20, 'charlie')
+    findPhotos.mockResolvedValueOnce([onlyPhoto]).mockResolvedValueOnce([onlyPhoto])
+
+    expect(await load(event)).toMatchObject({
+      galleryPhoto: { id: '20' },
+      charliePhoto: { id: '20' },
       galleryError: null
     })
   })
