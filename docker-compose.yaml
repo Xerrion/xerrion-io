@@ -114,6 +114,12 @@ services:
       PUBLIC_UMAMI_WEBSITE_ID: ${PUBLIC_UMAMI_WEBSITE_ID}
       PUBLIC_GA_MEASUREMENT_ID: ${PUBLIC_GA_MEASUREMENT_ID}
 
+      # Error reporting (Sentry SDKs with GlitchTip compatibility)
+      PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      PUBLIC_SENTRY_ENVIRONMENT: ${PUBLIC_SENTRY_ENVIRONMENT:-production}
+      PUBLIC_SENTRY_RELEASE: ${PUBLIC_SENTRY_RELEASE:-}
+
 volumes:
   postgres_data:
   redis_data:
