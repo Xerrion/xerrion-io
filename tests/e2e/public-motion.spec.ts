@@ -58,8 +58,10 @@ test.describe('Public motion', () => {
   test('renders a real intermediate menu entrance and exit', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
     await page.locator('.menu-trigger').click()
     const dialog = page.locator('.menu-dialog')
+    await expect(dialog).toBeVisible()
     const entrance = await dialog.evaluate(element => {
       const animation = element.getAnimations().find(animation => animation instanceof CSSAnimation && animation.animationName.includes('menu-arrive'))!
       const duration = Number(animation.effect!.getTiming().duration)
@@ -232,6 +234,6 @@ test.describe('Public motion', () => {
     await photo.hover()
     await expect(photo.locator('img')).toHaveCSS('transform', 'none')
     await expectInstantTransition(photo.locator('img'))
-    expect(await page.locator('main').evaluate(node => node.getAnimations({ subtree: true }).length)).toBe(0)
+    await expect.poll(() => page.locator('main').evaluate(node => node.getAnimations({ subtree: true }).length)).toBe(0)
   })
 })
