@@ -8,22 +8,26 @@
 
   interface Props { data: PageData }
   let { data }: Props = $props()
+  const charlieSource = $derived(data.charliePhoto?.mediumUrl ?? data.charliePhoto?.thumbUrl ?? data.charliePhoto?.fullUrl)
+  const gallerySource = $derived(data.galleryPhoto?.mediumUrl ?? data.galleryPhoto?.thumbUrl ?? data.galleryPhoto?.fullUrl)
 </script>
 
 <SEOHead title="Xerrion - Lasse's Corner of the Internet" description="I'm Lasse Skovgaard Nielsen, a software developer in Odense, Denmark. I build internal tools at TV 2 Danmark and explore ideas through personal projects." jsonLd={[websiteSchema(), personSchema()]} />
 
 <div class="container">
-      <section class="hero" aria-labelledby="intro-heading">
+      <section class="hero" class:hero-without-photo={!charlieSource} aria-labelledby="intro-heading">
         <div class="hero-content">
           <p class="hero-eyebrow eyebrow" use:fadeInUp={{ duration: 500 }}><Icon name="code" size="sm" /> Software developer · Odense, Denmark</p>
           <h1 id="intro-heading" use:fadeInUp={{ duration: 650, delay: 60 }}>I'm Lasse.<span>I build software.</span></h1>
           <p class="hero-description" use:fadeInUp={{ duration: 600, delay: 120 }}>I'm <strong>Lasse Skovgaard Nielsen</strong>, online as Xerrion. I build internal tools at TV 2 Danmark and explore ideas through personal projects.</p>
           <div class="hero-actions" use:fadeInUp={{ duration: 550, delay: 180 }}><a class="button" href="/projects">See my projects <Icon name="arrow-right" size="sm" /></a><a class="text-link" href="/about">A little about me <Icon name="arrow-right" size="sm" /></a></div>
         </div>
-        <aside class="charlie-aside" use:fadeIn={{ duration: 650, delay: 200 }} aria-label="Charlie, my golden retriever">
-          <a class="charlie-link" href="/gallery"><img class="charlie-photo" src="https://pub-371d85115c2944799b7b432c262540fb.r2.dev/gallery/charlie/img_20230813_112523-x5xgpi-medium.webp" alt="Charlie, my golden retriever" width="408" height="434"><span class="charlie-caption"><span class="charlie-name"><Icon name="paw" size="sm" /> Meet Charlie</span><Icon name="arrow-right" size="sm" /></span></a>
-          <p>My golden retriever.</p>
-        </aside>
+        {#if charlieSource && data.charliePhoto}
+          <aside class="charlie-aside" use:fadeIn={{ duration: 650, delay: 200 }} aria-label="Charlie, my golden retriever">
+            <a class="charlie-link" href="/gallery?category=charlie"><img class="charlie-photo" src={charlieSource} alt="Charlie, my golden retriever" width={data.charliePhoto.width ?? 408} height={data.charliePhoto.height ?? 434}><span class="charlie-caption"><span class="charlie-name"><Icon name="paw" size="sm" /> Meet Charlie</span><Icon name="arrow-right" size="sm" /></span></a>
+            <p>My golden retriever.</p>
+          </aside>
+        {/if}
       </section>
       <section class="projects" id="projects" aria-labelledby="projects-heading">
         <div class="section-top"><p class="eyebrow" id="projects-heading"><Icon name="folder" size="sm" /> Selected work</p><a class="text-link" href="/projects">All projects <Icon name="arrow-up-right" size="sm" /></a></div>
@@ -55,7 +59,13 @@
       <section class="editorial-row" use:reveal={{ duration: 600, threshold: 0.05 }} id="gallery" aria-labelledby="gallery-heading">
         <p class="row-label eyebrow"><Icon name="camera" size="sm" /> Gallery</p>
         <div><h2 class="row-heading" id="gallery-heading">Away from the keyboard.</h2><p class="row-copy">Photos from life outside software. Charlie, my golden retriever, makes regular appearances.</p><a class="text-link" href="/gallery">Browse the gallery <Icon name="arrow-right" size="sm" /></a></div>
-        <div class="row-aside"><a class="gallery-image-link" href="/gallery"><img class="gallery-preview" src="https://pub-371d85115c2944799b7b432c262540fb.r2.dev/gallery/charlie/img_20230813_112407-289s9y-medium.webp" alt="Charlie, my golden retriever" loading="lazy" width="600" height="420"></a></div>
+        <div class="row-aside">
+          {#if gallerySource && data.galleryPhoto}
+            <a class="gallery-image-link" href={`/gallery?category=${encodeURIComponent(data.galleryPhoto.category)}`}><img class="gallery-preview" src={gallerySource} alt={data.galleryPhoto.name} loading="lazy" width={data.galleryPhoto.width ?? 600} height={data.galleryPhoto.height ?? 420}></a>
+          {:else}
+            <p class="gallery-status">{data.galleryError ?? 'No photos yet.'}</p>
+          {/if}
+        </div>
       </section>
     </div>
 
@@ -72,6 +82,8 @@
 
     .eyebrow { font-size: var(--text-xs); font-weight: 400; letter-spacing: .075em; text-transform: uppercase; color: var(--color-muted); }
     .hero { display: grid; grid-template-columns: minmax(0, 1fr) 204px; gap: var(--space-16); padding-block: var(--space-16) var(--space-12); align-items: end; }
+    .hero.hero-without-photo { grid-template-columns: minmax(0, 1fr); }
+    .hero-without-photo .hero-actions { grid-column: 1 / -1; }
     .hero h1 { margin-top: var(--space-6); font-size: clamp(3.2rem, 6.7vw, 6.15rem); line-height: 1.04; letter-spacing: -.043em; font-weight: 500; }
     .hero h1 span { display: block; color: var(--color-accent); }
     .hero-description { color: var(--color-muted); max-width: 58ch; margin-top: var(--space-6); font-size: var(--text-lg); line-height: 1.6; }
@@ -109,6 +121,7 @@
     .row-aside p { margin-bottom: var(--space-4); }
     .gallery-preview { margin-top: var(--space-6); width: 100%; height: 210px; object-fit: cover; object-position: center 48%; border-radius: var(--radius-sm); }
     .gallery-image-link { display: block; }
+    .gallery-status { margin-top: var(--space-6); }
     @media (min-width: 1500px) { .hero h1 { font-size: 6.15rem; } }
     @media (max-width: 1000px) {
 

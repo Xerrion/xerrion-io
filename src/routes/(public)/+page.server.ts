@@ -1,10 +1,18 @@
 import type { PageServerLoad } from './$types'
-import type { BlogPostCard } from '$lib/types/blog'
 
+import type { Photo } from '$lib/gallery'
+import type { BlogPostCard } from '$lib/types/blog'
 import { getPrisma } from '$lib/server/db'
+import { mapRowToPhoto } from '$lib/server/gallery'
 import { getR2Url } from '$lib/server/r2'
 
-export const load: PageServerLoad = async () => {
+interface GalleryPreviews {
+  galleryPhoto: Photo | null
+  charliePhoto: Photo | null
+  galleryError: string | null
+}
+
+async function loadLatestPosts(): Promise<BlogPostCard[]> {
   try {
     const prisma = getPrisma()
     const posts = await prisma.post.findMany({
@@ -29,9 +37,40 @@ export const load: PageServerLoad = async () => {
       }))
     }))
 
-    return { latestPosts }
-  } catch (err) {
-    console.error('[home] Failed to load latest posts:', err)
-    return { latestPosts: [] }
+    return latestPosts
+  } catch {
+    console.error('[home] Failed to load latest posts')
+    return []
   }
+}
+
+async function loadGalleryPreviews(): Promise<GalleryPreviews> {
+  try {
+    const prisma = getPrisma()
+    const query = {
+      orderBy: [{ uploadedAt: 'desc' as const }, { id: 'desc' as const }],
+      take: 1,
+      include: { sizes: true as const, category: { select: { slug: true as const } } }
+    }
+    const hasImage = { sizes: { some: {} } }
+    const [galleryRows, charlieRows] = await Promise.all([
+      prisma.photo.findMany({ ...query, where: hasImage }),
+      prisma.photo.findMany({ ...query, where: { ...hasImage, category: { slug: 'charlie' } } })
+    ])
+    const galleryRow = galleryRows[0]
+    const charlieRow = charlieRows[0]
+    return {
+      galleryPhoto: galleryRow ? mapRowToPhoto({ photo: galleryRow, category: galleryRow.category }) : null,
+      charliePhoto: charlieRow ? mapRowToPhoto({ photo: charlieRow, category: charlieRow.category }) : null,
+      galleryError: null
+    }
+  } catch {
+    console.error('[home] Failed to load gallery previews')
+    return { galleryPhoto: null, charliePhoto: null, galleryError: 'The gallery is temporarily unavailable.' }
+  }
+}
+
+export const load: PageServerLoad = async () => {
+  const [latestPosts, gallery] = await Promise.all([loadLatestPosts(), loadGalleryPreviews()])
+  return { latestPosts, ...gallery }
 }
