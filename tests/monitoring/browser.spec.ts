@@ -36,6 +36,8 @@ test('browser reports an unhandled error through a sanitized error envelope', as
   expect(event.environment).toBe('test')
   expect(event.release).toBe('monitoring-test')
   expect(event.tags.runtime).toBe('browser')
+  expect(event.tags.route).toBe('/(public)/about')
+  expect(event.sdk.name).toBe('sentry.javascript.sveltekit')
   expect(event.exception.values[0].value).toBe('Monitoring browser test https://example.test/callback')
   expect(event.exception.values[0].stacktrace.frames.length).toBeGreaterThan(0)
   expect(event.sdk.settings.infer_ip).toBe('never')

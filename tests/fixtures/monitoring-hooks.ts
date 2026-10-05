@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { mock } from 'bun:test'
 import type { NavigationEvent, RequestEvent } from '@sveltejs/kit'
-import type { ErrorEvent } from '@sentry/browser'
+import type { ErrorEvent } from '@sentry/sveltekit'
 
 const runtime = Bun.argv[2]
 const enabled = Bun.argv[3] === 'enabled'
@@ -59,16 +59,21 @@ async function checkServer(): Promise<void> {
     }
   }))
 
-  const Sentry = await import('@sentry/bun')
+  const Sentry = await import('@sentry/sveltekit')
   const { handle, handleError } = await import('../../src/hooks.server')
   const { captureServerError, withRequestMonitoring } = await import('../../src/lib/server/monitoring')
   const deletedCookies: unknown[][] = []
 
   function request(path: string, sessionId?: string, route: string | null = path): RequestEvent {
+    const url = new URL(`https://example.test${path}?code=do-not-send`)
     return {
       locals: { user: { id: 0, username: 'stale-user' }, sessionId: 'stale-session' },
       route: { id: route },
-      url: new URL(`https://example.test${path}?code=do-not-send`),
+      url,
+      request: new Request(url, {
+        headers: { authorization: 'Bearer do-not-send', cookie: 'session=do-not-send' }
+      }),
+      isSubRequest: false,
       cookies: {
         get: () => sessionId,
         delete: (...arguments_: unknown[]) => deletedCookies.push(arguments_)
@@ -80,10 +85,17 @@ async function checkServer(): Promise<void> {
     const anonymous = request('/gallery')
     const anonymousResponse = await handle({
       event: anonymous,
-      resolve: async (event) => {
+      resolve: async (event, options) => {
         assert.equal(event, anonymous)
         assert.equal(event.locals.user, null)
         assert.equal(event.locals.sessionId, null)
+        if (enabled) {
+          assert.equal(typeof options?.transformPageChunk, 'function')
+          const html = await options?.transformPageChunk?.({ html: '<head></head><body>public</body>', done: true })
+          assert.ok(!html?.includes('_sentryFetchProxy'))
+        } else {
+          assert.equal(options, undefined)
+        }
         return new Response('public')
       }
     })
@@ -154,14 +166,66 @@ async function checkServer(): Promise<void> {
       assert.equal(Sentry.getIsolationScope().getScopeData().tags.route, undefined)
       assert.equal(Sentry.getIsolationScope().getScopeData().user.id, undefined)
       captureServerError(new Error('unmatched failure'), null)
+
+      let resumeFirstRequest!: () => void
+      let enteredFirstRequest!: () => void
+      const firstRequestGate = new Promise<void>((resolve) => { resumeFirstRequest = resolve })
+      const firstRequestEntered = new Promise<void>((resolve) => { enteredFirstRequest = resolve })
+      const firstRequest = handle({
+        event: request('/parallel-first'),
+        resolve: async () => {
+          Sentry.getIsolationScope().setUser({ id: 'do-not-send' })
+          Sentry.getIsolationScope().setExtra('session', 'do-not-send')
+          enteredFirstRequest()
+          await firstRequestGate
+          assert.equal(Sentry.getCurrentScope().getScopeData().tags.route, '/parallel-first')
+          Sentry.captureException(new Error('parallel request first failure'))
+          return new Response('first request')
+        }
+      })
+      await firstRequestEntered
+      await handle({
+        event: request('/parallel-second'),
+        resolve: async () => {
+          assert.equal(Sentry.getCurrentScope().getScopeData().tags.route, '/parallel-second')
+          assert.equal(Sentry.getIsolationScope().getScopeData().user.id, undefined)
+          Sentry.captureException(new Error('parallel request second failure'))
+          return new Response('second request')
+        }
+      })
+      resumeFirstRequest()
+      await firstRequest
+      assert.equal(Sentry.getCurrentScope().getScopeData().tags.route, undefined)
+      assert.equal(Sentry.getIsolationScope().getScopeData().user.id, undefined)
+
+      const { error: kitError } = await import('@sveltejs/kit')
+      await assert.rejects(async () => handle({
+        event: anonymous,
+        resolve: async () => { throw kitError(404, 'Expected route missing') }
+      }), (error: unknown) => (error as { status?: number }).status === 404)
+
+      const resolveFailure = new Error('resolve failure')
+      await assert.rejects(async () => handle({
+        event: anonymous,
+        resolve: async () => { throw resolveFailure }
+      }), { message: 'resolve failure' })
+      assert.deepEqual(await handleError({
+        error: resolveFailure, event: anonymous, status: 500, message: 'Internal error'
+      }), { message: 'Internal error' })
       assert.equal(await Sentry.flush(5_000), true)
 
-      assert.equal(events.length, 4)
+      assert.equal(events.length, 7)
       const byMessage = new Map(events.map((event) => [event.exception?.values?.[0].value, event]))
       assert.deepEqual(byMessage.get('server hook failure')?.tags, { runtime: 'bun', route: '/gallery', status: '503' })
+      assert.equal(byMessage.get('server hook failure')?.exception?.values?.[0].mechanism?.type, 'auto.function.sveltekit.handle_error')
+      assert.equal(byMessage.get('server hook failure')?.sdk?.name, 'sentry.javascript.sveltekit')
       assert.deepEqual(byMessage.get('isolation first failure')?.tags, { runtime: 'bun', route: '/first' })
       assert.deepEqual(byMessage.get('isolation second failure')?.tags, { runtime: 'bun', route: '/second' })
       assert.deepEqual(byMessage.get('unmatched failure')?.tags, { runtime: 'bun', route: 'unmatched', status: '500' })
+      assert.deepEqual(byMessage.get('parallel request first failure')?.tags, { runtime: 'bun', route: '/parallel-first' })
+      assert.deepEqual(byMessage.get('parallel request second failure')?.tags, { runtime: 'bun', route: '/parallel-second' })
+      assert.deepEqual(byMessage.get('resolve failure')?.tags, { runtime: 'bun', route: '/gallery', status: '500' })
+      assert.equal(byMessage.get('resolve failure')?.exception?.values?.[0].mechanism?.type, 'auto.function.sveltekit.handle')
       assertSafeEvents()
     } else {
       assert.equal(Sentry.getClient(), undefined)
@@ -174,17 +238,32 @@ async function checkServer(): Promise<void> {
       ])
     }
 
-    await assert.rejects(async () => handle({
-      event: anonymous,
-      resolve: async () => { throw new Error('resolve failure') }
-    }), { message: 'resolve failure' })
+    if (!enabled) {
+      await assert.rejects(async () => handle({
+        event: anonymous,
+        resolve: async () => { throw new Error('resolve failure') }
+      }), { message: 'resolve failure' })
+    }
   } finally {
     await Sentry.close(5_000)
   }
 }
 
 async function checkClient(): Promise<void> {
-  const Sentry = await import('@sentry/browser')
+  const pageState = {
+    route: { id: '/gallery/[category]' },
+    params: { category: 'do-not-send' },
+    url: new URL('https://example.test/gallery/do-not-send?code=do-not-send')
+  }
+  mock.module('$app/state', () => ({ page: pageState }))
+  mock.module('$app/stores', () => ({
+    page: { subscribe: () => () => {} },
+    navigating: { subscribe: () => () => {} }
+  }))
+  // Bun selects the server export. Use the installed browser export for client-hook tests.
+  const clientEntry = new URL('build/esm/index.client.js', import.meta.resolve('@sentry/sveltekit/package.json'))
+  const Sentry = await import(clientEntry.href) as typeof import('@sentry/sveltekit')
+  mock.module('@sentry/sveltekit', () => Sentry)
   const { handleError } = await import('../../src/hooks.client')
   const event = {
     route: { id: '/gallery' },
@@ -201,9 +280,23 @@ async function checkClient(): Promise<void> {
       }), { message: 'Expected error' })
     }
     if (enabled) {
+      // Kit data requests can expose a 4xx error inside an input with a 500 status.
+      assert.deepEqual(await handleError({
+        error: Object.assign(new Error('expected deserialized failure'), { status: 404 }),
+        event,
+        status: 500,
+        message: 'Expected error'
+      }), { message: 'Expected error' })
+      pageState.route.id = '/blog/[slug]'
+      Sentry.captureException(new Error('client global failure'))
       assert.equal(await Sentry.flush(5_000), true)
-      assert.equal(events.length, 1)
-      assert.deepEqual(events[0].tags, { runtime: 'browser', route: '/gallery', status: '500' })
+      assert.equal(events.length, 2)
+      const byMessage = new Map(events.map((event) => [event.exception?.values?.[0].value, event]))
+      const hookEvent = byMessage.get('client hook failure')
+      assert.deepEqual(hookEvent?.tags, { runtime: 'browser', route: '/gallery', status: '500' })
+      assert.equal(hookEvent?.exception?.values?.[0].mechanism?.type, 'auto.function.sveltekit.handle_error')
+      assert.equal(hookEvent?.sdk?.name, 'sentry.javascript.sveltekit')
+      assert.deepEqual(byMessage.get('client global failure')?.tags, { runtime: 'browser', route: '/blog/[slug]' })
       assertSafeEvents()
     } else {
       assert.equal(Sentry.getClient(), undefined)

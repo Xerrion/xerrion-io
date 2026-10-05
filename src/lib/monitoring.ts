@@ -1,4 +1,4 @@
-import type { BrowserOptions, ErrorEvent, Exception, StackFrame } from '@sentry/browser'
+import type { BrowserOptions, ErrorEvent, Exception, StackFrame } from '@sentry/sveltekit'
 
 export interface MonitoringConfig {
   dsn?: string
@@ -40,6 +40,15 @@ function sanitizeText(value: string | undefined): string | undefined {
 }
 
 function sanitizeFrame(frame: StackFrame): StackFrame {
+  const applicationSource = frame.in_app === true && /\/(?:src|build\/server)\//.test(frame.filename ?? '')
+  const context = applicationSource
+    ? {
+        context_line: sanitizeText(frame.context_line)?.slice(0, 300),
+        pre_context: frame.pre_context?.slice(-5).map((line) => sanitizeText(line)?.slice(0, 300) ?? ''),
+        post_context: frame.post_context?.slice(0, 5).map((line) => sanitizeText(line)?.slice(0, 300) ?? '')
+      }
+    : {}
+
   return {
     filename: frame.filename === undefined ? undefined : sanitizeUrl(frame.filename),
     abs_path: frame.abs_path === undefined ? undefined : sanitizeUrl(frame.abs_path),
@@ -49,7 +58,8 @@ function sanitizeFrame(frame: StackFrame): StackFrame {
     colno: frame.colno,
     in_app: frame.in_app,
     platform: frame.platform,
-    debug_id: frame.debug_id
+    debug_id: frame.debug_id,
+    ...context
   }
 }
 
@@ -131,7 +141,7 @@ export function sanitizeErrorEvent(event: ErrorEvent): ErrorEvent | null {
   }
 }
 
-/** Shared error-only settings for the browser and Bun SDKs. */
+/** Shared error-only settings for browser and server reporting. */
 export function createMonitoringOptions(config: MonitoringConfig): MonitoringOptions {
   const dsn = config.dsn?.trim() || undefined
 

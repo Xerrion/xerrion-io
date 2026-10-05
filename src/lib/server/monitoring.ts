@@ -1,7 +1,7 @@
 import { dev } from '$app/environment'
 import { env as privateEnv } from '$env/dynamic/private'
 import { env as publicEnv } from '$env/dynamic/public'
-import * as Sentry from '@sentry/bun'
+import * as Sentry from '@sentry/sveltekit'
 
 import { createMonitoringOptions } from '$lib/monitoring'
 
@@ -11,9 +11,12 @@ const options = createMonitoringOptions({
   release: publicEnv.PUBLIC_SENTRY_RELEASE
 })
 
+export const monitoringEnabled: boolean = options.enabled
+
 if (options.enabled) {
   Sentry.init({
     ...options,
+    dataCollection: { ...options.dataCollection, frameContextLines: 5 },
     enableOpenTelemetrySetup: false,
     includeServerName: false,
     integrations: [
@@ -21,7 +24,8 @@ if (options.enabled) {
       Sentry.onUncaughtExceptionIntegration(),
       Sentry.onUnhandledRejectionIntegration(),
       Sentry.linkedErrorsIntegration(),
-      Sentry.dedupeIntegration()
+      Sentry.dedupeIntegration(),
+      Sentry.contextLinesIntegration()
     ]
   })
   Sentry.setTag('runtime', 'bun')

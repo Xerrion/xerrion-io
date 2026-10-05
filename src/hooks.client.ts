@@ -1,7 +1,8 @@
 import { dev } from '$app/environment'
+import { page } from '$app/state'
 import { env } from '$env/dynamic/public'
 import type { HandleClientError } from '@sveltejs/kit'
-import * as Sentry from '@sentry/browser'
+import * as Sentry from '@sentry/sveltekit'
 
 import { createMonitoringOptions } from '$lib/monitoring'
 
@@ -23,21 +24,31 @@ if (options.enabled) {
     ]
   })
   Sentry.setTag('runtime', 'browser')
+  Sentry.addEventProcessor((event) => ({
+    ...event,
+    tags: {
+      ...event.tags,
+      // Route templates identify the page without sending dynamic parameter values.
+      route: event.tags?.route ?? page.route.id ?? 'unmatched'
+    }
+  }))
 }
 
-export const handleError: HandleClientError = ({ error, event, status, message }) => {
-  if (status >= 500) {
-    if (options.enabled) {
-      Sentry.withScope((scope) => {
-        scope.setTag('runtime', 'browser')
-        scope.setTag('route', event.route.id ?? 'unmatched')
-        scope.setTag('status', String(status))
-        Sentry.captureException(error)
-      })
-    } else {
+const frameworkHandleError = Sentry.handleErrorWithSentry<HandleClientError>(({ message }) => ({ message }))
+
+export const handleError: HandleClientError = (input) => {
+  const { event, status, message } = input
+  if (!options.enabled) {
+    if (status >= 500) {
       console.error('[browser] Unexpected navigation failure', { route: event.route.id ?? 'unmatched', status })
     }
+    return { message }
   }
 
-  return { message }
+  return Sentry.withScope((scope) => {
+    scope.setTag('runtime', 'browser')
+    scope.setTag('route', event.route.id ?? 'unmatched')
+    scope.setTag('status', String(status))
+    return frameworkHandleError(input)
+  })
 }

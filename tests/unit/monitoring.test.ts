@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { ErrorEvent } from '@sentry/browser'
+import type { ErrorEvent } from '@sentry/sveltekit'
 
 import { createMonitoringOptions, sanitizeErrorEvent } from '$lib/monitoring'
 
@@ -192,6 +192,26 @@ describe('Error event privacy', () => {
 
   test('drops non-error events if they reach the error sanitizer', () => {
     expect(sanitizeErrorEvent({ type: 'transaction' } as unknown as ErrorEvent)).toBeNull()
+  })
+
+  test('keeps bounded application source context without local variables', () => {
+    const result = sanitizeErrorEvent({
+      type: undefined,
+      exception: { values: [{ stacktrace: { frames: [{
+        filename: '/app/build/server/chunks/gallery.js',
+        in_app: true,
+        context_line: 'throw new Error("Gallery query failed")',
+        pre_context: Array.from({ length: 8 }, (_, index) => `before ${index}`),
+        post_context: Array.from({ length: 8 }, (_, index) => `after ${index}`),
+        vars: { session: 'private-session' }
+      }] } }] }
+    })
+    const frame = result?.exception?.values?.[0].stacktrace?.frames?.[0]
+
+    expect(frame?.context_line).toBe('throw new Error("Gallery query failed")')
+    expect(frame?.pre_context).toEqual(['before 3', 'before 4', 'before 5', 'before 6', 'before 7'])
+    expect(frame?.post_context).toEqual(['after 0', 'after 1', 'after 2', 'after 3', 'after 4'])
+    expect(frame).not.toHaveProperty('vars')
   })
 
   test('keeps source map debug IDs without URL credentials or query parameters', () => {
