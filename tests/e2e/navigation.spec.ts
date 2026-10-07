@@ -46,6 +46,7 @@ test.describe('Public navigation', () => {
 
     test('opens a native modal, protects the page, and restores focus', async ({ page }) => {
       await page.goto('/')
+      await page.waitForLoadState('networkidle')
       const trigger = page.getByRole('button', { name: 'Open navigation menu' })
       const dialog = page.locator('dialog.menu-dialog')
       const close = page.getByRole('button', { name: 'Close navigation menu' })
@@ -79,6 +80,7 @@ test.describe('Public navigation', () => {
 
     test('closes on navigation and marks the destination', async ({ page }) => {
       await page.goto('/')
+      await page.waitForLoadState('networkidle')
       await page.locator('.menu-trigger').click()
       await page.locator('.mobile-navigation').getByRole('link', { name: /About/ }).click()
       await expect(page).toHaveURL('/about')
@@ -90,6 +92,7 @@ test.describe('Public navigation', () => {
 
     test('closes and releases the page when resized to desktop', async ({ page }) => {
       await page.goto('/')
+      await page.waitForLoadState('networkidle')
       await page.locator('.menu-trigger').click()
       await page.setViewportSize({ width: 1440, height: 1080 })
       await expect(page.locator('.menu-dialog')).not.toBeVisible()
@@ -101,6 +104,7 @@ test.describe('Public navigation', () => {
 
     test('keeps a reopened menu active after a pending close event', async ({ page }) => {
       await page.goto('/')
+      await page.waitForLoadState('networkidle')
       await page.locator('.menu-trigger').click()
       await page.locator('.menu-close').click()
       await page.evaluate(() => {
