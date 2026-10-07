@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.1.0](https://github.com/Xerrion/xerrion-io/compare/v1.0.0...v1.1.0) (2026-10-07)
+
+
+### Features
+
+* add blog feature ([#69](https://github.com/Xerrion/xerrion-io/issues/69)) ([4664fb2](https://github.com/Xerrion/xerrion-io/commit/4664fb2469ef4dec79171f848d212b863f105006))
+* add docker-compose for self-hosted deployment ([#78](https://github.com/Xerrion/xerrion-io/issues/78)) ([438ee57](https://github.com/Xerrion/xerrion-io/commit/438ee5706efe8c2a9e5132a4faa456509316d5c2))
+* add restricted Pocket ID admin login ([#109](https://github.com/Xerrion/xerrion-io/issues/109)) ([a728925](https://github.com/Xerrion/xerrion-io/commit/a7289259024134816214a7647802c43fc2df4f78))
+* add SvelteKit error reporting for GlitchTip ([#115](https://github.com/Xerrion/xerrion-io/issues/115)) ([8e29966](https://github.com/Xerrion/xerrion-io/commit/8e29966f02ef0a3c69ad95a5b23467832fd27368))
+* apply B3 public website design ([#114](https://github.com/Xerrion/xerrion-io/issues/114)) ([f8dd586](https://github.com/Xerrion/xerrion-io/commit/f8dd586e47b7bf2116ce40c792fe764af885861a))
+* migrate from Vercel Blob to Cloudflare R2 ([#67](https://github.com/Xerrion/xerrion-io/issues/67)) ([214ac85](https://github.com/Xerrion/xerrion-io/commit/214ac8563b9f0801e2c3112ebd5531720e22bac2))
+* migrate to Prisma v7 with pg adapter ([40e0b25](https://github.com/Xerrion/xerrion-io/commit/40e0b251a8ed25fb55283b11a860af4a60f9bff4))
+* migrate to Prisma v7 with pg adapter ([#79](https://github.com/Xerrion/xerrion-io/issues/79)) ([d05c721](https://github.com/Xerrion/xerrion-io/commit/d05c721193d70b0a3f536b7a6d84209fd474dc00))
+* switch to svelte-adapter-bun and add nixpacks config ([#68](https://github.com/Xerrion/xerrion-io/issues/68)) ([2994560](https://github.com/Xerrion/xerrion-io/commit/2994560648b756035d0d4efb5f2edb2c7cc931ff))
+* use supabase/postgres:17.6.1.103 ([82f47da](https://github.com/Xerrion/xerrion-io/commit/82f47da78c2104f8557a737f9998474264a12737))
+
+
+### Bug Fixes
+
+* add retry loop to migrate service for Coolify compatibility ([83bfe4f](https://github.com/Xerrion/xerrion-io/commit/83bfe4fab2e24bfef2ef8b52ae330e727bf1ae05))
+* default POSTGRES_USER to postgres for supabase image ([b8c323f](https://github.com/Xerrion/xerrion-io/commit/b8c323fc36fe98cdb13bbc3c635ace6ac178a034))
+* failing tests properly run ([6c131a3](https://github.com/Xerrion/xerrion-io/commit/6c131a3bbc7f5e27a56c51fc8358901ef4c96b06))
+* force postgres listen_addresses=* and escape shell vars in compose ([fc8a674](https://github.com/Xerrion/xerrion-io/commit/fc8a674e3a8d2cf0444b857796fd7e53e70a678b))
+* make admin usable on mobile ([#113](https://github.com/Xerrion/xerrion-io/issues/113)) ([693287d](https://github.com/Xerrion/xerrion-io/commit/693287d99c3c935f6071d425bd104855f0c5fcce))
+* remove .env references from docker-compose.yml ([e9d97ce](https://github.com/Xerrion/xerrion-io/commit/e9d97ce12eba8885952df3dd779ccfafb1986d56))
+* rename docker-compose to .yaml for Coolify ([34d6bfe](https://github.com/Xerrion/xerrion-io/commit/34d6bfe9bbe27fe659b9883edd449177fc0c205d))
+* replace CSS columns with JS-computed masonry to prevent layout shifts ([#36](https://github.com/Xerrion/xerrion-io/issues/36)) ([fb089c5](https://github.com/Xerrion/xerrion-io/commit/fb089c53ca21ee4ac4378c51d008e90a36aa55d5))
+* require fresh Pocket ID admin authentication ([#111](https://github.com/Xerrion/xerrion-io/issues/111)) ([dcb695d](https://github.com/Xerrion/xerrion-io/commit/dcb695de967e032d683d1253002167c25bed1865))
+* restore blog content editor initialization ([#112](https://github.com/Xerrion/xerrion-io/issues/112)) ([aac8adf](https://github.com/Xerrion/xerrion-io/commit/aac8adfff6d816b41c18cbebba34d3936cf18fa1))
+* switch monitoring to Sentry and restore Docker builds ([#116](https://github.com/Xerrion/xerrion-io/issues/116)) ([1c6dece](https://github.com/Xerrion/xerrion-io/commit/1c6deceffe842738b2c011672b21ed3bc8a18ce3))
+* use @sveltejs/adapter-node ([bfe31e3](https://github.com/Xerrion/xerrion-io/commit/bfe31e32661ec889b925b54f1073af3ed0b88a6c))
+
 ## 1.0.0 (2026-02-20)
 
 ### Features
