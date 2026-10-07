@@ -12,7 +12,8 @@ LICENSE
 .idea
 .vercel
 tests
-scripts
+scripts/*
+!scripts/prepare-monitoring.ts
 playwright.config.ts
 playwright-report
 test-results

@@ -28,11 +28,11 @@ function getUploadOptions(environment: NodeJS.ProcessEnv): SentryOptions | null 
   const token = environment.SENTRY_AUTH_TOKEN?.trim()
   if (!token) return null
 
-  const url = environment.SENTRY_URL?.trim()
+  const url = environment.SENTRY_URL?.trim() || 'https://sentry.io'
   const org = environment.SENTRY_ORG?.trim()
   const project = environment.SENTRY_PROJECT?.trim()
-  if (!url || !org || !project) {
-    throw new MonitoringBuildError('Source map upload requires SENTRY_URL, SENTRY_ORG, and SENTRY_PROJECT.')
+  if (!org || !project) {
+    throw new MonitoringBuildError('Source map upload requires SENTRY_ORG and SENTRY_PROJECT.')
   }
 
   try {
