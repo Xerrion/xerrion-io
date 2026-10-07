@@ -233,7 +233,7 @@ describe('monitoring build preparation', () => {
     }
   })
 
-  test('requires an explicit instance and slugs before it uses a token', async () => {
+  test('requires organization and project slugs before it uses a token', async () => {
     const fixture = await createBuildFixture()
     let created = false
     const createClient = () => {
@@ -241,13 +241,28 @@ describe('monitoring build preparation', () => {
       return { sourcemap: { async inject() {}, async upload() {} } }
     }
     await expect(prepareMonitoringBuild(fixture.build, { SENTRY_AUTH_TOKEN: 'synthetic-build-token' }, createClient))
-      .rejects.toThrow('Source map upload requires SENTRY_URL, SENTRY_ORG, and SENTRY_PROJECT.')
+      .rejects.toThrow('Source map upload requires SENTRY_ORG and SENTRY_PROJECT.')
     for (const url of ['invalid', 'file:///tmp/example', 'https://user:synthetic-build-token@example.invalid', 'https://example.invalid?token=synthetic-build-token']) {
       await expect(prepareMonitoringBuild(fixture.build, {
         SENTRY_AUTH_TOKEN: 'synthetic-build-token', SENTRY_URL: url, SENTRY_ORG: 'example', SENTRY_PROJECT: 'website'
       }, createClient)).rejects.toThrow('Source map upload requires a valid instance URL and organization and project slugs.')
     }
     expect(created).toBe(false)
+  })
+
+  test.each([undefined, '', '   '])('uploads to Sentry by default when the API URL is %j', async (url) => {
+    const fixture = await createBuildFixture()
+    const result = await prepareMonitoringBuild(fixture.build, {
+      SENTRY_AUTH_TOKEN: 'synthetic-build-token', SENTRY_URL: url,
+      SENTRY_ORG: 'example', SENTRY_PROJECT: 'website'
+    }, (options) => {
+      expect(options.url).toBe('https://sentry.io')
+      return { sourcemap: {
+        async inject() {},
+        async upload() { return { filesUploaded: 1 } }
+      } }
+    })
+    expect(result.uploaded).toBe(true)
   })
 
   test('passes authentication only to the SDK and reports upload failures without token or API response text', async () => {
@@ -329,7 +344,7 @@ describe('monitoring build preparation', () => {
     ])
     expect(exitCode).toBe(1)
     expect(stdout).toBe('')
-    expect(stderr.trim()).toBe('Source map upload requires SENTRY_URL, SENTRY_ORG, and SENTRY_PROJECT.')
+    expect(stderr.trim()).toBe('Source map upload requires SENTRY_ORG and SENTRY_PROJECT.')
     expect(stdout + stderr).not.toContain(token)
   })
 
