@@ -119,6 +119,7 @@ test.describe('Public motion', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
     await expect(page.locator('main h1')).toHaveCSS('opacity', '1')
     await expect(page.locator('main #gallery')).toHaveCSS('opacity', '1')
     expect(await page.locator('main').evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
