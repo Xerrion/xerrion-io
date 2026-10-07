@@ -29,6 +29,17 @@ bun run build
 bun run preview
 ```
 
+Type checks use TypeScript 7 through `svelte-check`'s `tsgo` backend.
+The `@typescript/native` dependency provides the TypeScript 7 compiler.
+The `typescript` dependency uses Microsoft's TypeScript 6 compatibility package
+because SvelteKit and Svelte tooling still need its JavaScript API.
+Both `bun run check` and `bun run check:watch` use the native compiler.
+Incremental mode tracks generated files and removes them when their Svelte source
+files are deleted.
+Run `bunx --no-install tsc --version` to check the installed compiler version.
+See the [Svelte checker documentation](https://github.com/sveltejs/language-tools/blob/svelte-check%404.7.6/packages/svelte-check/README.md)
+for the native backend's limitations.
+
 ## Deployment
 
 This site is deployed to Cloudflare Pages. Pushes to `main` trigger automatic deployments.
