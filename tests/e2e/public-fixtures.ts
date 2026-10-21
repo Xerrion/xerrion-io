@@ -4,6 +4,9 @@ import { stringify } from 'devalue'
 export const test = base.extend<{ browserChecks: void }>({
   browserChecks: [
     async ({ page }, use, testInfo) => {
+      // Analytics availability should not decide whether local UI checks pass.
+      await page.route('https://cloud.umami.is/script.js', route => route.fulfill({ contentType: 'application/javascript', body: '' }))
+      await page.route('https://www.googletagmanager.com/gtag/js*', route => route.fulfill({ contentType: 'application/javascript', body: '' }))
       const problems: { type: string; text: string; url?: string }[] = []
       page.on('pageerror', (error) =>
         problems.push({ type: 'pageerror', text: error.message })

@@ -3,8 +3,8 @@ import { describe, test, expect } from 'bun:test'
 import { navigation, socialLinks } from '$lib/config/navigation'
 
 describe('navigation', () => {
-  test('has 5 items', () => {
-    expect(navigation).toHaveLength(5)
+  test('has 6 items', () => {
+    expect(navigation).toHaveLength(6)
   })
 
   test('has correct labels and hrefs', () => {
@@ -13,6 +13,7 @@ describe('navigation', () => {
     expect(navigation[2]).toEqual({ label: 'About', href: '/about' })
     expect(navigation[3]).toEqual({ label: 'Blog', href: '/blog' })
     expect(navigation[4]).toEqual({ label: 'Gallery', href: '/gallery' })
+    expect(navigation[5]).toEqual({ label: 'Tools', href: '/tools' })
   })
 
   test('all hrefs start with /', () => {

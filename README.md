@@ -2,6 +2,70 @@
 
 Personal website for Lasse Skovgaard Nielsen (Xerrion).
 
+## Tools and experiments
+
+The Tools navigation opens `/tools`, which links to the image converter and Flux
+Water. Each tool has its own route and shares the public site's design.
+
+### Flux Water
+
+`/tools/flux-water` integrates the water simulation from the supplied
+`flux-water-full-package.zip`. The original WGSL shaders are preserved in
+`src/lib/experiments/flux-water/shaders.ts`. The engine and controls are adapted
+to Svelte with no additional dependencies, remote fonts, or embedded site.
+The archive's deployment files and scripts are not needed by this application.
+
+Drag to stir the water, make waves, switch materials and lighting, or save a PNG.
+Water behavior and quality controls are under Water behavior & quality. Keyboard
+shortcuts apply only while the water canvas has focus: Space pauses, B creates
+waves, and R resets. Reduced motion starts paused. Rendering stops when paused,
+off screen, or in a hidden tab. Navigation releases observers, animation frames,
+the canvas context, and GPU resources.
+
+WebGPU and a compatible graphics adapter are required. Unavailable or lost devices
+show an explanation and a retry button. Resolution adapts toward a 60 FPS target;
+this is not a hardware-independent performance guarantee. The rendering uses a
+height-field water surface with refraction, reflection and approximate caustics.
+
+### Image converter
+
+The public image tool is available at `/tools/images` through the Tools index.
+It converts JPEG, PNG, WebP, AVIF, and BMP inputs to browser-supported WebP,
+JPEG, or PNG outputs. It runs locally in the browser without uploading images or
+requiring a database, storage service, or additional dependencies.
+
+Choose a Web, Email, or PNG preset, then adjust quality or set a file-size target.
+The main screen keeps file format, quality, and common image sizes visible.
+The primary download appears above these controls once a file is ready. Custom
+dimensions, target file size, crop, rotation, and background controls are under
+More options. There is no separate scroll area inside the settings panel.
+The preview and size estimates update automatically after 250 milliseconds of
+inactivity. Settings apply to the whole batch, with the selected image processed
+first. New edits cancel outdated work and prevent outdated downloads. Encoding
+runs in a worker where supported, with a main-thread fallback for other browsers.
+
+Resize by longest edge, width and height bounds, or percentage. Resizing preserves
+proportions and never enlarges an image. Crop to common aspect ratios from the
+center, rotate in 90-degree steps, and flip horizontally or vertically. Compare
+the result before downloading individual files or a ZIP archive. The comparison
+position stays in place as the image updates.
+
+For WebP and JPEG, an optional size target searches for the highest quality up to
+the chosen quality setting. If even the lowest quality exceeds the target, the
+tool reports this and offers the smallest result it found. PNG remains lossless.
+
+Batches accept up to 20 images, 25 MB per file, and 100 MB of input in total.
+Images over 40 megapixels are rejected after decoding. Exports are still images;
+animation and original EXIF metadata are discarded. JPEG transparency becomes
+white or black, depending on the selected background. Available export formats
+depend on the browser's actual encoding support.
+
+Run the converter browser checks with:
+
+```bash
+bun run test:e2e tests/e2e/image-converter.spec.ts
+```
+
 ## Tech Stack
 
 - **Framework**: SvelteKit with Svelte 5

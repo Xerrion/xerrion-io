@@ -2,7 +2,7 @@ import { test, expect, mockGallery, navigatePublic } from './public-fixtures'
 
 test.describe('Public accessibility', () => {
   test('uses landmarks and a single page heading on all public indexes', async ({ page }) => {
-    for (const route of ['/', '/about', '/projects', '/blog', '/gallery']) {
+    for (const route of ['/', '/about', '/projects', '/blog', '/gallery', '/tools', '/tools/images', '/tools/flux-water']) {
       await page.goto(route)
       await expect(page.locator('h1')).toHaveCount(1)
       await expect(page.getByRole('main')).toHaveCount(1)

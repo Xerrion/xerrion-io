@@ -18,7 +18,10 @@ test.describe('Sitemap', () => {
       'https://xerrion.io/',
       'https://xerrion.io/about',
       'https://xerrion.io/projects',
-      'https://xerrion.io/gallery'
+      'https://xerrion.io/gallery',
+      'https://xerrion.io/tools',
+      'https://xerrion.io/tools/images',
+      'https://xerrion.io/tools/flux-water'
     ]
 
     for (const url of urls) {
