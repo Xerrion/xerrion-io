@@ -16,6 +16,8 @@
   --color-warning-muted: oklch(0.6 0.14 55);
   --color-info: oklch(0.6957 0.1522 163.29);
   --color-text-inverse: oklch(1 0 0);
+  --color-image-matte-light: oklch(1 0 0);
+  --color-image-matte-dark: oklch(0 0 0);
 
   /* Light Theme */
   --color-bg: oklch(0.9943 0.0028 84.6);

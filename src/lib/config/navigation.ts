@@ -5,7 +5,8 @@ export const navigation: NavItem[] = [
   { label: 'Projects', href: '/projects' },
   { label: 'About', href: '/about' },
   { label: 'Blog', href: '/blog' },
-  { label: 'Gallery', href: '/gallery' }
+  { label: 'Gallery', href: '/gallery' },
+  { label: 'Tools', href: '/tools' }
 ]
 
 export const socialLinks: SocialLink[] = [

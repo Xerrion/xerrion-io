@@ -10,7 +10,10 @@ const staticPages: { path: string; priority: number; changefreq: string }[] = [
   { path: '/about', priority: 0.8, changefreq: 'monthly' },
   { path: '/projects', priority: 0.9, changefreq: 'weekly' },
   { path: '/gallery', priority: 0.7, changefreq: 'weekly' },
-  { path: '/blog', priority: 0.8, changefreq: 'weekly' }
+  { path: '/blog', priority: 0.8, changefreq: 'weekly' },
+  { path: '/tools', priority: 0.8, changefreq: 'monthly' },
+  { path: '/tools/images', priority: 0.8, changefreq: 'monthly' },
+  { path: '/tools/flux-water', priority: 0.7, changefreq: 'monthly' }
 ]
 
 export const GET: RequestHandler = async () => {

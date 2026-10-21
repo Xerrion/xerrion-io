@@ -2,12 +2,13 @@ import { test, expect } from './public-fixtures'
 
 const links = [
   ['Home', '/'], ['Projects', '/projects'], ['About', '/about'],
-  ['Blog', '/blog'], ['Gallery', '/gallery']
+  ['Blog', '/blog'], ['Gallery', '/gallery'], ['Tools', '/tools']
 ]
 
 test.describe('Public navigation', () => {
   test('shows the approved navigation order and home identity', async ({ page }) => {
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
     const navigation = page.locator('.desktop-navigation')
     await expect(navigation).toBeVisible()
     for (const [index, [label, href]] of links.entries()) {
@@ -21,6 +22,7 @@ test.describe('Public navigation', () => {
 
   test('updates the active page after client navigation', async ({ page }) => {
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
     const navigation = page.locator('.desktop-navigation')
     await expect(navigation.locator('a[aria-current="page"]')).toHaveAttribute('href', '/')
     await navigation.getByRole('link', { name: 'About', exact: true }).click()
@@ -32,6 +34,7 @@ test.describe('Public navigation', () => {
 
   test('lets keyboard users skip directly to main content', async ({ page }) => {
     await page.goto('/')
+    await page.waitForLoadState('networkidle')
     const skip = page.locator('.skip-link')
     await expect(skip).toHaveAttribute('href', '#main-content')
     await page.keyboard.press('Tab')

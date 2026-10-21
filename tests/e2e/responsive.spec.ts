@@ -7,7 +7,7 @@ test.describe('Responsive public design', () => {
       await page.setViewportSize({ width, height: 844 })
       await mockBlog(page)
       await mockPublicData(page, '/projects', { projects, error: null })
-      for (const route of ['/', '/about', '/projects', '/blog', '/gallery', '/this-page-does-not-exist-xyz']) {
+      for (const route of ['/', '/about', '/projects', '/blog', '/gallery', '/tools', '/tools/images', '/tools/flux-water', '/this-page-does-not-exist-xyz']) {
         const fixture = ['/projects', '/blog', '/gallery'].includes(route)
         if (fixture) await navigatePublic(page, route)
         else await page.goto(route)
