@@ -55,6 +55,7 @@ export class WaterEngine {
   private animation = 0
   private lastTick = 0
   private nextFrameAt = 0
+  private timeRemainder = 0
   private submitted = 0
   private completed = 0
   private fpsStart = 0
@@ -250,7 +251,7 @@ export class WaterEngine {
     return { x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)) }
   }
 
-  private resetClock(): void { this.lastTick = this.nextFrameAt = this.fpsStart = this.fpsFrames = 0 }
+  private resetClock(): void { this.lastTick = this.nextFrameAt = this.fpsStart = this.fpsFrames = this.timeRemainder = 0 }
   private visibilityChanged = (): void => { this.releasePointer(); this.resetClock(); this.wake() }
   private wake(): void {
     if (this.ready && !this.animation && !document.hidden && (this.visible || this.capture)) this.animation = requestAnimationFrame(this.frame)
@@ -292,8 +293,8 @@ export class WaterEngine {
 
   private updateParams(elapsed: number, steps: number): void {
     const settings = this.settings
-    const impulse = this.impulses.shift()
-    this.params.set([this.width, this.height, elapsed / steps, this.simulationTime], 0)
+    const impulse = elapsed > 0 && steps > 0 && !this.seed ? this.impulses.shift() : undefined
+    this.params.set([this.width, this.height, steps > 0 ? elapsed / steps : 0, this.simulationTime], 0)
     this.params.set([impulse?.x ?? this.pointer.x, impulse?.y ?? this.pointer.y, this.pointer.dx, this.pointer.dy], 4)
     const strength = impulse?.strength ?? (this.pointer.down ? .35 + Math.min(1, Math.hypot(this.pointer.dx, this.pointer.dy) / 150) : 0)
     this.params.set([.008 + settings.brush * .00065, strength, settings.swirl / 100, settings.persistence / 100], 8)
@@ -338,15 +339,16 @@ export class WaterEngine {
     try {
       const milliseconds = this.lastTick ? now - this.lastTick : interval
       this.lastTick = now
-      const { elapsed, steps } = waterTimestep(milliseconds)
+      const { elapsed, steps, remainder } = waterTimestep(milliseconds, this.timeRemainder)
       const stepping = !this.paused || this.seed
+      this.timeRemainder = stepping ? remainder : 0
       if (stepping) this.simulationTime += elapsed
       this.updateParams(stepping ? elapsed : 0, steps)
       const device = this.device!
       const encoder = device.createCommandEncoder()
       {
         const pass = encoder.beginComputePass()
-        if (stepping) {
+        if (stepping && steps > 0) {
           pass.setPipeline(this.wavePipeline)
           for (let index = 0; index < steps; index++) {
             pass.setBindGroup(0, this.waveGroups[this.stateIndex])
@@ -358,7 +360,7 @@ export class WaterEngine {
         pass.setBindGroup(0, this.surfaceGroups[this.stateIndex])
         pass.dispatchWorkgroups(Math.ceil(this.width / 8), Math.ceil(this.height / 8))
         pass.end()
-        if (stepping) this.seed = false
+        if (stepping && steps > 0) this.seed = false
       }
       const pass = encoder.beginRenderPass({ colorAttachments: [{ view: this.context!.getCurrentTexture().createView(), loadOp: 'clear', storeOp: 'store', clearValue: { r: .04, g: .05, b: .04, a: 1 } }] })
       pass.setPipeline(this.renderPipeline)

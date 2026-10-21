@@ -22,6 +22,10 @@ waves, and R resets. Reduced motion starts paused. Rendering stops when paused,
 off screen, or in a hidden tab. Navigation releases observers, animation frames,
 the canvas context, and GPU resources.
 
+The wave solver advances in fixed 1/120-second steps, carrying fractional time
+between rendered frames. Changing the step size with each frame can amplify
+grid-scale waves even when each individual step is below the CFL limit.
+
 WebGPU and a compatible graphics adapter are required. Unavailable or lost devices
 show an explanation and a retry button. Resolution adapts toward a 60 FPS target;
 this is not a hardware-independent performance guarantee. The rendering uses a

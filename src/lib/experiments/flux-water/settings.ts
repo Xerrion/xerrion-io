@@ -36,8 +36,11 @@ export function waterGeometry(cssWidth: number, cssHeight: number, resolution: n
   return { width, height, canvasWidth: Math.max(1, Math.round(cssWidth * scale)), canvasHeight: Math.max(1, Math.round(cssHeight * scale)) }
 }
 
-/** A delayed animation frame must not advance the solver by more than 50 ms. */
-export function waterTimestep(milliseconds: number): { elapsed: number; steps: number } {
-  const elapsed = Math.max(0, Math.min(milliseconds / 1000, .05))
-  return { elapsed, steps: Math.max(1, Math.ceil(elapsed * 120)) }
+/** Keep solver steps fixed at 120 Hz; varying individually safe steps can amplify waves. */
+export function waterTimestep(milliseconds: number, remainder = 0): { elapsed: number; steps: number; remainder: number } {
+  const step = 1 / 120
+  const available = Math.max(0, Math.min(milliseconds / 1000, .05)) + remainder
+  const steps = Math.min(6, Math.floor((available + 1e-10) / step))
+  const elapsed = steps * step
+  return { elapsed, steps, remainder: Math.max(0, available - elapsed) }
 }
