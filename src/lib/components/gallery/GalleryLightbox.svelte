@@ -1,6 +1,8 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import type { Photo, PhotoCategory } from '$lib/gallery'
-  import { tick } from 'svelte'
+
+  import GalleryLightboxImage from './GalleryLightboxImage.svelte'
 
   interface Props {
     photo: Photo | null
@@ -10,910 +12,414 @@
     onnavigate: (direction: 1 | -1) => void
   }
 
+  interface PointerStart {
+    id: number
+    x: number
+    y: number
+    target: EventTarget | null
+    photoId: string
+  }
+
   let { photo, photos, categories, onclose, onnavigate }: Props = $props()
-
-  // ─── Visibility state (controls DOM mount, decoupled from `photo` for exit anim) ───
-  let showLightbox = $state(false)
-  let fallbackPhoto = $state<Photo | null>(null)
-  const activePhoto = $derived(photo || fallbackPhoto)
-
+  let dialog = $state<HTMLDialogElement>()
   const currentIndex = $derived(
-    activePhoto ? photos.findIndex((p) => p.id === activePhoto.id) : -1
+    photos.findIndex((item) => item.id === photo?.id)
   )
-
-  // Adjacent photos for carousel peek
-  const prevPhoto = $derived(currentIndex > 0 ? photos[currentIndex - 1] : null)
-  const nextPhoto = $derived(
-    currentIndex < photos.length - 1 ? photos[currentIndex + 1] : null
+  const isOpen = $derived(photo !== null && currentIndex >= 0)
+  const category = $derived(
+    categories.find((item) => item.slug === photo?.category)
   )
+  let swipe: PointerStart | null = null
+  let backdropPress: PointerStart | null = null
 
-  // Navigation & closing state
-  let isNavigating = $state(false)
-  let isClosing = $state(false)
-  let trackEl = $state<HTMLElement | null>(null)
-  let backdropEl = $state<HTMLElement | null>(null)
-  let bgEl = $state<HTMLElement | null>(null)
-  let headerEl = $state<HTMLElement | null>(null)
-  let footerEl = $state<HTMLElement | null>(null)
-  let imageWrapperEl = $state<HTMLElement | null>(null)
-  let currentSlideAnim: Animation | null = null
-
-  const SLIDE_DURATION = 280
-  const SLIDE_EASING = 'cubic-bezier(0.32, 0.72, 0, 1)'
-  const OPEN_DURATION = 400
-  const CLOSE_DURATION = 300
-  const OPEN_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
-  const CLOSE_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)'
-
-  // Check reduced motion preference
-  const prefersReducedMotion = $derived(
-    typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-
-  // ─── Open/close lifecycle ─────────────────────────────────────
-
+  // Selection owns the lifecycle. Animations never delay navigation or closing.
   $effect(() => {
-    if (photo) {
-      fallbackPhoto = photo
-      if (!showLightbox && !isClosing) {
-        showLightbox = true
-        tick().then(animateOpen)
+    if (!dialog || !isOpen) return
+    const modal = dialog
+    const trigger = document.activeElement
+    modal.showModal()
+    document.body.classList.add('gallery-lightbox-open')
+
+    return () => {
+      swipe = null
+      backdropPress = null
+      modal.close()
+      document.body.classList.remove('gallery-lightbox-open')
+      if (trigger instanceof HTMLElement && trigger.isConnected) {
+        trigger.focus({ preventScroll: true })
       }
     }
   })
 
-  function animateOpen() {
-    if (prefersReducedMotion) return
-
-    bgEl?.animate([{ opacity: 0 }, { opacity: 1 }], {
-      duration: OPEN_DURATION * 0.75,
-      easing: OPEN_EASING,
-      fill: 'forwards'
-    })
-
-    headerEl?.animate(
-      [
-        { opacity: 0, transform: 'translateY(-10px)' },
-        { opacity: 1, transform: 'translateY(0)' }
-      ],
-      {
-        duration: OPEN_DURATION * 0.75,
-        easing: OPEN_EASING,
-        delay: 80,
-        fill: 'forwards'
-      }
-    )
-
-    imageWrapperEl?.animate(
-      [
-        { opacity: 0, transform: 'scale(0.85)', filter: 'blur(12px)' },
-        { opacity: 1, transform: 'scale(1)', filter: 'blur(0px)' }
-      ],
-      { duration: OPEN_DURATION, easing: OPEN_EASING, fill: 'forwards' }
-    )
-
-    footerEl?.animate(
-      [
-        { opacity: 0, transform: 'translateY(10px)' },
-        { opacity: 1, transform: 'translateY(0)' }
-      ],
-      {
-        duration: OPEN_DURATION * 0.75,
-        easing: OPEN_EASING,
-        delay: 120,
-        fill: 'forwards'
-      }
-    )
+  function navigate(direction: 1 | -1): void {
+    swipe = null
+    backdropPress = null
+    if (isOpen && photos[currentIndex + direction]) onnavigate(direction)
   }
 
-  async function animateClose() {
-    if (prefersReducedMotion) {
-      showLightbox = false
-      fallbackPhoto = null
+  function close(): void {
+    swipe = null
+    backdropPress = null
+    if (isOpen) onclose()
+  }
+
+  function handleCancel(event: Event): void {
+    event.preventDefault()
+    close()
+  }
+
+  function handleNativeClose(): void {
+    // A native close event can arrive after the viewer has reopened.
+    if (!dialog?.open && isOpen) close()
+  }
+
+  function handleKeydown(event: KeyboardEvent): void {
+    // A successful retry removes its button, so focus can temporarily be on body.
+    if (!isOpen || !dialog?.open) return
+    if (
+      event.defaultPrevented ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey
+    )
       return
-    }
-
-    const animations: Animation[] = []
-
-    const bgAnim = bgEl?.animate([{ opacity: 1 }, { opacity: 0 }], {
-      duration: CLOSE_DURATION,
-      easing: CLOSE_EASING,
-      fill: 'forwards'
-    })
-    if (bgAnim) animations.push(bgAnim)
-
-    const headerAnim = headerEl?.animate(
-      [
-        { opacity: 1, transform: 'translateY(0)' },
-        { opacity: 0, transform: 'translateY(-10px)' }
-      ],
-      {
-        duration: CLOSE_DURATION * 0.8,
-        easing: CLOSE_EASING,
-        fill: 'forwards'
-      }
-    )
-    if (headerAnim) animations.push(headerAnim)
-
-    const imgAnim = imageWrapperEl?.animate(
-      [
-        { opacity: 1, transform: 'scale(1)', filter: 'blur(0px)' },
-        { opacity: 0, transform: 'scale(0.9)', filter: 'blur(8px)' }
-      ],
-      { duration: CLOSE_DURATION, easing: CLOSE_EASING, fill: 'forwards' }
-    )
-    if (imgAnim) animations.push(imgAnim)
-
-    const footerAnim = footerEl?.animate(
-      [
-        { opacity: 1, transform: 'translateY(0)' },
-        { opacity: 0, transform: 'translateY(10px)' }
-      ],
-      {
-        duration: CLOSE_DURATION * 0.8,
-        easing: CLOSE_EASING,
-        fill: 'forwards'
-      }
-    )
-    if (footerAnim) animations.push(footerAnim)
-
-    await Promise.all(animations.map((a) => a.finished))
-    showLightbox = false
-    fallbackPhoto = null
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    event.preventDefault()
+    navigate(event.key === 'ArrowLeft' ? -1 : 1)
   }
 
-  // Swipe-down close: continues from gesture position instead of resetting
-  async function animateSwipeClose(currentY: number, currentOpacity: number) {
-    if (prefersReducedMotion) {
-      showLightbox = false
-      fallbackPhoto = null
+  function cancelPointer(): void {
+    swipe = null
+    backdropPress = null
+  }
+
+  function isBackground(event: PointerEvent): boolean {
+    const target = event.target
+    if (!(target instanceof HTMLElement)) return false
+    if (target.hasAttribute('data-lightbox-dismiss')) return true
+    if (!(target instanceof HTMLImageElement) || !target.naturalWidth)
+      return false
+
+    // The image element fills the stage. Only the letterbox around its bitmap dismisses.
+    const box = target.getBoundingClientRect()
+    const scale = Math.min(
+      box.width / target.naturalWidth,
+      box.height / target.naturalHeight
+    )
+    const width = target.naturalWidth * scale
+    const height = target.naturalHeight * scale
+    const left = box.x + (box.width - width) / 2
+    const top = box.y + (box.height - height) / 2
+    return (
+      event.clientX < left ||
+      event.clientX > left + width ||
+      event.clientY < top ||
+      event.clientY > top + height
+    )
+  }
+
+  function handlePointerDown(event: PointerEvent): void {
+    cancelPointer()
+    if (!event.isPrimary || event.button !== 0 || !photo) return
+    if (
+      !(event.target instanceof HTMLElement) ||
+      event.target.closest('button')
+    )
       return
+    const start: PointerStart = {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      target: event.target,
+      photoId: photo.id
     }
-
-    const animations: Animation[] = []
-    const duration = CLOSE_DURATION
-
-    // Background: continue fading from current opacity
-    const bgAnim = bgEl?.animate(
-      [{ opacity: currentOpacity }, { opacity: 0 }],
-      { duration, easing: CLOSE_EASING, fill: 'forwards' }
+    if (isBackground(event)) backdropPress = start
+    if (
+      event.pointerType === 'touch' &&
+      event.target.closest('.lightbox-image-wrapper') &&
+      (window.visualViewport?.scale ?? 1) <= 1
     )
-    if (bgAnim) animations.push(bgAnim)
-
-    // Header: fade + slide up
-    const headerAnim = headerEl?.animate(
-      [
-        { opacity: 1, transform: 'translateY(0)' },
-        { opacity: 0, transform: 'translateY(-20px)' }
-      ],
-      { duration: duration * 0.7, easing: CLOSE_EASING, fill: 'forwards' }
-    )
-    if (headerAnim) animations.push(headerAnim)
-
-    // Image: continue sliding down from current position + scale down + fade
-    const imgAnim = imageWrapperEl?.animate(
-      [
-        { transform: `translateY(${currentY}px) scale(1)`, opacity: 1 },
-        {
-          transform: `translateY(${currentY + 120}px) scale(0.85)`,
-          opacity: 0
-        }
-      ],
-      { duration, easing: CLOSE_EASING, fill: 'forwards' }
-    )
-    if (imgAnim) animations.push(imgAnim)
-
-    // Footer: fade + slide down
-    const footerAnim = footerEl?.animate(
-      [
-        { opacity: 1, transform: 'translateY(0)' },
-        { opacity: 0, transform: 'translateY(20px)' }
-      ],
-      { duration: duration * 0.7, easing: CLOSE_EASING, fill: 'forwards' }
-    )
-    if (footerAnim) animations.push(footerAnim)
-
-    await Promise.all(animations.map((a) => a.finished))
-    showLightbox = false
-    fallbackPhoto = null
+      swipe = start
   }
 
-  // Reset state when lightbox fully closes
-  $effect(() => {
-    if (!showLightbox) {
-      isNavigating = false
-      isClosing = false
-      currentSlideAnim?.cancel()
-      currentSlideAnim = null
+  function handlePointerMove(event: PointerEvent): void {
+    if (
+      backdropPress?.id === event.pointerId &&
+      Math.hypot(
+        event.clientX - backdropPress.x,
+        event.clientY - backdropPress.y
+      ) > 8
+    ) {
+      backdropPress = null
     }
-  })
-
-  // Register touchmove with { passive: false } so we can preventDefault
-  $effect(() => {
-    const el = backdropEl
-    if (!el) return
-    el.addEventListener('touchmove', handleTouchMove, { passive: false })
-    return () => el.removeEventListener('touchmove', handleTouchMove)
-  })
-
-  function handleClose() {
-    if (isClosing) return
-    isClosing = true
-    onclose()
-    animateClose()
+    if (swipe?.id !== event.pointerId) return
+    const dx = Math.abs(event.clientX - swipe.x)
+    const dy = Math.abs(event.clientY - swipe.y)
+    // Once a gesture goes vertically, it cannot turn into photo navigation.
+    if (dy > 12 && dy >= dx) swipe = null
   }
 
-  // ─── Navigation (imperative slide via Web Animations API) ──────
-
-  async function handleNavigate(direction: 1 | -1) {
-    if (isNavigating || isClosing) return
-
-    if (direction === -1 && currentIndex <= 0) return
-    if (direction === 1 && currentIndex >= photos.length - 1) return
-
-    isNavigating = true
-
-    const target = direction === 1 ? '-200%' : '0%'
-
-    if (trackEl && !prefersReducedMotion) {
-      currentSlideAnim?.cancel()
-      const currentTransform = trackEl.style.transform || 'translateX(-100%)'
-      const anim = trackEl.animate(
-        [
-          { transform: currentTransform },
-          { transform: `translateX(${target})` }
-        ],
-        {
-          duration: SLIDE_DURATION,
-          easing: SLIDE_EASING,
-          fill: 'forwards'
-        }
-      )
-      currentSlideAnim = anim
-      await anim.finished
-    }
-
-    onnavigate(direction)
-    await tick()
-
-    // Reset track position instantly
-    if (trackEl) {
-      currentSlideAnim?.cancel()
-      trackEl.style.transform = 'translateX(-100%)'
-    }
-
-    isNavigating = false
-  }
-
-  // ─── Touch/swipe gesture support ───────────────────────────────
-
-  let touchStartX = 0
-  let touchStartY = 0
-  let touchDeltaX = 0
-  let touchDeltaY = 0
-  let isSwiping = false
-  let swipeDirection: 'none' | 'horizontal' | 'vertical' = 'none'
-  let swipeHintShown = $state(false)
-
-  const SWIPE_THRESHOLD = 50
-  const SWIPE_Y_THRESHOLD = 80
-  const DIRECTION_LOCK_THRESHOLD = 8
-  const DAMPEN_X = 0.4
-  const DAMPEN_Y = 0.5
-
-  function handleTouchStart(event: TouchEvent) {
-    if (isNavigating || isClosing) return
-    const touch = event.touches[0]
-    touchStartX = touch.clientX
-    touchStartY = touch.clientY
-    touchDeltaX = 0
-    touchDeltaY = 0
-    isSwiping = true
-    swipeDirection = 'none'
-  }
-
-  function handleTouchMove(event: TouchEvent) {
-    if (!isSwiping) return
-    const touch = event.touches[0]
-    touchDeltaX = touch.clientX - touchStartX
-    touchDeltaY = touch.clientY - touchStartY
-
-    // Lock direction after passing threshold
-    if (swipeDirection === 'none') {
+  function handlePointerUp(event: PointerEvent): void {
+    const gesture = swipe
+    const backdrop = backdropPress
+    cancelPointer()
+    if (!photo) return
+    if (gesture?.id === event.pointerId && gesture.photoId === photo.id) {
+      const dx = event.clientX - gesture.x
+      const dy = event.clientY - gesture.y
       if (
-        Math.abs(touchDeltaX) > DIRECTION_LOCK_THRESHOLD ||
-        Math.abs(touchDeltaY) > DIRECTION_LOCK_THRESHOLD
+        Math.abs(dx) >= 48 &&
+        Math.abs(dx) > Math.abs(dy) * 1.5 &&
+        (window.visualViewport?.scale ?? 1) <= 1
       ) {
-        swipeDirection =
-          Math.abs(touchDeltaX) > Math.abs(touchDeltaY)
-            ? 'horizontal'
-            : 'vertical'
-      } else {
-        return // Not enough movement to determine direction
+        navigate(dx < 0 ? 1 : -1)
+        return
       }
     }
-
-    if (swipeDirection === 'horizontal') {
-      event.preventDefault()
-      // Move the track horizontally with resistance at the edges
-      let dampened = touchDeltaX * DAMPEN_X
-      if (currentIndex <= 0 && touchDeltaX > 0) dampened *= 0.3
-      if (currentIndex >= photos.length - 1 && touchDeltaX < 0) dampened *= 0.3
-
-      if (trackEl) {
-        trackEl.style.transform = `translateX(calc(-100% + ${dampened}px))`
-      }
-    } else if (swipeDirection === 'vertical' && touchDeltaY > 0) {
-      event.preventDefault()
-      // Move the image wrapper down + scale + fade bg
-      const dampened = touchDeltaY * DAMPEN_Y
-      const progress = Math.min(touchDeltaY / 300, 1)
-      const scale = 1 - progress * 0.1
-      const bgOpacity = Math.max(0.2, 1 - progress * 0.8)
-
-      if (imageWrapperEl) {
-        imageWrapperEl.style.transform = `translateY(${dampened}px) scale(${scale})`
-      }
-      if (bgEl) {
-        bgEl.style.opacity = String(bgOpacity)
-      }
-    }
-  }
-
-  function handleTouchEnd() {
-    if (!isSwiping) return
-    isSwiping = false
-
-    const dir = swipeDirection
-    const dx = touchDeltaX
-    const dy = touchDeltaY
-
-    if (dir === 'horizontal') {
-      if (dx < -SWIPE_THRESHOLD && currentIndex < photos.length - 1) {
-        handleNavigate(1)
-      } else if (dx > SWIPE_THRESHOLD && currentIndex > 0) {
-        handleNavigate(-1)
-      } else {
-        // Snap back horizontally
-        snapBackTrack(dx)
-      }
-    } else if (dir === 'vertical' && dy > 0) {
-      if (dy > SWIPE_Y_THRESHOLD) {
-        // Close with swipe-down: continue from current position
-        const progress = Math.min(dy / 300, 1)
-        const currentY = dy * DAMPEN_Y
-        const bgOpacity = Math.max(0.2, 1 - progress * 0.8)
-        isClosing = true
-        onclose()
-        animateSwipeClose(currentY, bgOpacity)
-      } else {
-        // Snap back vertically
-        snapBackVertical(dy)
-      }
-    } else {
-      // No meaningful gesture — reset
-      touchDeltaX = 0
-      touchDeltaY = 0
-    }
-
-    swipeDirection = 'none'
-
-    if (!swipeHintShown) {
-      swipeHintShown = true
-    }
-  }
-
-  function snapBackTrack(fromDeltaX: number) {
-    if (trackEl && !prefersReducedMotion) {
-      const dampened = fromDeltaX * DAMPEN_X
-      const anim = trackEl.animate(
-        [
-          { transform: `translateX(calc(-100% + ${dampened}px))` },
-          { transform: 'translateX(-100%)' }
-        ],
-        { duration: 250, easing: OPEN_EASING, fill: 'forwards' }
-      )
-      anim.onfinish = () => {
-        if (trackEl) trackEl.style.transform = 'translateX(-100%)'
-        anim.cancel()
-      }
-    } else if (trackEl) {
-      trackEl.style.transform = 'translateX(-100%)'
-    }
-    touchDeltaX = 0
-    touchDeltaY = 0
-  }
-
-  function snapBackVertical(fromDeltaY: number) {
-    if (!prefersReducedMotion) {
-      const dampened = fromDeltaY * DAMPEN_Y
-      const progress = Math.min(fromDeltaY / 300, 1)
-      const scale = 1 - progress * 0.1
-      const bgOpacity = Math.max(0.2, 1 - progress * 0.8)
-
-      // Snap image wrapper back
-      if (imageWrapperEl) {
-        const anim = imageWrapperEl.animate(
-          [
-            {
-              transform: `translateY(${dampened}px) scale(${scale})`
-            },
-            { transform: 'translateY(0) scale(1)' }
-          ],
-          { duration: 300, easing: OPEN_EASING, fill: 'forwards' }
-        )
-        anim.onfinish = () => {
-          if (imageWrapperEl) imageWrapperEl.style.transform = ''
-          anim.cancel()
-        }
-      }
-
-      // Snap bg opacity back
-      if (bgEl) {
-        const anim = bgEl.animate([{ opacity: bgOpacity }, { opacity: 1 }], {
-          duration: 300,
-          easing: OPEN_EASING,
-          fill: 'forwards'
-        })
-        anim.onfinish = () => {
-          if (bgEl) bgEl.style.opacity = ''
-          anim.cancel()
-        }
-      }
-    } else {
-      if (imageWrapperEl) imageWrapperEl.style.transform = ''
-      if (bgEl) bgEl.style.opacity = ''
-    }
-    touchDeltaX = 0
-    touchDeltaY = 0
-  }
-
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') handleClose()
-    if (event.key === 'ArrowLeft') handleNavigate(-1)
-    if (event.key === 'ArrowRight') handleNavigate(1)
-  }
-
-  function getCategoryName(slug: string): string | undefined {
-    return categories.find((c) => c.slug === slug)?.name
-  }
-
-  function getImageStyle(p: Photo) {
-    const styles = []
-    if (p.width && p.height) {
-      styles.push(`aspect-ratio: ${p.width} / ${p.height}`)
-    }
-    if (p.thumbUrl) {
-      styles.push(`background-image: url('${p.thumbUrl}')`)
-      styles.push(`background-size: contain`)
-      styles.push(`background-position: center`)
-      styles.push(`background-repeat: no-repeat`)
-    }
-    return styles.join('; ')
+    if (
+      backdrop?.id === event.pointerId &&
+      backdrop.photoId === photo.id &&
+      backdrop.target === event.target &&
+      isBackground(event) &&
+      Math.hypot(event.clientX - backdrop.x, event.clientY - backdrop.y) <= 8
+    )
+      close()
   }
 </script>
 
-<svelte:window onkeydown={showLightbox ? handleKeydown : undefined} />
+<svelte:window onkeydown={handleKeydown} />
 
-{#if showLightbox && activePhoto}
-  {@const currentPhoto = activePhoto}
-  <div
-    class="lightbox-backdrop"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Photo viewer"
-    tabindex="-1"
-  >
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="lightbox-touch-layer"
-      bind:this={backdropEl}
-      ontouchstart={handleTouchStart}
-      ontouchend={handleTouchEnd}
-    >
-      <div class="lightbox-bg" bind:this={bgEl}></div>
-
-      <div class="lightbox-header" bind:this={headerEl}>
-        <span class="lightbox-counter">
-          {currentIndex + 1} / {photos.length}
-        </span>
-        <button
-          class="lightbox-btn lightbox-close"
-          onclick={handleClose}
-          aria-label="Close viewer"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+<dialog
+  bind:this={dialog}
+  class="lightbox"
+  aria-label="Photo viewer"
+  oncancel={handleCancel}
+  onclose={handleNativeClose}
+  onpointerdown={handlePointerDown}
+  onpointermove={handlePointerMove}
+  onpointerup={handlePointerUp}
+  onpointercancel={cancelPointer}
+>
+  {#if photo && isOpen}
+    <header class="lightbox-header">
+      <div class="photo-caption">
+        {#if category}<p class="lightbox-category">{category.name}</p>{/if}
+        <h2 class="photo-title" title={photo.name}>{photo.name}</h2>
       </div>
+      <button
+        type="button"
+        class="lightbox-btn lightbox-close"
+        onclick={close}
+        aria-label="Close viewer"
+      >
+        <Icon name="x" size="lg" />
+      </button>
+    </header>
 
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="lightbox-body" onclick={handleClose}>
+    <div class="lightbox-image-wrapper" data-lightbox-dismiss>
+      {#key photo.id}
+        <GalleryLightboxImage {photo} />
+      {/key}
+    </div>
+
+    <footer class="lightbox-footer">
+      <p class="keyboard-hint">Use ← → to browse <span>·</span> Esc to close</p>
+      <p class="touch-hint">Swipe or use the arrows</p>
+      <nav class="photo-navigation" aria-label="Photo navigation">
         <button
-          class="lightbox-btn lightbox-nav lightbox-prev"
-          onclick={(e) => {
-            e.stopPropagation()
-            handleNavigate(-1)
-          }}
+          type="button"
+          class="lightbox-btn lightbox-prev"
+          onclick={() => navigate(-1)}
           disabled={currentIndex === 0}
-          aria-disabled={currentIndex === 0}
           aria-label="Previous photo"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="28"
-            height="28"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+          <span class="previous-icon"
+            ><Icon name="chevron-right" size="lg" /></span
           >
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
         </button>
-
-        <div
-          class="lightbox-image-wrapper"
-          bind:this={imageWrapperEl}
-          onclick={(e) => e.stopPropagation()}
-        >
-          <div class="lightbox-track" bind:this={trackEl}>
-            <!-- Previous photo slot -->
-            <div class="lightbox-slide">
-              {#if prevPhoto}
-                <img
-                  class="lightbox-image"
-                  src={prevPhoto.fullUrl ?? ''}
-                  srcset={[
-                    prevPhoto.mediumUrl ? `${prevPhoto.mediumUrl} 1200w` : '',
-                    prevPhoto.fullUrl ? `${prevPhoto.fullUrl} 2400w` : ''
-                  ]
-                    .filter(Boolean)
-                    .join(', ') || undefined}
-                  sizes="100vw"
-                  alt={prevPhoto.name}
-                  style={getImageStyle(prevPhoto)}
-                />
-              {/if}
-            </div>
-            <!-- Current photo slot -->
-            <div class="lightbox-slide">
-              <img
-                class="lightbox-image"
-                src={currentPhoto.fullUrl ?? ''}
-                srcset={[
-                  currentPhoto.mediumUrl
-                    ? `${currentPhoto.mediumUrl} 1200w`
-                    : '',
-                  currentPhoto.fullUrl ? `${currentPhoto.fullUrl} 2400w` : ''
-                ]
-                  .filter(Boolean)
-                  .join(', ') || undefined}
-                sizes="100vw"
-                alt={currentPhoto.name}
-                style={getImageStyle(currentPhoto)}
-              />
-            </div>
-            <!-- Next photo slot -->
-            <div class="lightbox-slide">
-              {#if nextPhoto}
-                <img
-                  class="lightbox-image"
-                  src={nextPhoto.fullUrl ?? ''}
-                  srcset={[
-                    nextPhoto.mediumUrl ? `${nextPhoto.mediumUrl} 1200w` : '',
-                    nextPhoto.fullUrl ? `${nextPhoto.fullUrl} 2400w` : ''
-                  ]
-                    .filter(Boolean)
-                    .join(', ') || undefined}
-                  sizes="100vw"
-                  alt={nextPhoto.name}
-                  style={getImageStyle(nextPhoto)}
-                />
-              {/if}
-            </div>
-          </div>
-        </div>
-
+        <p class="lightbox-counter" aria-live="polite" aria-atomic="true">
+          {currentIndex + 1} / {photos.length}
+        </p>
         <button
-          class="lightbox-btn lightbox-nav lightbox-next"
-          onclick={(e) => {
-            e.stopPropagation()
-            handleNavigate(1)
-          }}
+          type="button"
+          class="lightbox-btn"
+          onclick={() => navigate(1)}
           disabled={currentIndex === photos.length - 1}
-          aria-disabled={currentIndex === photos.length - 1}
           aria-label="Next photo"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="28"
-            height="28"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polyline points="9 18 15 12 9 6"></polyline>
-          </svg>
+          <Icon name="chevron-right" size="lg" />
         </button>
-      </div>
-
-      <div class="lightbox-footer" bind:this={footerEl}>
-        {#if getCategoryName(currentPhoto.category)}
-          <span class="lightbox-category"
-            >{getCategoryName(currentPhoto.category)}</span
-          >
-        {/if}
-        {#if !swipeHintShown && photos.length > 1}
-          <span class="swipe-hint">Swipe to navigate</span>
-        {/if}
-      </div>
-    </div>
-  </div>
-{/if}
+      </nav>
+    </footer>
+  {/if}
+</dialog>
 
 <style>
-  .lightbox-backdrop {
+  :global(body.gallery-lightbox-open) {
+    overflow: hidden;
+  }
+
+  .lightbox {
     position: fixed;
     inset: 0;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .lightbox-touch-layer {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-  }
-
-  .lightbox-bg {
-    position: absolute;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.92);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    z-index: 0;
-  }
-
-  .lightbox-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-4) var(--space-6);
-    flex-shrink: 0;
-    position: relative;
-    z-index: 1;
-    opacity: 0;
-  }
-
-  .lightbox-counter {
-    font-size: var(--text-sm);
-    color: rgba(255, 255, 255, 0.7);
-    font-variant-numeric: tabular-nums;
-    font-weight: 500;
-  }
-
-  .lightbox-body {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    min-height: 0;
-    padding: 0 var(--space-16);
-    z-index: 2;
-  }
-
-  .lightbox-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.08);
-    border: none;
-    color: white;
-    cursor: pointer;
-    transition:
-      background-color var(--transition-fast),
-      transform var(--transition-fast);
-    border-radius: var(--radius-full);
-  }
-
-  .lightbox-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
-  }
-
-  .lightbox-btn:active {
-    transform: scale(0.95);
-  }
-
-  .lightbox-close {
-    width: 40px;
-    height: 40px;
-  }
-
-  .lightbox-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 48px;
-    height: 48px;
-    z-index: 10;
-  }
-
-  .lightbox-nav:hover {
-    transform: translateY(-50%) scale(1.05);
-  }
-
-  .lightbox-nav:disabled {
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .lightbox-prev {
-    left: var(--space-4);
-  }
-
-  .lightbox-next {
-    right: var(--space-4);
-  }
-
-  .lightbox-image-wrapper {
-    width: calc(100vw - 160px);
-    height: 100%;
-    max-height: calc(100vh - 160px);
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    will-change: transform;
-    z-index: 2;
-    opacity: 0;
-  }
-
-  .lightbox-track {
-    display: flex;
-    width: 300%;
-    height: 100%;
-    transform: translateX(-100%);
-    will-change: transform;
-  }
-
-  .lightbox-slide {
     width: 100%;
-    height: 100%;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    overflow: hidden;
+    overscroll-behavior: contain;
   }
 
-  .lightbox-image {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    border-radius: var(--radius-lg);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-    user-select: none;
-    -webkit-user-drag: none;
+  .lightbox[open] {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .lightbox::backdrop {
+    background: var(--color-overlay-heavy);
   }
 
+  .lightbox-header,
   .lightbox-footer {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: var(--space-4) var(--space-6);
-    flex-shrink: 0;
-    min-height: 48px;
-    position: relative;
-    z-index: 1;
-    opacity: 0;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-4) max(var(--space-6), env(safe-area-inset-right))
+      var(--space-4) max(var(--space-6), env(safe-area-inset-left));
   }
 
+  .lightbox-header {
+    padding-top: max(var(--space-4), env(safe-area-inset-top));
+  }
+  .lightbox-footer {
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  }
+  .photo-caption {
+    min-width: 0;
+  }
   .lightbox-category {
-    font-size: var(--text-sm);
-    color: rgba(255, 255, 255, 0.6);
-    background: rgba(255, 255, 255, 0.08);
-    padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius-full);
-    font-weight: 500;
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    margin: 0 0 var(--space-1);
+  }
+  .photo-title {
+    font-size: var(--text-base);
+    font-weight: 400;
+    margin: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
-  .swipe-hint {
+  .lightbox-image-wrapper {
+    min-width: 0;
+    min-height: 0;
+    padding-inline: var(--space-6);
+    touch-action: pan-y pinch-zoom;
+  }
+
+  .lightbox-btn {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: var(--space-12);
+    height: var(--space-12);
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  .lightbox-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .lightbox-btn:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+  .photo-navigation {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .previous-icon {
+    transform: rotate(180deg);
+  }
+  .lightbox-counter {
+    min-width: 7ch;
+    margin: 0;
+    text-align: center;
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+  .keyboard-hint,
+  .touch-hint {
+    margin: 0;
+    color: var(--color-text-muted);
     font-size: var(--text-xs);
-    color: rgba(255, 255, 255, 0.4);
-    animation: swipeHintFade 3s ease-out forwards;
+  }
+  .keyboard-hint span {
+    margin-inline: var(--space-2);
+  }
+  .touch-hint {
     display: none;
   }
 
-  @keyframes swipeHintFade {
-    0% {
-      opacity: 0;
-    }
-    15% {
-      opacity: 1;
-    }
-    70% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 0;
+  @media (hover: hover) {
+    .lightbox-btn:hover:enabled {
+      background: var(--color-surface-hover);
+      border-color: var(--color-border-hover);
     }
   }
-
-  /* ===== Responsive ===== */
-  @media (max-width: 768px) {
-    .lightbox-body {
-      padding: 0;
-    }
-
-    .lightbox-header {
-      padding: var(--space-3) var(--space-4);
-    }
-
-    .lightbox-footer {
-      padding: var(--space-3) var(--space-4);
-      gap: var(--space-2);
-    }
-
-    .lightbox-image-wrapper {
-      width: 100vw;
-      height: 100%;
-      max-height: calc(100vh - 120px);
-    }
-
-    .lightbox-image {
-      max-height: 100%;
-      border-radius: 0;
-    }
-  }
-
-  /* Hide nav buttons on touch devices — swipe instead */
   @media (pointer: coarse) {
-    .lightbox-nav {
+    .keyboard-hint {
       display: none;
     }
-
-    .swipe-hint {
-      display: inline;
-    }
-
-    .lightbox-body {
-      padding: 0;
-    }
-
-    .lightbox-image-wrapper {
-      width: 100vw;
+    .touch-hint {
+      display: block;
     }
   }
-
-  /* ===== Reduced Motion ===== */
-  @media (prefers-reduced-motion: reduce) {
+  @media (max-width: 600px) {
     .lightbox-header,
-    .lightbox-footer,
+    .lightbox-footer {
+      padding-inline: max(var(--space-4), env(safe-area-inset-left))
+        max(var(--space-4), env(safe-area-inset-right));
+    }
     .lightbox-image-wrapper {
-      opacity: 1;
+      padding-inline: var(--space-2);
+    }
+    .lightbox-footer {
+      flex-direction: column-reverse;
+      gap: var(--space-3);
+    }
+    .keyboard-hint {
+      display: none;
+    }
+    .touch-hint {
+      display: block;
+    }
+  }
+  @media (max-height: 450px) {
+    .lightbox-header,
+    .lightbox-footer {
+      padding-block: var(--space-2);
+    }
+    .lightbox-category,
+    .keyboard-hint,
+    .touch-hint {
+      display: none;
+    }
+    .lightbox-footer {
+      flex-direction: row;
+      justify-content: center;
     }
   }
 </style>

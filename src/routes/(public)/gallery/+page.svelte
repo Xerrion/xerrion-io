@@ -40,11 +40,6 @@
     }
     pendingPhotoCount = null
   })
-  $effect(() => {
-    if (!lightboxPhoto) return
-    document.body.classList.add('gallery-lightbox-open')
-    return () => document.body.classList.remove('gallery-lightbox-open')
-  })
 </script>
 
 <SEOHead title="Gallery" description="Photos from life outside software, including Charlie, Lasse Skovgaard Nielsen's golden retriever." jsonLd={breadcrumbSchema([{ name: 'Home', url: '/' }, { name: 'Gallery', url: '/gallery' }])} />
@@ -66,7 +61,6 @@
 <GalleryLightbox photo={lightboxPhoto} photos={displayedPhotos} categories={data.categories} onclose={closeLightbox} onnavigate={navigateLightbox} />
 
 <style>
-  :global(body.gallery-lightbox-open) { overflow: hidden; }
   .gallery-intro { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, .65fr); gap: var(--space-12); padding-block: var(--space-16) var(--space-12); align-items: end; }
   .eyebrow { display: inline-flex; align-items: center; gap: var(--space-3); font-size: var(--text-xs); font-weight: 400; letter-spacing: .075em; text-transform: uppercase; color: var(--color-text-muted); }
   h1 { margin-top: var(--space-6); font-size: clamp(3.2rem, 6.7vw, 6.15rem); line-height: 1.04; letter-spacing: -.043em; font-weight: 500; }
